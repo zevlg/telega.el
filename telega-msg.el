@@ -1675,39 +1675,33 @@ Saved Messages."
      (t
       ;; NOTE: Start downloading file in the background while reading
       ;; filename
-      (unless (telega-file--downloaded-p file)
-        (telega-file--download file
-          :priority 32
-          :update-callback
-          (lambda (_dfile)
-            (telega-msg-redisplay msg))))
+      (telega-file--download file
+        :priority 32
+        :update-callback
+        (lambda (dfile)
+          (telega-msg-redisplay msg)
+          (when (telega-file--downloaded-p dfile)
+            (let* ((fpath (telega--tl-get dfile :local :path))
+                   (fname (when fpath (file-name-nondirectory fpath)))
+                   (new-fpath
+                    (if (and fname telega-msg-save-dir)
+                        (expand-file-name fname telega-msg-save-dir)
+                      (read-file-name (concat (telega-i18n "lng_save_file") ": ")
+                                      (or telega-msg-save-dir default-directory)
+                                      nil nil fname))))
 
-      (let* ((fpath (telega--tl-get file :local :path))
-             (fname (when fpath (file-name-nondirectory fpath)))
-             (new-fpath
-              (if (and fname telega-msg-save-dir)
-                  (expand-file-name fname telega-msg-save-dir)
-                (read-file-name (concat (telega-i18n "lng_save_file") ": ")
-                                (or telega-msg-save-dir default-directory)
-                                nil nil fname))))
-        ;; NOTE: Ensure corresponding directory exists
-        (let ((fdir (file-name-directory new-fpath)))
-          (unless (file-exists-p fdir)
-            (if (y-or-n-p
-                 (format-message
-                  "Directory `%s' does not exist; create? " fdir))
-                (make-directory fdir t)
-              (error "Canceled"))))
+              ;; NOTE: Ensure corresponding directory exists
+              (let ((fdir (file-name-directory new-fpath)))
+                (unless (file-exists-p fdir)
+                  (if (y-or-n-p
+                       (format-message
+                        "Directory `%s' does not exist; create? " fdir))
+                      (make-directory fdir t)
+                    (error "Canceled"))))
 
-        ;; See https://github.com/tdlib/td/issues/379
-        (telega-file--download file
-          :priority 32
-          :update-callback
-          (lambda (dfile)
-            (when (telega-file--downloaded-p dfile)
+              ;; See https://github.com/tdlib/td/issues/379
               (copy-file (telega--tl-get dfile :local :path) new-fpath 1)
-              (message (format "Wrote %s" new-fpath)))))
-        )))))
+              (message (format "Wrote %s" new-fpath))))))))))
 
 (defun telega-msg-copy-link (msg &optional for-thread-p)
   "Copy link to message to kill ring.
