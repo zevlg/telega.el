@@ -93,14 +93,14 @@ Use `telega-root-aux-inserters' to customize it.")
 (defvar telega-root-view-map
   (let ((map (make-sparse-keymap)))
     ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-alternative-similar-channels,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-alternative-similar-channels, 2)}}}
-    (define-key map (kbd "a") 'telega-view-alternative-similar-channels)
+    ;; - {{{where-is(telega-view-applications,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-applications, 2)}}}
+    (define-key map (kbd "a") 'telega-view-applications)
 
     ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-search,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-search, 2)}}}
-    (define-key map (kbd "s") 'telega-view-search)
+    ;; - {{{where-is(telega-view-similar,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-similar, 2)}}}
+    (define-key map (kbd "s") 'telega-view-similar)
     ;;; ellit-org: rootbuf-view-bindings
     ;; - {{{where-is(telega-view-reset,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-reset, 2)}}}
@@ -415,6 +415,7 @@ Global root bindings:
   (add-hook 'kill-buffer-hook 'telega-root--killed nil t)
 
   (cursor-sensor-mode 1)
+  (cursor-face-highlight-mode 1)
   (when telega-use-tracking-for
     (unless (fboundp 'tracking-mode)
       (user-error "Please install `tracking' package \
@@ -533,8 +534,7 @@ EWOC-SPEC is plist with keyword elements:
                             (plist-get ewoc-spec :header))
                            (or (plist-get ewoc-spec :footer)
                                (when (plist-get ewoc-spec :loading)
-                                 (concat (telega-i18n "lng_profile_loading")
-                                         "\n")))
+                                 (concat (telega-i18n "telega_loading") "\n")))
                            'no-sep)))
     (setq telega-root-view--ewocs-alist
           (append telega-root-view--ewocs-alist
@@ -564,7 +564,7 @@ FOOTER is string to use as footer, by default \"Loading...\" is used."
     (with-telega-root-view-ewoc (plist-get ewoc-spec :name) ewoc
       (telega-save-cursor
         (telega-ewoc--set-footer
-         ewoc (concat (or footer (telega-i18n "lng_profile_loading")) "\n"))))
+         ewoc (concat (or footer (telega-i18n "telega_loading")) "\n"))))
     (telega-loading--timer-start)))
 
 (defun telega-root-view--ewoc-loading-done (ewoc-name &optional items)
@@ -587,22 +587,31 @@ ITEMS is a list of loaded items to be added into ewoc."
 Keep cursor position only if CHAT is visible."
   (when (telega-chat-match-active-p chat) ;visible-p
     (with-telega-root-view-ewoc "root" root-ewoc
-      (when-let ((node (telega-ewoc--find-by-data root-ewoc chat)))
-        (goto-char (ewoc-location node))
+      (let* ((point-was (point))
+             (root-topic (telega-topic-at point-was))
+             (root-chat (if root-topic
+                            (telega-topic-chat root-topic)
+                          (telega-chat-at point-was)))
+             (chat-topic (with-telega-chatbuf chat
+                           (telega-chatbuf--thread-topic))))
+        ;; NOTE: if point is already on corresponding chat or topic,
+        ;; then do not move it at all
+        (unless (eq chat root-chat)
+          (when-let ((node (telega-ewoc--find-by-data root-ewoc chat)))
+            (goto-char (ewoc-location node))))
 
         ;; NOTE: if chatbuf is opened with topic, then try to find
         ;; corresponding topic button next to the chat button
-        (when-let* ((topic (with-telega-chatbuf chat
-                             (telega-chatbuf--thread-topic)))
-                    (topics-ewoc (button-get (button-at (point)) :topics-ewoc))
-                    (topic-node (telega-ewoc--find-by-data topics-ewoc topic)))
-          (goto-char (ewoc-location topic-node)))
+        (when (and chat-topic (not (eq chat-topic root-topic)))
+          (when-let ((topics-ewoc (button-get (button-at (point)) :topics-ewoc))
+                     (topic-node
+                      (telega-ewoc--find-by-data topics-ewoc chat-topic)))
+            (goto-char (ewoc-location topic-node))))
 
-        (unless (get-buffer-window)
-          (telega-buffer--hack-win-point))
-        (dolist (win (get-buffer-window-list))
-          (set-window-point win (point)))
-        (run-hooks 'telega-root-update-hook)))))
+        (unless (eq (point) point-was)
+          ;; Point moved
+          (telega-buffer--update-win-point)
+          (run-hooks 'telega-root-update-hook))))))
 
 (defun telega-root-buffer-auto-fill (&optional win)
   "Automatically resize root buffer formatting to WIN's width."
@@ -658,13 +667,19 @@ Keep cursor position only if CHAT is visible."
   (interactive (list (telega-chat-at (point))))
   (unless (telega-chat-p chat)
     (user-error "telega: No chat at point"))
-  (if (telega-chat-match-p chat 'is-forum)
+  (if (or (telega-chat-match-p chat 'is-forum)
+          (and (telega-chat-match-p chat 'saved-messages)
+               (telega-chat-topics-alist chat)))
       (let ((topics-visible-p (not (plist-get chat :telega-topics-visible))))
-        (when topics-visible-p
-          (telega-chat-topics chat 'force-update))
-
         (plist-put chat :telega-topics-visible topics-visible-p)
-        (telega-root-view--update :on-chat-update chat))
+        (if (and topics-visible-p
+                 (telega-chat-match-p chat 'is-forum))
+            (progn
+              (message "telega: %s" (telega-i18n "telega_loading"))
+              (telega-chat--forum-topics-fetch chat
+                (lambda (_reply)
+                  (message "telega: %s DONE" (telega-i18n "telega_loading")))))
+          (telega-root-view--update :on-chat-update chat)))
 
     ;; TODO: toogle preview for the last message
     ))
@@ -716,7 +731,12 @@ If `\\[universal-argument]' is specified, then open topic in a preview mode."
                                            nil nil 'no-sep))))
       (button-put chat-button :topics-ewoc topics-ewoc)
       (seq-doseq (topic (telega-chat-topics chat))
-        (ewoc-enter-last topics-ewoc topic))
+        ;; NOTE: Do not display topics having no messages in it
+        (let ((nmessages (plist-get topic :telega_message_count)))
+          (when (or (not nmessages) (> nmessages 0))
+            (let ((topic-node (ewoc-enter-last topics-ewoc topic)))
+              (button-put (button-at (ewoc-location topic-node))
+                          :topics-ewoc topics-ewoc)))))
       ;; NOTE: `ewoc-enter-last' inserts under `save-excursion', but
       ;; we need point to move forward.  So, move point to the end of
       ;; the topic ewocs making topics ewoc part of the chat node
@@ -805,6 +825,10 @@ CONTACT is some user you have exchanged contacts with."
 (defun telega-root--message-call-pp (msg)
   "Pretty printer for call MSG button shown in root buffer."
   (telega-root--message-pp msg #'telega-ins--root-msg-call))
+
+(defun telega-root--global-bot-pp (user)
+  "Pretty printer for unknown bot USER."
+  (telega-root--contact-pp user #'telega-ins--root-bot-2lines))
 
 
 ;;; Auth/Connection Status
@@ -1490,7 +1514,7 @@ If QUERY is empty string, then show all contacts."
    (list 'telega-view-owned-bots
          "Owned Bots"
          (list :name "owned-bots"
-               :pretty-printer #'telega-root--contact-pp
+               :pretty-printer #'telega-root--global-bot-pp
                :sorter #'telega-user-cmp-by-status
                :loading (telega--getOwnedBots
                           (apply-partially
@@ -1547,8 +1571,8 @@ If `\\[universal-argument]' is given, then view missed calls only."
                :items (telega-filter-chats telega--ordered-chats 'is-blocked)
                :on-chat-update #'telega-root--any-on-chat-update))))
 
-(defun telega-root--topics-on-chat-update (ewoc-name ewoc chat)
-  "Handler for chat updates in \"topics\" root view."
+(defun telega-root--grouping-on-chat-update (ewoc-name ewoc chat)
+  "Handler for chat updates in \"Grouping\" root view."
   (let ((group-temex (plist-get (telega-root-view--ewoc-spec ewoc-name)
                                  :group-temex)))
     (if (telega-chat-match-p chat group-temex)
@@ -1569,7 +1593,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
           :pretty-printer #'telega-root--chat-known-pp
           :sorter #'telega-chat>
           :items (telega-filter-chats telega--ordered-chats group-temex)
-          :on-chat-update #'telega-root--topics-on-chat-update)))
+          :on-chat-update #'telega-root--grouping-on-chat-update)))
 
 (defun telega-view-grouping ()
   "Group chats by `telega-root-view-grouping-alist'."
@@ -1604,7 +1628,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
                   :pretty-printer #'telega-root--chat-known-pp
                   :sorter #'telega-chat>
                   :items (telega-filter-chats telega--ordered-chats other-temex)
-                  :on-chat-update #'telega-root--topics-on-chat-update)))))))
+                  :on-chat-update #'telega-root--grouping-on-chat-update)))))))
 
 (defun telega-view-top--sorter (chat1 chat2)
   "Sorter for top chats."
@@ -2116,7 +2140,32 @@ state kinds to show. By default all kinds are shown."
                   (telega-filter-chats
                    telega--ordered-chats 'has-favorite-messages)))))
 
-(defun telega-view-alternative-similar-channels (chat)
+(defun telega-view-similar-bots (bot)
+  "View bots similar to a BOT user."
+  (interactive
+   (list (telega-chat-user
+          (telega-completing-read-chat
+           (concat (telega-i18n "lng_bot_choose_chat") ": ")
+           (telega-filter-chats telega--ordered-chats '(type bot))))))
+
+  (telega-root-view--apply
+   (list 'telega-view-similar-bots
+         (telega-ins--as-string
+          (telega-ins (telega-i18n "lng_similar_bots_title") ": ")
+          (telega-ins--msg-sender bot
+            :with-avatar-p t
+            :with-brackets-p t))
+
+         (list :name "similar-bots"
+               :pretty-printer #'telega-root--global-bot-pp
+               :loading (telega--getBotSimilarBots bot
+                          (apply-partially
+                           #'telega-root-view--ewoc-loading-done "similar-bots"))
+               :on-chat-update #'telega-root--contact-on-chat-update
+               :on-user-update #'telega-root--contact-on-user-update)))
+  )
+
+(defun telega-view-similar-channels (chat)
   "View channels similar to the given CHAT."
   (interactive (let ((chat (or (telega-chat-at (point))
                                (telega-completing-read-chat
@@ -2133,7 +2182,8 @@ state kinds to show. By default all kinds are shown."
          (telega-ins--as-string
           (telega-ins (telega-i18n "lng_similar_channels_title") ": ")
           (telega-ins--msg-sender chat
-            :with-avatar-p t))
+            :with-avatar-p t
+            :with-brackets-p t))
 
          (list :name "similar"
                :pretty-printer #'telega-root--global-chat-pp
@@ -2141,6 +2191,27 @@ state kinds to show. By default all kinds are shown."
                           (apply-partially
                            #'telega-root-view--ewoc-loading-done "similar")))))
   )
+
+(defun telega-view-similar (chat)
+  "View similar channels or bots."
+  (interactive
+   (list (or (when-let ((ichat (telega-chat-for-interactive)))
+               (when (telega-chat-match-p ichat '(type bot channel))
+                 ichat))
+             (telega-completing-read-chat
+              (concat (telega-i18n "lng_bot_choose_chat") ": ")
+              (telega-filter-chats telega--ordered-chats
+                '(and is-known (type bot channel)))))))
+
+  (cond ((telega-chat-match-p chat '(type channel))
+         (telega-view-similar-channels chat))
+        ((telega-chat-match-p chat '(type bot))
+         (telega-view-similar-bots (telega-chat-user chat)))))
+
+(defun telega-view-applications ()
+  "View available applications."
+  (interactive)
+  (user-error "TODO: telega-view-applications"))
 
 (defun telega-view-recommended-channels ()
   "View channels recommended to me."

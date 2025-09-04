@@ -363,14 +363,20 @@ Return nil for deleted messages."
   "Goto message denoted by `:reply_to' field of the message MSG."
   (let* ((reply-to (plist-get msg :reply_to))
          (chat-id (plist-get reply-to :chat_id))
-         (msg-id (plist-get reply-to :message_id)))
+         (msg-id (plist-get reply-to :message_id))
+         (reply-quote (plist-get reply-to :quote)))
     (unless (or (telega-zerop chat-id) (telega-zerop msg-id))
-      (telega-chat--goto-msg (telega-chat-get chat-id) msg-id 'highlight
+      (telega-chat--goto-msg (telega-chat-get chat-id) msg-id
+                             (unless reply-to 'highlight)
         ;; Possibly jump to the beginning of the reply quote
-        (when-let ((reply-quote (plist-get reply-to :quote)))
-           (lambda ()
-             (telega-chatbuf--goto-msg-content
-              (plist-get reply-quote :position))))))))
+        (when reply-quote
+          (lambda ()
+            (when (telega-chatbuf--goto-msg-content
+                   (plist-get reply-quote :position))
+              (with-no-warnings
+                (pulse-momentary-highlight-region
+                 (point) (+ (point) (length (telega-tl-str reply-quote :text))))))
+            ))))))
 
 (defun telega-msg-open-sticker (msg &optional sticker)
   "Open content for sticker message MSG."
@@ -426,7 +432,7 @@ Return nil for deleted messages."
 (defun telega-msg-open-story (msg)
   "Open content for the forwarded story message MSG."
   (let* ((content (plist-get msg :content))
-         (chat-id (plist-get content :story_sender_chat_id))
+         (chat-id (plist-get content :story_poster_chat_id))
          (story-id (plist-get content :story_id))
          (story (telega-story-get chat-id story-id)))
     (telega-story-open story msg)))
@@ -1156,6 +1162,8 @@ non-nil CLICKED-P means message explicitly has been clicked by user."
     (messageGiveawayCompleted
      (telega-chat--goto-msg (telega-msg-chat msg)
          (telega--tl-get msg :content :giveaway_message_id) 'hightlight))
+    (messageGift
+     (telega-msg-open-gift msg))
 
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
@@ -1167,20 +1175,21 @@ discussion group.
 Or MSG could be in supergroup, then filter messages to the
 corresponding thread or topic."
   (interactive (list (telega-msg-for-interactive)))
-  (cond ((telega-msg-match-p msg 'is-topic)
-         (telega-topic-goto
-          (telega-topic-get (telega-msg-chat msg 'offline)
-                            (plist-get msg :message_thread_id))
-          (plist-get msg :id)))
+  (let ((topic (telega-msg-topic msg))) ;TODO
+    (cond ((telega-msg-match-p msg 'is-topic)
+           (telega-topic-goto
+            (telega-topic-get (telega-msg-chat msg 'offline)
+                              (plist-get msg :message_thread_id))
+            (plist-get msg :id)))
 
-        ((telega-msg-match-p msg 'post-with-comments)
-         (telega-chat--goto-thread (telega-msg-chat msg 'offline)
-                                   (plist-get msg :id)))
+          ((telega-msg-match-p msg 'post-with-comments)
+           (telega-chat--goto-thread (telega-msg-chat msg 'offline)
+                                     (plist-get msg :id)))
 
-        ((telega-msg-match-p msg 'is-thread)
-         (telega-chat--goto-thread (telega-msg-chat msg 'offline)
-                                   (plist-get msg :message_thread_id)
-                                   (plist-get msg :id)))))
+          ((telega-msg-match-p msg 'is-thread)
+           (telega-chat--goto-thread (telega-msg-chat msg 'offline)
+                                     (plist-get msg :message_thread_id)
+                                     (plist-get msg :id))))))
 
 (defun telega-msg-can-open-media-timestamp-p (msg)
   "Return non-nil if MSG can be opened with custom media timestamp.
@@ -1253,6 +1262,7 @@ Return a user or a chat."
   (or (cdr (seq-find (lambda (bspec)
                        (telega-sender-match-p msg-sender (car bspec)))
                      telega-brackets))
+      ;; Fallback to default brackets
       (and (telega-chat-p msg-sender) '("[" "]"))
       (progn (cl-assert (telega-user-p msg-sender)) '("{" "}"))))
 
@@ -1294,16 +1304,15 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
        (propertize (telega-i18n "lng_scam_badge") 'face 'error))
      (when (plist-get v-status :is_fake)
        (propertize (telega-i18n "lng_fake_badge") 'face 'error))
-     (when (plist-get v-status :is_verified)
-       (let* ((v-custom-emoji-id
-               (plist-get v-status :bot_verification_icon_custom_emoji_id))
-              (v-sticker
-               (unless (telega-zerop v-custom-emoji-id)
-                 (telega-custom-emoji-get v-custom-emoji-id))))
-         (if v-sticker
-             (telega-ins--as-string
-              (telega-ins--image (telega-sticker--image v-sticker)))
-           (telega-symbol 'verified)))))))
+     (if (plist-get v-status :is_verified)
+         (telega-symbol 'verified)
+       (let ((v-custom-emoji-id
+              (plist-get v-status :bot_verification_icon_custom_emoji_id)))
+         (unless (telega-zerop v-custom-emoji-id)
+           (telega-symbol
+            'checkmark
+            (when-let ((v-sticker (telega-custom-emoji-get v-custom-emoji-id)))
+              (telega-sticker--image v-sticker)))))))))
 
 (defun telega-msg-sender-title (msg-sender &rest args)
   "Return title for the message sender MSG-SENDER.
@@ -1516,35 +1525,36 @@ For interactive use only."
 
 (defun telega-msg--favorite-messages-file-fetch ()
   "Asynchronously fetch file storing list of favorite messages."
-  (telega--searchChatMessages (telega-chat-me)
-      '(:@type "searchMessagesFilterDocument") 0 0
-    :query "#telega_favorite_messages"
-    :limit 1
-    :callback
-    (lambda (reply)
-      (let ((messages (plist-get reply :messages)))
-        (setq telega--favorite-messages-storage-message
-              (unless (seq-empty-p messages)
-                (seq-first messages)))
-        (when telega--favorite-messages-storage-message
-          (let ((file (telega-msg--content-file
-                       telega--favorite-messages-storage-message)))
-            (cl-assert file)
-            ;; And now load associated file asynchronously
-            (telega-file--download file
-              :priority 32
-              :update-callback
-              (lambda (tl-file)
-                (when (telega-file--downloaded-p tl-file)
-                  (setq telega--favorite-messages
-                        (with-temp-buffer
-                          (insert-file-contents
-                           (telega--tl-get tl-file :local :path))
-                          (goto-char (point-min))
-                          (read (current-buffer))))
-                  (telega-debug "Loaded %d favorite messages"
-                                (length telega--favorite-messages)))
-                ))))))))
+  (when-let ((chat-me (telega-chat-me)))
+    (telega--searchChatMessages chat-me
+        '(:@type "searchMessagesFilterDocument") 0 0
+      :query "#telega_favorite_messages"
+      :limit 1
+      :callback
+      (lambda (reply)
+        (let ((messages (plist-get reply :messages)))
+          (setq telega--favorite-messages-storage-message
+                (unless (seq-empty-p messages)
+                  (seq-first messages)))
+          (when telega--favorite-messages-storage-message
+            (let ((file (telega-msg--content-file
+                         telega--favorite-messages-storage-message)))
+              (cl-assert file)
+              ;; And now load associated file asynchronously
+              (telega-file--download file
+                :priority 32
+                :update-callback
+                (lambda (tl-file)
+                  (when (telega-file--downloaded-p tl-file)
+                    (setq telega--favorite-messages
+                          (with-temp-buffer
+                            (insert-file-contents
+                             (telega--tl-get tl-file :local :path))
+                            (goto-char (point-min))
+                            (read (current-buffer))))
+                    (telega-debug "Loaded %d favorite messages"
+                                  (length telega--favorite-messages)))
+                  )))))))))
 
 (defun telega-msg--favorite-messages-file-store ()
   "Upload `telega--favorite-messages' value as file into \"Saved Messages\"."
@@ -1634,7 +1644,19 @@ favorite message."
 (defun telega-msg-resend (msg)
   "Try to resend message MSG."
   (interactive (list (telega-msg-for-interactive)))
-  (telega--resendMessages msg))
+  (let* ((state (plist-get msg :sending_state))
+         (pay-stars
+          (let ((required-stars
+                 (plist-get state :required_paid_message_star_count)))
+            (when (and (not (telega-zerop required-stars))
+                       (yes-or-no-p
+                        (telega-i18n "lng_payment_confirm_sure"
+                          :amount (telega-ins--as-string
+                                   (telega-ins (telega-symbol 'telegram-star))
+                                   (telega-ins-fmt "%d" required-stars))
+                          :count 1)))
+              required-stars))))
+    (telega--resendMessages (list msg) nil pay-stars)))
 
 (defun telega-msg-save (msg &optional to-saved-messages-p)
   "Save messages's MSG media content to a file.
@@ -1647,6 +1669,9 @@ Saved Messages."
   (let ((file (telega-msg--content-file msg)))
     (cond
      (to-saved-messages-p
+      (unless (telega-msg-match-p msg '(message-property :can_be_copied))
+        (user-error (concat "telega: "
+                            (telega-i18n "lng_error_noforwards_group"))))
       (let ((echo-msg (telega-ins--as-string
                        (telega-ins "Forwarding to ")
                        (telega-ins--msg-sender (telega-chat-me)
@@ -1660,7 +1685,7 @@ Saved Messages."
          :callback (lambda (_reply)
                      (message (concat echo-msg "DONE"))))))
      ((not file)
-      (user-error "No file associated with message"))
+      (user-error "telega: No file associated with message"))
      ((and (telega-msg-match-p msg '(type Animation))
            (y-or-n-p "Add animation to Saved Animations? "))
       (telega--addSavedAnimation
@@ -1673,6 +1698,10 @@ Saved Messages."
        (list :@type "inputFileId" :id (plist-get file :id))))
 
      (t
+      (unless (telega-msg-match-p msg '(message-property :can_be_saved))
+        (user-error (concat "telega: "
+                            (telega-i18n "lng_error_nocopy_group"))))
+
       ;; NOTE: Start downloading file in the background while reading
       ;; filename
       (unless (telega-file--downloaded-p file)
@@ -1682,10 +1711,10 @@ Saved Messages."
           (lambda (_dfile)
             (telega-msg-redisplay msg))))
 
-      (let* ((fpath (telega--tl-get file :local :path))
-             (fname (when fpath (file-name-nondirectory fpath)))
+      (let* ((fname (file-name-nondirectory
+                     (telega--tl-get file :local :path)))
              (new-fpath
-              (if (and fname telega-msg-save-dir)
+              (if (and telega-msg-save-dir (not (string-empty-p fname)))
                   (expand-file-name fname telega-msg-save-dir)
                 (read-file-name (concat (telega-i18n "lng_save_file") ": ")
                                 (or telega-msg-save-dir default-directory)
@@ -1929,6 +1958,9 @@ Requires administrator rights in the chat."
         (unless (telega-zerop album-id)
           (telega-ins-describe-item "Media-Album-Id"
             (telega-ins-fmt "%s" album-id))))
+      (when-let ((topic (telega-msg-topic msg)))
+        (telega-ins-describe-item "Topic"
+          (telega-ins--topic-full topic)))
 
       (when-let ((sender (telega-msg-sender msg)))
         (telega-ins-describe-item "Sender"
@@ -2106,18 +2138,23 @@ Requires administrator rights in the chat."
   "Display public forwards for the message MSG."
   (interactive (list (telega-msg-at (point))))
   (let* ((reply (telega--getMessagePublicForwards msg))
-         (public-fwd-messages (plist-get reply :messages)))
-    (when (seq-empty-p public-fwd-messages)
+         (public-forwards (plist-get reply :forwards)))
+    (when (seq-empty-p public-forwards)
       (error "telega: No forwardings to public channels for this message"))
 
     (with-telega-help-win "*Telegram Public Forwards*"
-      (telega-ins-describe-item "Total Messages"
+      (telega-ins-describe-item "Total Forwards"
         (telega-ins-fmt "%d" (plist-get reply :total_count))
-        (seq-doseq (fwd-msg public-fwd-messages)
-          (telega-ins "\n")
-          (telega-button--insert 'telega-msg fwd-msg
-            :inserter #'telega-ins--message-with-chat-header)
-          )))))
+        (seq-doseq (fwd public-forwards)
+          (cl-ecase (telega--tl-type fwd)
+            (publicForwardMessage
+             (telega-ins "\n")
+             (telega-button--insert 'telega-msg (plist-get fwd :message)
+               :inserter #'telega-ins--message-with-chat-header))
+            (publicForwardStory
+             (telega-ins "\n")
+             (telega-ins "TODO: forwarded story"))
+            ))))))
 
 (defun telega-msg-diff-edits (msg)
   "Display edits to MSG user did."
@@ -2392,7 +2429,7 @@ Return `loading' if replied message starts loading."
   "Return a story message MSG is replying."
   (or (plist-get msg :telega-replied-story)
       (when-let* ((reply-to (plist-get msg :reply_to))
-                  (chat-id (plist-get reply-to :story_sender_chat_id))
+                  (chat-id (plist-get reply-to :story_poster_chat_id))
                   (story-id (plist-get reply-to :story_id))
                   (replied-story (gethash (cons chat-id story-id)
                                           telega--cached-stories)))
@@ -2406,7 +2443,7 @@ Return `loading' if replied story starts loading."
              (not (telega-msg--replied-story msg))
              (telega-msg-match-p msg 'is-reply-to-story))
     (when-let* ((reply-to (plist-get msg :reply_to))
-                (chat-id (plist-get reply-to :story_sender_chat_id))
+                (chat-id (plist-get reply-to :story_poster_chat_id))
                 (story-id (plist-get reply-to :story_id)))
       (telega--getStory chat-id story-id nil
         (apply-partially #'telega-msg--replied-story-fetch-callback msg))
@@ -2425,7 +2462,7 @@ Return `loading' if replied story starts loading."
              (not (telega-msg--replied-story msg))
              (telega-msg-match-p msg 'is-reply-to-story))
     (when-let* ((reply-to (plist-get msg :reply_to))
-                (chat-id (plist-get reply-to :story_sender_chat_id))
+                (chat-id (plist-get reply-to :story_poster_chat_id))
                 (story-id (plist-get reply-to :story_id)))
       (telega--getMessageProperties msg
         (lambda (msg-properties)
@@ -2461,6 +2498,61 @@ Return `loading' if replied story starts loading."
 (defun telega-msg-preview--add-multiple (messages)
   (seq-doseq (msg (plist-get messages :messages))
     (telega-msg-preview--add msg)))
+
+(defun telega-msg-checklist-task-add (msg)
+  "Add task to a checklist message MSG."
+  (interactive (list (telega-msg-for-interactive)))
+  (let ((checklist (telega--tl-get msg :content :list)))
+    (cl-assert checklist)
+    (telega--addChecklistTasks
+     msg (list :@type "inputChecklistTask"
+               :id (1+ (apply #'max (mapcar (telega--tl-prop :id)
+                                            (plist-get checklist :tasks))))
+               :text (telega-string-fmt-text
+                      (telega-read-checklist-task))))
+    ))
+
+(defun telega-msg-checklist-task-toggle (msg)
+  "Toggle checklist message's MSG task at point."
+  (interactive (list (telega-msg-for-interactive)))
+  (let ((task (get-text-property (point) :checklist-task)))
+    (unless task
+      (error "telega: No checklist task at point"))
+    (let ((task-id (plist-get task :id))
+          (task-done-p (not (telega-zerop (plist-get task :completion_date)))))
+      (telega--markChecklistTasksAsDone
+       msg (unless task-done-p (list task-id))
+       (when task-done-p (list task-id))))
+    ))
+
+(defun telega-msg-checklist-task-edit (msg)
+  "Edit checklist message's MSG task at point."
+  (interactive (list (telega-msg-for-interactive)))
+  (let ((edit-task (get-text-property (point) :checklist-task)))
+    (unless edit-task
+      (error "telega: No checklist task at point"))
+
+    (let* ((txt (read-string "Edit task: " (telega-tl-str edit-task :text)))
+           (checklist (telega--tl-get msg :content :list))
+           (input-tasks
+            (cl-map #'vector
+                    (lambda (task)
+                      (list :@type "inputChecklistTask"
+                            :id (plist-get task :id)
+                            :text (if (eq (plist-get task :id)
+                                          (plist-get edit-task :id))
+                                      (telega-string-fmt-text txt)
+                                    (plist-get task :text))))
+                    (plist-get checklist :tasks))))
+      (telega--editMessageChecklist
+       msg (list :@type "inputChecklist"
+                 :title (plist-get checklist :title)
+                 :tasks input-tasks
+                 :others_can_add_tasks
+                 (plist-get checklist :others_can_add_tasks)
+                 :others_can_mark_tasks_as_done
+                 (plist-get checklist ::others_can_mark_tasks_as_done)))
+      )))
 
 
 ;;; Sponsored messages

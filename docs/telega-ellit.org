@@ -511,8 +511,7 @@ Important customizable options:
 
 Telegram provides nice voice/video calls.
 
-**TODO** more documentation about voice/video calls support by
-=telega=.
+**NOTE**: Voice/video calls are not supported by =telega=.
 
 {{{kbd(c)}}} prefix in rootbuf is used to call VoIP commands:
 #+ELLIT-INCLUDE: ../telega-root.el :label rootbuf-voip-bindings
@@ -1063,7 +1062,7 @@ timestamp text entity.
 
 * Video Chats
 
-**TODO**: write me
+**NOTE**: Voice calls and Video chats are not supported by =telega=.
 
 * Stickers / Animations
 
@@ -1225,12 +1224,6 @@ project.
 #+ELLIT-INCLUDE: ../contrib/telega-bridge-bot.el
 
 * Troubleshooting
-
-** Can't compile =telega-server=
-**TODO**
-
-** Invalid TDLib version
-**TODO**
 
 ** ~[telega bug]~
 

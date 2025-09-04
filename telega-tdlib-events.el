@@ -41,6 +41,7 @@
 (defun telega-chat--update (chat &rest dirtiness)
   "Something changed in CHAT, button needs to be updated.
 DIRTINESS specifies additional CHAT dirtiness."
+  (cl-assert chat)
   (let ((chat-dirtiness (nconc dirtiness (plist-get chat :telega-dirtiness))))
     (telega-debug "IN: `telega-chat--update': %s dirtiness: %S"
                   (telega-chat-title chat) chat-dirtiness)
@@ -66,6 +67,7 @@ DIRTINESS specifies additional CHAT dirtiness."
 
 (defun telega-chat--mark-dirty (chat &optional event)
   "Mark CHAT as dirty by EVENT."
+  (cl-assert chat)
   (unless (memq chat telega--dirty-chats)
     (setq telega--dirty-chats (cons chat telega--dirty-chats)))
   (plist-put chat :telega-dirtiness
@@ -106,6 +108,15 @@ DIRTINESS specifies additional CHAT dirtiness."
   ;; no-op
   )
 
+(defun telega--verification-fetch-custom-emoji (v-status)
+  "Maybe fetch `verificationStatus' V-STATUS custom emoji icon."
+  (when-let ((ceid (plist-get v-status :bot_verification_icon_custom_emoji_id)))
+    (unless (or (telega-zerop ceid) (telega-custom-emoji-get ceid))
+      (telega--getCustomEmojiStickers (list ceid)
+        (lambda (stickers)
+          (seq-doseq (custom-emoji stickers)
+            (telega-custom-emoji--ensure custom-emoji)))))))
+
 ;; User updates
 (defun telega-user--update (user event)
   "USER has been updated, do something about this."
@@ -126,6 +137,9 @@ DIRTINESS specifies additional CHAT dirtiness."
     ;; NOTE: Updating user might affect his palette, so delete cached
     ;; palette
     (telega-plist-del user :telega-palette)
+
+    (when-let ((v-status (plist-get user :verification_status)))
+      (telega--verification-fetch-custom-emoji v-status))
 
     (telega-user--update user event)))
 
@@ -206,9 +220,9 @@ DIRTINESS specifies additional CHAT dirtiness."
   (let ((chat (telega-chat--ensure (plist-get event :chat))))
     (telega-chat--mark-dirty chat event)
 
-    ;; Asynchronously fetch all topics
-    (when (telega-chat-match-p chat 'is-forum)
-      (telega-chat--topics-fetch chat))
+    ;; NOTE: Probably early preload topics
+    (when (telega-chat-match-p chat telega-chat-load-topics-early-for)
+      (telega-chat--topics-load chat))
 
     (run-hook-with-args 'telega-chat-created-hook chat)))
 
@@ -424,14 +438,6 @@ NOTE: we store the number as custom chat property, to use it later."
 
     (telega-chat--mark-dirty chat event)))
 
-(defun telega--on-updateForumTopicInfo (event)
-  (let* ((new-info (plist-get event :info))
-         (chat (telega-chat-get (plist-get event :chat_id) 'offline))
-         (topic (telega-topic-get chat (plist-get new-info :message_thread_id))))
-    (plist-put topic :info new-info)
-
-    (telega-chat--mark-dirty chat event)))
-
 (defun telega--on-updateChatDraftMessage (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
         (draft-msg (plist-get event :draft_message)))
@@ -492,7 +498,7 @@ NOTE: we store the number as custom chat property, to use it later."
     (when-let ((chat (cl-find secretchat
                               (telega-filter-chats
                                telega--ordered-chats '(type secret))
-                              :test 'eq :key #'telega-chat--info)))
+                              :test 'eq :key #'telega-chat--info-locally)))
       (telega-chat--mark-dirty chat event))))
 
 (defun telega--on-blocked-senders-load (reply)
@@ -1087,13 +1093,13 @@ messages."
   (let ((basicgroup (plist-get event :basic_group)))
     (telega--info-update basicgroup)
 
-    (when telega--sort-criteria
-      (when-let ((chat (cl-find basicgroup telega--ordered-chats
-                                :test 'eq :key #'telega-chat--info)))
+    (when-let ((chat (cl-find basicgroup telega--ordered-chats
+                              :test 'eq :key #'telega-chat--info-locally)))
+      ;; NOTE: Updating basicgroup info might affect sorting or/and
+      ;; chatbuf's prompt
+      (when (or telega--sort-criteria
+                (telega-chat-match-p chat 'has-chatbuf))
         (telega-chat--mark-dirty chat event))
-
-      ;; TODO: chatbuf might need to be updated, status might be
-      ;; changed due to someone removed me from basic group
       )))
 
 (defun telega--on-updateBasicGroupFullInfo (event)
@@ -1115,13 +1121,18 @@ messages."
                                 (telega--tl-type old-my-status)))))
     (telega--info-update supergroup)
 
+    ;; Fetch unknown bot verification custom emoji icon
+    (when-let ((v-status (plist-get supergroup :verification_status)))
+      (telega--verification-fetch-custom-emoji v-status))
+
     (when-let ((chat (cl-find supergroup telega--ordered-chats
                               :test #'eq
                               :key #'telega-chat--supergroup-locally)))
-      ;; If :is_forum state is toggled, then update topics as well
-      (unless (eq (plist-get old-supergroup :is_forum)
-                  (plist-get supergroup :is_forum))
-        (telega-chat--topics-fetch chat))
+      ;; Fetch forum topics in async manner
+      (when (and (not (plist-get old-supergroup :is_forum))
+                 (plist-get supergroup :is_forum)
+                 (telega-chat-match-p chat telega-chat-load-topics-early-for))
+        (telega-chat--topics-load chat))
 
       ;; NOTE: notify if someone transferred ownership to me
       (when (and (not me-was-owner)
@@ -1133,15 +1144,7 @@ messages."
                     :with-username-p t
                     :with-brackets-p t))))
 
-      (telega-chat--mark-dirty chat event)
-
-      ;; NOTE: Chatbuf prompt might be affected as well by "status"
-      ;; change, see `telega-chatbuf--unblock-start-join'
-      (with-telega-chatbuf chat
-        (unless (equal old-my-status (plist-get supergroup :status))
-          (telega-chatbuf--footer-update))
-        (telega-chatbuf--prompt-update)))
-
+      (telega-chat--mark-dirty chat event))
     ))
 
 (defun telega--on-updateSupergroupFullInfo (event)
@@ -1196,7 +1199,8 @@ messages."
 (defun telega--on-updateConnectionState (event)
   "Update telega connection state using EVENT."
   (let* ((conn-state (telega--tl-get event :state :@type))
-         (status (substring conn-state 15)))
+         (status (substring conn-state (eval-when-compile
+                                         (length "connectionState")))))
     (setq telega--conn-state (intern status))
     (telega-status--set status)
 
@@ -1507,11 +1511,11 @@ Please downgrade TDLib and recompile `telega-server'"
 
 (defun telega--on-updateStoryDeleted (event)
   "A story became inaccessible."
-  (let* ((chat-id (plist-get event :story_sender_chat_id))
+  (let* ((chat-id (plist-get event :story_poster_chat_id))
          (story-id (plist-get event :story_id))
          (story (telega-story-get chat-id story-id 'offline)))
     (unless story
-      (setq story (list :sender_chat_id chat-id
+      (setq story (list :poster_chat_id chat-id
                         :id story-id)))
 
     (setf (telega-story-deleted-p story) t)
@@ -1641,6 +1645,83 @@ Please downgrade TDLib and recompile `telega-server'"
         (telega--tl-star-amount-as-float (plist-get event :star_amount)))
   ;; TODO: Update settings
   )
+
+(defun telega--on-updateSavedMessagesTopic (event)
+  (let ((sm-topic (plist-get event :topic))
+        (sm-chat (telega-chat-me)))
+    (telega-topic--ensure sm-topic sm-chat)
+    (telega-chat--mark-dirty sm-chat event)
+    ))
+
+(defun telega--on-updateDirectMessagesChatTopic (event)
+  (when-let* ((dm-topic (plist-get event :topic))
+              (dm-chat (telega-chat-get (plist-get dm-topic :chat_id) 'offline)))
+    (telega-topic--ensure dm-topic dm-chat)
+    (telega-chat--mark-dirty dm-chat event)
+    ))
+
+(defun telega--on-updateForumTopic (event)
+  (let* ((forum-chat (telega-chat-get (plist-get event :chat_id) 'offline))
+         (forum-topic (telega-topic-by-thread-id
+                       forum-chat (plist-get event :message_thread_id))))
+    (plist-put forum-topic :is_pinned
+               (plist-get event :is_pinned))
+    (plist-put forum-topic :last_read_inbox_message_id
+               (plist-get event :last_read_inbox_message_id))
+    (plist-put forum-topic :last_read_outbox_message_id
+               (plist-get event :last_read_outbox_message_id))
+    (plist-put forum-topic :unread_mention_count
+               (plist-get event :unread_mention_count))
+    (plist-put forum-topic :unread_reaction_count
+               (plist-get event :unread_reaction_count))
+    (plist-put forum-topic :notification_settings
+               (plist-get event :notification_settings))
+
+    (telega-chat--mark-dirty forum-chat event)
+    ))
+
+(defun telega--on-updateForumTopicInfo (event)
+  (let* ((info (plist-get event :info))
+         (chat (telega-chat-get (plist-get info :chat_id) 'offline))
+         (topic (telega-topic-get chat (plist-get info :forum_topic_id))))
+    (if topic
+        (progn
+          (plist-put topic :info info)
+          (telega-chat--forum-topics-icons-fetch chat topic))
+      (telega-topic--ensure (list :@type "forumTopic" :info info) chat))
+
+    (telega-chat--mark-dirty chat event)))
+
+(defun telega--on-updateTopicMessageCount (event)
+  "Number of messages in a topic has changed.
+For Saved Messages and channel direct messages chat topics only."
+  (let* ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
+         (msg-topic (plist-get event :topic_id))
+         (topic (telega-topic-get chat (telega--MessageTopic-id msg-topic))))
+
+    (plist-put topic :telega_message_count
+               (plist-get event :message_count))
+
+    ;; TODO: update chat/topic
+    ))
+
+
+;; Quick Replies
+(defun telega--on-updateQuickReplyShortcut (event)
+  (let ((shortcut (plist-get event :shortcut)))
+    ))
+
+(defun telega--on-updateQuickReplyShortcutDeleted (event)
+  )
+
+(defun teleg--on-updateQuickReplyShortcuts (event)
+  )
+
+(defun telega--on-updateQuickReplyShortcutMessages (event)
+  (let ((sc-id (plist-get event :shortcut_id))
+        (messages (plist-get event :messages)))
+    ;; TODO
+    ))
 
 (provide 'telega-tdlib-events)
 

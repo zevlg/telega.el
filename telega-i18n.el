@@ -57,6 +57,9 @@
     ("telega_comment" . "lng_photos_comment")
     ("telega_status" . "lng_proxy_box_status")
     ("telega_action_cant_undone" . "lng_context_mark_read_all_sure_2")
+    ("telega_default" . "lng_font_default")
+    ("telega_edit" . "lng_settings_edit")
+    ("telega_none" . "lng_settings_empty_bio")
     )
   "i18n names aliases alist.")
 
@@ -172,7 +175,8 @@ Return one of: `:zero_value', `:one_value', `:two_value',
          (str (or (cdr (assoc key telega-i18n--strings))
                   (cdr (assoc key telega-i18n--en-strings))))
          (val (or (telega-tl-str str :value)
-                  (let ((count (plist-get args :count)))
+                  (let ((count (or (plist-get args :plural-count)
+                                   (plist-get args :count))))
                     (unless count
                       (if str
                           (error "\"%s\" is plural, `:count' is required" key)
@@ -196,7 +200,7 @@ Return one of: `:zero_value', `:one_value', `:two_value',
                (lambda (match)
                  (propertize (match-string 1 match) 'face 'bold))
                val nil 'literal))
-    val))
+    (propertize val 'telega-i18n-key key)))
 
 (defun telega-i18n-noerror (key &rest args)
   "Same as `telega-i18n', but do not trigger an error if KEY is not found.

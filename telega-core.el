@@ -99,29 +99,40 @@ Use FILENAME as is if resulting file does not exist."
     (:can_pin_messages . "lng_rights_group_pin")
     (:can_create_topics . "lng_rights_group_add_topics")))
 
+(defconst telega-chat--admin-messages-permissions
+  '((:can_post_messages . "lng_rights_channel_post")
+    (:can_edit_messages . "lng_rights_channel_edit")
+    (:can_delete_messages . "lng_rights_channel_delete")))
+
+(defconst telega-chat--admin-stories-permissions
+  '((:can_post_stories . "lng_rights_channel_post_stories")
+    (:can_edit_stories . "lng_rights_channel_edit_stories")
+    (:can_delete_stories . "lng_rights_channel_delete_stories")))
+
 (defconst telega-chat--admin-permissions
-  '((:can_be_edited . "lng_rights_edit_admin")
+  `((:can_be_edited . "lng_rights_edit_admin")
     (:can_manage_chat . nil)            ;TODO
     (:can_change_info . "lng_rights_group_info")
-    (:can_post_messages . "lng_rights_channel_post")
-    (:can_edit_messages . "lng_rights_channel_edit")
-    (:can_delete_messages . "lng_rights_group_delete")
+
+    ;; Manage messages 3/3, "lng_rights_channel_manage"
+    ,@telega-chat--admin-messages-permissions
+
     (:can_invite_users . "lng_rights_group_invite_link")
-    (:can_restrict_members . "telega_rights_restrict_members")
+    (:can_restrict_members . "lng_rights_group_ban")
     (:can_pin_messages . "lng_rights_group_pin")
     (:can_manage_topics . "lng_rights_group_topics")
-    (:can_promote_members . "telega_rights_promote_members")
+    (:can_promote_members . "lng_channel_add_admin")
     (:can_manage_video_chats . "lng_rights_group_manage_calls")
 
-    (:can_post_stories . "lng_rights_channel_post_stories")
-    (:can_edit_stories . "lng_rights_channel_edit_stories")
-    (:can_delete_stories . "lng_rights_channel_delete_stories")
+    ;; Manage stories 3/3, "lng_rights_channel_manage_stories"
+    ,@telega-chat--admin-stories-permissions
 
+    (:can_manage_direct_messages . "lng_rights_channel_manage_direct")
     (:is_anonymous . "lng_rights_group_anonymous")))
 
 (defconst telega-chat--admin-permissions-for-channels
   '(:can_post_messages :can_edit_messages :can_post_stories :can_edit_stories
-                       :can_delete_stories))
+                       :can_delete_stories :can_manage_direct_messages))
 
 (defconst telega-notification-scope-types
   '((private . "notificationSettingsScopePrivateChats")
@@ -234,7 +245,14 @@ Used for optimisations.")
 (defvar telega--status-aux
   "Aux status used for long requests, such as fetching chats/searching/etc")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
-(defvar telega--chat-topics nil "Hash table (id -> topics list) for forums chats.")
+(defvar telega--chat-topics nil
+  "Hash table (id -> topics alist) for forum chats.")
+
+(defmacro telega-chat-topics-alist (chat)
+  "Get CHAT's topics as alist.
+Where car is topic id and cdr is topic itself."
+  `(gethash (plist-get ,chat :id) telega--chat-topics))
+
 (defvar telega--story-list-chat-count nil
   "Plist with number of chats having active stories.
 Props are `main' and `archive'.")
@@ -481,6 +499,21 @@ Available contexts are: `title', `msg-header', `link-preview', `quote',
 `precode', `codeblock', `blockquote', `edit', `reply', `iv-chat-link',
 `sponsored', `story', `avatar'")
 
+(defun telega-palette-by-colors (colors &optional background-mode)
+  "Return palette created from COLORS list."
+  (unless background-mode
+    (setq background-mode (frame-parameter nil 'background-mode)))
+  (let* ((fg-color (car colors))
+         (bg-color (telega-color-name-set-saturation-light
+                    fg-color 0.1 (cl-ecase background-mode
+                                   (light 0.8)
+                                   (dark  0.2))))
+         (ol-color (cl-ecase background-mode
+                     (light (color-darken-name fg-color 20))
+                     (dark  (color-lighten-name fg-color 20)))))
+    `((:outline ,ol-color) (:foreground ,fg-color)
+      (:background ,bg-color) (:colors ,colors))))
+
 (defun telega-palette-by-color-id (color-id &optional background-mode)
   "Return palette with accent colors by COLOR-ID.
 Pallete is a plist with the following keys: `:outline', `:foreground',
@@ -503,17 +536,8 @@ Pallete is a plist with the following keys: `:outline', `:foreground',
                                      (plist-get tl-color
                                                 (if (eq background-mode 'light)
                                                     :light_theme_colors
-                                                  :dark_theme_colors))))
-                     (fg-color (car colors))
-                     (bg-color (telega-color-name-set-saturation-light
-                                fg-color 0.1 (cl-ecase background-mode
-                                               (light 0.8)
-                                               (dark  0.2))))
-                     (ol-color (cl-ecase background-mode
-                                 (light (color-darken-name fg-color 20))
-                                 (dark  (color-lighten-name fg-color 20)))))
-           `((:outline ,ol-color) (:foreground ,fg-color)
-             (:background ,bg-color) (:colors ,colors))))))
+                                                  :dark_theme_colors)))))
+           (telega-palette-by-colors colors background-mode)))))
 
 (defmacro telega-palette-attr (palette attribute)
   "From PALETTE return ATTRIBUTE value.
@@ -544,6 +568,7 @@ to make `:outline' be a `:foreground'."
   (let ((new-face (cond ((facep face)
                          (face-spec-choose
                           (custom-face-get-current-spec face)))
+                        ((null face) nil)
                         (t
                          (cl-assert (listp face))
                          face)))
@@ -554,7 +579,7 @@ to make `:outline' be a `:foreground'."
           ;; Attribute changes, need a copy
           (setq new-face (copy-sequence new-face)
                 need-copy-p nil))
-        (plist-put new-face attr value)))
+        (setq new-face (plist-put new-face attr value))))
     new-face))
 
 (defvar telega--saved-messages-tags nil
@@ -668,6 +693,10 @@ to note from TDLib dev)."
 (defvar telega-chatbuf--aux-plist nil
   "Supplimentary plist for aux prompt.")
 (make-variable-buffer-local 'telega-chatbuf--aux-plist)
+
+(defvar telega-chatbuf--msg-send-options nil
+  "messageSendOptions for the current input.")
+(make-variable-buffer-local 'telega-chatbuf--msg-send-options)
 
 
 (defun telega--init-vars ()
@@ -950,9 +979,16 @@ Return a buffer."
                    #'telega-buffer-substring-filter)
        (cursor-intangible-mode 1)
        (cursor-sensor-mode 1)
+       (cursor-face-highlight-mode 1)
+
        (visual-line-mode 1)
        ;; (setq-local fill-column -1)
        ;; (visual-fill-column-mode 1)
+
+       ;; Reset all previous pending callbacks
+       (seq-doseq (extra telega--help-win-tdlib-callbacks)
+         (telega-server--callback-put extra #'ignore))
+       (setq telega--help-win-tdlib-callbacks nil)
 
        ,@body
        ,buffer-or-name)))
@@ -1930,10 +1966,13 @@ If COLUMN is nil or less then current column, then current column is used."
     (telega-ins title "\n")))
 
 (defmacro telega-ins-describe-item (title &rest body)
-  "Describe item with TITLE."
+  "Describe item with TITLE.
+If BODY returns `no-newline', then do not insert newline at the end."
   (declare (indent 1))
-  (let ((title-sym (gensym "title")))
-    `(let ((,title-sym (string-trim-right ,title "[ :?\t\n\r]+\\'")))
+  (let ((title-sym (gensym "title"))
+        (body-ret (gensym "body-ret")))
+    `(let ((,title-sym (string-trim-right ,title "[ :?\t\n\r]+\\'"))
+           (,body-ret t))
        ;; Right align title name to 14th column
        ;; as in `package--print-help-section' function
        (telega-ins--line-wrap-prefix
@@ -1941,8 +1980,8 @@ If COLUMN is nil or less then current column, then current column is used."
          (telega-ins--with-face 'telega-describe-item-title
            (telega-ins ,title-sym)
            (telega-ins ": "))
-         ,@body)
-       (telega-ins "\n"))))
+         (setq ,body-ret (progn ,@body)))
+       (unless (eq ,body-ret 'no-newline) (telega-ins "\n")))))
 
 (defmacro telega-ins--help-message (&rest body)
   "Insert help message using `telega-shadow' face.
@@ -1958,6 +1997,73 @@ If help message has been inserted, insert newline at the end."
   (declare (indent 1))
   `(button-at (apply 'make-text-button (prog1 (point) ,@body) (point)
                      ,props)))
+
+(defun telega-box-button--style-get (style attr)
+  "Return STYLE's value for the attribute ATTR."
+  (if-let ((attr-val (plist-member style attr)))
+      (nth 1 attr-val)
+    (when-let* ((inh-style-name (plist-get style :inherit))
+                (inh-style (alist-get inh-style-name telega-box-button-styles)))
+      (telega-box-button--style-get inh-style attr))))
+
+(if (version< emacs-version "28.0")
+    (defun telega-box-button--body-face (style)
+      (when-let ((ow (telega-box-button--style-get style :outline-width)))
+        (telega-stipple-fill-by-predicate
+            (telega-stipple-create 1 (telega-chars-xheight 1))
+          (telega-stipple--box-button-body-gen style))))
+
+  (defun telega-box-button--body-face (style)
+    (when-let ((ow (telega-box-button--style-get style :outline-width)))
+      (list :box (nconc (list :line-width (cons 0 (- ow)))
+                        (when-let ((o-color (telega-box-button--style-get
+                                             style :outline-color)))
+                          (list :color o-color)))))))
+
+(defmacro telega-ins--box-button2 (style &rest body)
+  "Insert box button of STYLE."
+  (declare (indent 1))
+  (let ((style-sym (gensym "style"))
+        (brackets-sym (gensym "brackets"))
+        (aface-sym (gensym "aface"))
+        (action-sym (gensym "action"))
+        (data-sym (gensym "button-data")))
+    `(let* ((,style-sym ,style)
+            (,brackets-sym
+             (or (telega-box-button--style-get ,style-sym :brackets)
+                 telega-box-button-brackets)))
+       (telega-ins--raw-button 
+           (nconc (when-let ((,aface-sym (telega-box-button--style-get
+                                          ,style-sym :active-face)))
+                    (list 'cursor-face ,aface-sym))
+                  (when-let ((,action-sym (telega-box-button--style-get
+                                           ,style-sym 'action)))
+                    (list 'action ,action-sym))
+                  (when-let ((,data-sym (telega-box-button--style-get
+                                         ,style-sym 'button-data)))
+                    (list 'button-data ,data-sym)))
+         (telega-ins--with-face
+             (telega-box-button--style-get ,style-sym :passive-face)
+           (telega-ins--with-props
+               (when telega-use-images
+                 (list 'display
+                       (or (telega-box-button--style-get
+                            ,style-sym :left-edge-image)
+                           (telega-box-button--edge-image 'left ,style-sym))))
+             (telega-ins (or (car ,brackets-sym) "[")))
+
+           (telega-ins--with-face (telega-box-button--body-face ,style-sym)
+             ,@body
+             (telega-ins (telega-box-button--style-get ,style-sym :suffix)))
+
+           (telega-ins--with-props
+               (when telega-use-images
+                 (list 'display
+                       (or (telega-box-button--style-get
+                            ,style-sym :right-edge-image)
+                           (telega-box-button--edge-image 'right ,style-sym))))
+             (telega-ins (or (cdr ,brackets-sym) "]")))
+           )))))
 
 (defmacro telega-ins--with-props (props &rest body)
   "Execute inserters applying PROPS after insertation.
@@ -2167,6 +2273,7 @@ VAR-SEQ is used directly in the `seq-doseq' form."
            (setq ,need-sep-sym t)))
        ,need-sep-sym)))
 
+
 (defmacro telega-ch-height (n)
   "Create `:height' image spec for N chars height."
   (if (string-version-lessp emacs-version "30.1")

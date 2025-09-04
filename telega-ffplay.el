@@ -383,7 +383,12 @@ Return nil if no image is available."
 
       ;; NOTE: sentinel might be called multiple times with 'exit
       ;; status, handle this situation simply by unsetting callback
-      (set-process-plist proc (plist-put proc-plist :callback nil)))))
+      (set-process-plist proc (plist-put proc-plist :callback nil)))
+
+    (when-let ((proc-buf (process-buffer proc)))
+      (when (buffer-live-p proc-buf)
+        (kill-buffer proc-buf)))
+    ))
 
 (defun telega-ffplay--png-filter (proc output)
   "Filter for png extractor, see `telega-ffplay-to-png'."

@@ -192,9 +192,9 @@ Also matches if TEMEX-LIST is empty."
 ;;; ellit-org: temex
 ;; - (call ~PREDICATE~) ::
 ;;   {{{temexdoc(nil, call, 2)}}}
-(define-telega-matcher nil call (obj predicate)
+(define-telega-matcher nil call (obj predicate &rest args)
   "Matches if PREDICATE called with TDLib object as argument returns non-nil."
-  (funcall predicate obj))
+  (apply predicate obj args))
 
 ;;; ellit-org: temex
 ;; - (ids ~ID-LIST~...) ::
@@ -379,7 +379,7 @@ For non-nil ANIMATED-P match only if avatar is animated."
 (define-telega-matcher chat has-chatbuf (chat)
   "Matches if chat has corresponding chatbuf."
   (with-telega-chatbuf chat
-    t))
+    (buffer-live-p (current-buffer))))
 
 ;;; ellit-org: chat-temex
 ;; - (permission ~PERM~) ::
@@ -399,14 +399,18 @@ PERM could be one of in `telega-chat--chat-permissions' list or in
   (plist-get (telega-chat-member-my-permissions chat) perm))
 
 ;;; ellit-org: chat-temex
-;; - verified, {{{where-is(telega-filter-by-verified,telega-root-mode-map)}}} ::
-;;   {{{temexdoc(chat, verified, 2)}}}
-(define-telega-matcher chat verified (chat)
+;; - is-verified, {{{where-is(telega-filter-by-is-verified,telega-root-mode-map)}}} ::
+;;   {{{temexdoc(chat, is-verified, 2)}}}
+(define-telega-matcher chat is-verified (chat &optional by-telegram-p)
   "Matches if chat is verified.
 Return verification status if CHAT is verified."
   (when-let ((verification-status
               (plist-get (telega-chat--info chat t) :verification_status)))
-    (when (plist-get verification-status :is_verified)
+    (when (or (plist-get verification-status :is_verified)
+              (and (not by-telegram-p)
+                   (not (telega-zerop
+                         (plist-get verification-status
+                                    :bot_verification_icon_custom_emoji_id)))))
       verification-status)))
 
 ;;; ellit-org: chat-temex
@@ -458,6 +462,14 @@ If SUFFIX-LIST is not specified, then match any restriction reason."
 (define-telega-matcher chat replies-messages (chat)
   "Matches only \"Replies\" chat."
   (telega-replies-p chat))
+
+;;; ellit-org: chat-temex
+;; - is-verification-codes ::
+;;   {{{temexdoc(chat, is-verification-codes, 2)}}}
+(define-telega-matcher chat is-verification-codes (chat)
+  "Matches only chat for verification codes."
+  (eq (plist-get chat :id)
+      (plist-get telega--options :verification_codes_bot_chat_id)))
 
 ;;; ellit-org: chat-temex
 ;; - tracking, {{{where-is(telega-filter-by-tracking,telega-root-mode-map)}}} ::
@@ -555,12 +567,18 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
     (let ((full-info (telega--full-info (telega-chat--info chat))))
       (plist-get full-info :can_get_statistics))))
 
+(define-telega-matcher chat has-custom-stickerset (chat)
+  "Matches if statistics available for the chat."
+  (when (telega-chat-match-p chat '(type supergroup channel))
+    (let ((full-info (telega--full-info (telega-chat--info chat))))
+      (not (telega-zerop (plist-get full-info :custom_emoji_sticker_set_id))))))
+
 ;;; ellit-org: chat-temex
 ;; - has-linked-chat ::
 ;;   {{{temexdoc(chat, has-linked-chat, 2)}}}
 (define-telega-matcher chat has-linked-chat (chat)
   "Matches if chat is a supergroup and has a linked chat."
-  (plist-get (telega-chat--info chat 'locally) :has_linked_chat))
+  (plist-get (telega-chat--supergroup-locally chat) :has_linked_chat))
 
 ;;; ellit-org: chat-temex
 ;; - has-discussion-group ::
@@ -570,11 +588,36 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
   (telega-chat-match-p chat '(and (type channel) has-linked-chat)))
 
 ;;; ellit-org: chat-temex
+;; - has-direct-messages-group ::
+;;   {{{temexdoc(chat, has-direct-messages-group, 2)}}}
+(define-telega-matcher chat has-direct-messages-group (chat)
+  "Matches if chat is a channel having a direct messages group."
+  (plist-get (telega-chat--supergroup-locally chat) :has_direct_messages_group))
+
+;;; ellit-org: chat-temex
+;; - is-direct-messages-group ::
+;;   {{{temexdoc(chat, is-direct-messages-group, 2)}}}
+(define-telega-matcher chat is-direct-messages-group (chat &optional admin-p)
+  "Matches if chat is a direct messages group.
+Pass non-nil ADMIN-P to match only direct messages group administrated by me."
+  (when-let ((supergroup (telega-chat--supergroup-locally chat)))
+    (and (plist-get supergroup :is_direct_messages_group)
+         (or (not admin-p)
+             (plist-get supergroup :is_administered_direct_messages_group)))))
+
+;;; ellit-org: chat-temex
 ;; - has-location ::
 ;;   {{{temexdoc(chat, has-location, 2)}}}
 (define-telega-matcher chat has-location (chat)
   "Matches if chat is a location-based supergroup."
   (plist-get (telega-chat--info chat 'locally) :has_location))
+
+;;; ellit-org: chat-temex
+;; - has-automatic-translation ::
+;;   {{{temexdoc(chat, has-automatic-translation, 2)}}}
+(define-telega-matcher chat has-automatic-translation (chat)
+  "Matches if chat has automatic translation."
+  (plist-get (telega-chat--info chat 'locally) :has_automatic_translation))
 
 ;;; ellit-org: chat-temex
 ;; - inactive-supergroups , {{{where-is(telega-filter-by-inactive-supergroups,telega-root-mode-map)}}} ::
@@ -680,15 +723,20 @@ Chat might not be known (i.e. in your Main or Archive list) to post
 messages into it. Use `is-known' chat temex to check chat is known."
   (and (or (telega-chat-match-p chat '(type bot private secret))
            (telega-chat-match-p chat 'me-is-member)
-           ;; Also, it is possible to send message to discussion group
-           ;; without joining it
+           ;; Also, it is possible to send message to a discussion
+           ;; and direct messages group without joining it
            (and (telega-chat-match-p chat '(type supergroup))
                 (not (plist-get (telega-chat--supergroup-locally chat)
                                 :join_to_send_messages))))
 
        (let ((my-perms (telega-chat-member-my-permissions chat)))
          (or (plist-get my-perms :can_send_basic_messages)
-             (plist-get my-perms :can_post_messages)))))
+             (plist-get my-perms :can_post_messages)))
+
+       ;; Can't send messages to a blocked bots even if
+       ;; `chat.permissions.can_send_basic_messages' is true
+       (not (telega-chat-match-p chat '(and (type bot) is-blocked)))
+       ))
 
 ;;; ellit-org: chat-temex
 ;; - is-inline-bot ::
@@ -737,8 +785,8 @@ LIST is one of `main' or `archive'."
 (define-telega-matcher chat has-pinned-stories (chat)
   "Matches if channel chat has pinned stories."
   (when (telega-chat-match-p chat '(type channel))
-    (let ((full-info (telega--full-info (telega-chat--info chat))))
-      (plist-get full-info :has_pinned_stories))))
+    (plist-get (telega--full-info (telega-chat--supergroup-locally chat))
+               :has_pinned_stories)))
 
 ;;; ellit-org: chat-temex
 ;; - can-send-stories ::
@@ -754,7 +802,7 @@ LIST is one of `main' or `archive'."
   "Matches if supergroup or channel has least N my boosts.
 By default N is 1."
   (when (telega-chat-match-p chat '(type supergroup channel))
-    (let ((full-info (telega--full-info (telega-chat--info chat))))
+    (let ((full-info (telega--full-info (telega-chat--info chat 'local))))
       (>= (or (plist-get full-info :my_boost_count) 0) (or n 1)))))
 
 ;;; ellit-org: chat-temex
@@ -793,8 +841,8 @@ By default `blockListMain' is used."
   "Matches if chat's boost level is greater or equal to N.
 By default N is 1."
   (when (telega-chat-match-p chat '(type channel))
-    (let ((info (telega-chat--info chat 'local)))
-      (>= (or (plist-get info :boost_level) 0) (or n 1)))))
+    (let ((supergroup (telega-chat--supergroup-locally chat)))
+      (>= (or (plist-get supergroup :boost_level) 0) (or n 1)))))
 
 ;;; ellit-org: chat-temex
 ;; - is-pinned ::
@@ -802,6 +850,25 @@ By default N is 1."
 (define-telega-matcher chat is-pinned (chat)
   "Matches if chat is pinned."
   (plist-get (telega-chat-position chat) :is_pinned))
+
+;;; ellit-org: chat-temex
+;; - (paid-message [ ~STARS~ ]) ::
+;;   {{{temexdoc(chat, paid-message, 2)}}}
+(define-telega-matcher chat paid-message (chat &optional stars)
+  "Matches if chat has at least STARS count to be paid for a message.
+By default STARS is 1.
+Return number of stars to be paid for a message."
+  (let* ((info (telega-chat--info chat 'local))
+         (price (plist-get info :paid_message_star_count)))
+    (when (and price (>= price (or stars 1)))
+      price)))
+
+;;; ellit-org: chat-temex
+;; - (info [ ~PROP-NAME~ ]) ::
+;;   {{{temexdoc(chat, info, 2)}}}
+(define-telega-matcher chat info (chat prop-name)
+  "Matches if chat's locally available info has non-nil PROP-NAME."
+  (plist-get (telega-chat--info chat 'local) prop-name))
 
 
 ;;; User Temexes
@@ -952,6 +1019,24 @@ By default `blockListMain' is used."
                     (plist-get (telega--full-info user) :block_list)))
           (eq (telega--tl-type user-block-list) block-list)))))
 
+;;; ellit-org: user-temex
+;; - is-me ::
+;;   {{{temexdoc(user, is-me, 2)}}}
+(define-telega-matcher user is-me (user)
+  "Matches if user is me."
+  (eq (plist-get user :id) telega--me-id))
+
+;;; ellit-org: chat-temex
+;; - (paid-message [ ~STARS~ ]) ::
+;;   {{{temexdoc(user, paid-message, 2)}}}
+(define-telega-matcher user paid-message (user &optional stars)
+  "Matches if user has at least STARS count to be paid for a message to user.
+By default STARS is 1.
+Return number of stars to be paid for a message."
+  (let ((price (plist-get user :paid_message_star_count)))
+    (when (and price (>= price (or stars 1)))
+      price)))
+
 
 ;;; Message Temexes
 ;;; ellit-org: msg-temex
@@ -1046,15 +1131,21 @@ Return messageReplyInfo."
 ;; - is-topic ::
 ;;   {{{temexdoc(msg, is-topic, 2)}}}
 (define-telega-matcher msg is-topic (msg)
-  "Matches if message is a forum topic message."
-  (plist-get msg :is_topic_message))
+  "Matches if message is a forum topic message.
+Return `MessageTopic' structure."
+  (when-let ((msg-topic (plist-get msg :topic_id)))
+    ;; NOTE: all messages in a non-forum supergroup chats belongs to
+    ;; the General topic.  General topic has `telega-msg-id-step' id
+    (unless (and (eq (telega--tl-type msg-topic) 'messageTopicForum)
+                 (eq telega-msg-id-step (plist-get msg-topic :forum_topic_id)))
+      msg-topic)))
 
 ;;; ellit-org: msg-temex
 ;; - is-thread ::
 ;;   {{{temexdoc(msg, is-thread, 2)}}}
 (define-telega-matcher msg is-thread (msg)
   "Matches if message belongs to or starts a messages thread."
-  (and (not (plist-get msg :is_topic_message))
+  (and (not (telega-msg-match-p msg 'is-topic))
        (or (telega--tl-get msg :interaction_info :reply_info)
            (not (telega-zerop (plist-get msg :message_thread_id))))))
 
@@ -1141,6 +1232,13 @@ Matching ignores case."
 (define-telega-matcher msg sender (msg sender-temex)
   "Matches if message's sender matches SENDER-TEMEX."
   (telega-sender-match-p (telega-msg-sender msg) sender-temex))
+
+;;; ellit-org: msg-temex
+;; - (topic ~TOPIC-TEMEX~) ::
+;;   {{{temexdoc(msg, topic, 2)}}}
+(define-telega-matcher msg topic (msg topic-temex)
+  "Matches if message's TOPIC matches TOPIC-TEMEX."
+  (telega-topic-match-p (telega-msg-topic msg) topic-temex))
 
 ;;; ellit-org: msg-temex
 ;; - is-deleted ::
@@ -1306,6 +1404,14 @@ for General topic only."
   (when-let ((topic-msg (plist-get topic :last_message))
              (chat-msg (plist-get (telega-topic-chat topic) :last_message)))
     (telega-msg-id= topic-msg chat-msg)))
+
+;;; ellit-org: topic-temex
+;; - is-current-in-chatbuf ::
+;;   {{{temexdoc(topic, is-current-in-chatbuf, 2)}}}
+(define-telega-matcher topic is-current-in-chatbuf (topic)
+  "Return non-nil if chatbuf is filtered by topic."
+  (with-telega-chatbuf (telega-topic-chat topic)
+    (eq topic (telega-chatbuf--thread-topic))))
 
 
 ;;; ellit-org: story-temex

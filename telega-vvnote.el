@@ -407,6 +407,14 @@ If WITH-NOISE-P is non-nil, then use noise filter above the image."
 (defun telega-vvnote-video-ttl--create-image (note &optional file)
   (telega-vvnote-video--create-image note file :with-noise))
 
+(defun telega-vvnote-video--create-image-one-line (note &optional file)
+  (let ((telega-video-note-height 0.8))
+    (telega-vvnote-video--create-image note file)))
+
+(defun telega-vvnote-video-ttl--create-image-one-line (note &optional file)
+  (let ((telega-video-note-height 0.8))
+    (telega-vvnote-video--create-image note file :with-noise)))
+
 
 ;; Recording notes
 (defvar telega-vvnote--record-progress nil

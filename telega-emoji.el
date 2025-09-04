@@ -310,8 +310,14 @@ Where is the list of `content', or `reactions'."
            (nconc
             ;; Custom emojis from message's text
             (when-let ((need-p (memq 'content where))
-                       (fmt-text (or (plist-get content :text)
-                                     (plist-get content :caption))))
+                       (fmt-text
+                        (or (plist-get content :text)
+                            (plist-get content :caption)
+                            ;; Custom emojis in a checklist tasks titles
+                            (when-let ((tasks (telega--tl-get content
+                                                              :list :tasks)))
+                              (apply #'telega-fmt-text-concat
+                                     (mapcar (telega--tl-prop :text) tasks))))))
               (mapcar (lambda (entity)
                         (let ((entity-type (plist-get entity :type)))
                           (when (eq 'textEntityTypeCustomEmoji

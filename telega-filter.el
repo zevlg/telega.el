@@ -729,10 +729,12 @@ Use `telega-filter-by-name' for fuzzy searching."
                         nil t))))
   (telega-filter-add `(user (status ,status))))
 
-(defun telega-filter-by-verified ()
-  "Filter verified chats."
-  (interactive)
-  (telega-filter-add 'verified))
+(defun telega-filter-by-verified (&optional by-telegram-p)
+  "Filter verified chats.
+If `\\[universal-argument]' is specified, then filter chats only
+verified by Telegram."
+  (interactive "P")
+  (telega-filter-add (if by-telegram-p '(is-verified by-telegram) 'is-verified)))
 
 (defun telega-filter-by-my-public-chats (chat-type)
   "Filter public chats created by me.

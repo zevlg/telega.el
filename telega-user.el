@@ -162,22 +162,26 @@ Return nil if given FMT-TYPE is not available."
     (cond ((and (not no-badges) user-p name)
            ;; Scam/Fake/Blacklist badge, apply for users only
            ;; see https://t.me/emacs_telega/30318
-           (concat name
-                   ;; Verification Status badges
-                   (telega-msg-sender--verification-badges
-                    (plist-get user :verification_status))
+           (concat
+            ;; NOTE: Verification Status badges goes first, so
+            ;; user won't trick with fake statuses using emoji
+            ;; status icons
+            (telega-msg-sender--verification-badges
+             (plist-get user :verification_status))
 
-                   ;; Premium Badge
-                   (cond ((plist-get user :emoji_status)
-                          (telega-ins--as-string
-                           (telega-ins--emoji-status
-                            (plist-get user :emoji_status))))
-                         ((plist-get user :is_premium)
-                          (telega-symbol 'premium)))
+            name
 
-                   ;; Blocking Status badge
-                   (when (telega-user-match-p user 'is-blocked)
-                     (telega-symbol 'blocked))))
+            ;; Premium Badge
+            (cond ((plist-get user :emoji_status)
+                   (telega-ins--as-string
+                    (telega-ins--emoji-status
+                     (plist-get user :emoji_status))))
+                  ((plist-get user :is_premium)
+                   (telega-symbol 'premium)))
+
+            ;; Blocking Status badge
+            (when (telega-user-match-p user 'is-blocked)
+              (telega-symbol 'blocked))))
           (name name)
           ((not (eq fmt-type 'username))
            ;; For some users only ID is known

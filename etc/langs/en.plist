@@ -96,6 +96,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "Restart bot")
  ("lng_profile_set_group_photo"
   :value "Set Photo")
+ ("lng_profile_join_group"
+  :value "Join Group")
+ ("lng_profile_join_channel"
+  :value "Join Channel")
  ("lng_profile_apply_to_join_group"
   :value "Apply to Join Group")
 
@@ -393,6 +397,9 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_status_last_month"
   :value "last seen within a month")
 
+ ("lng_status_bot"
+  :value "bot")
+
  ("lng_report_spam"
   :value "Report Spam")
  ("lng_report_spam_and_leave"
@@ -515,6 +522,12 @@ Example: 23 y.o. designer from San Francisco")
   :value "Create topics")
  ("lng_rights_group_info"
   :value "Change group info")
+
+ ("lng_rights_user_restrictions"
+  :value "User permissions")
+ ("lng_rights_user_restrictions_header"
+  :value "What can this member do?")
+
  ("lng_manage_peer_exceptions"
   :value "Exceptions")
  ("lng_manage_peer_antispam"
@@ -543,6 +556,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "auto-deletes in {duration}")
  ("lng_ttl_about_tooltip_channel"
   :value "New messages in this chat will be automatically deleted after {duration}.")
+ ("lng_manage_peer_reactions_some"
+  :value "Some reactions")
+ ("lng_manage_peer_reactions_all"
+  :value "All reactions")
 
  ;; Screenshot #5571 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot5571
  ("lng_rights_edit_admin_header"
@@ -579,14 +596,18 @@ Example: 23 y.o. designer from San Francisco")
  ;; lng_rights_edit_admin_header
  ("lng_rights_channel_info"
   :value "Change channel info")
+ ("lng_channel_add_members"
+  :value "Add members")
+
+ ;; Manage Messages 3/3
+ ("lng_rights_channel_manage"
+  :value "Manage messages")
  ("lng_rights_channel_post"
   :value "Post messages")
  ("lng_rights_channel_edit"
   :value "Edit messages of others")
  ("lng_rights_channel_delete"
   :value "Delete messages of others")
- ("lng_channel_add_members"
-  :value "Add members")
 
  ;; Manage Stories 3/3
  ("lng_rights_channel_manage_stories"
@@ -597,6 +618,9 @@ Example: 23 y.o. designer from San Francisco")
   :value "Edit stories of others")
  ("lng_rights_channel_delete_stories"
   :value "Delete stories of others")
+
+ ("lng_rights_channel_manage_direct"
+  :value "Manage direct messages")
 
  ;; lng_rights_add_admins
 
@@ -795,6 +819,21 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_filters_tag_color_no"
   :value "No Tag")
 
+ ("lng_filters_by_link_title"
+  :value "Add Folder")
+ ("lng_filters_by_link_sure"
+  :value "Do you want to add the chat folder {folder} and join its groups and channels?")
+ ("lng_filters_by_link_join"
+  :one_value "{count} chat to join"
+  :other_value "{count} chats to join")
+ ("lng_filters_by_link_about"
+  :value "You can deselect the chats you don't want to join.")
+ ("lng_filters_by_link_add_button"
+  :value "Add {folder}")
+ ("lng_filters_by_link_and_join_button"
+  :one_value "Join Chat"
+  :other_value "Join Chats")
+
  ;; Comments
  ("lng_comments_open_none"
   :value "Leave a Comment")
@@ -835,6 +874,9 @@ Example: 23 y.o. designer from San Francisco")
   :value "You can't edit this message.")
  ("lng_edit_sign_messages"
   :value "Sign messages")
+
+ ("lng_reply_quote_long_text"
+  :value "The selected text is too long to quote.")
 
  ;; #917 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot917
  ("lng_context_reply_msg"
@@ -1057,6 +1099,13 @@ to start the topic.")
   :value "Create a New Link")
  ("lng_group_invite_copy"
   :value "Copy Link")
+ ("lng_group_invite_create_new"
+  :value "Revoke invite link")
+ ("lng_group_invite_no_joined"
+  :value "No one joined yet")
+ ("lng_group_invite_joined"
+  :one_value "{count} joined"
+  :other_value "{count} joined")
 
  ("lng_group_invite_qr_title"
   :value "Invite by QR Code")
@@ -1078,7 +1127,13 @@ to start the topic.")
  ("lng_group_requests_pending"
   :one_value "{count} join request"
   :other_value "{count} join requests")
+ ("lng_group_request_sent"
+  :value "You will be added to the group once an admin approves your request.")
+ ("lng_group_request_sent_channel"
+  :value "You will be added to the channel once its admins approve your request.")
 
+ ("lng_payments_date_label"
+  :value "Paid")
  ("lng_payments_invoice_label_test"
   :value "Test invoice")
  ("lng_payments_invoice_label"
@@ -1228,6 +1283,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Launch")
  ("lng_view_button_user"
   :value "Send message")
+ ("lng_view_button_voice_chat"
+  :value "Video chat")
  ("lng_view_button_voice_chat_channel"
   :value "Live stream")
  ("lng_view_button_request_join"
@@ -1240,6 +1297,10 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Open")
  ("lng_view_button_emojipack"
   :value "View emoji")
+ ("lng_view_button_collectible"
+  :value "View collectible")
+ ("lng_view_button_call"
+  :value "Join call")
 
  ("lng_unblock_button"
   :value "Unblock")
@@ -1509,12 +1570,22 @@ You can send them an invite link as message instead.")
   :value "Add")
  ("lng_stickers_remove_pack"
   :value "Remove \"{sticker_pack}\"?")
+ ("lng_stickers_add_pack"
+  :value "Add stickers")
  ("lng_stickers_remove_pack_button"
   :value "Remove Stickers")
+ ("lng_stickers_remove_pack_confirm"
+  :value "Remove")
  ("lng_stickers_installed_tab"
   :value "Stickers")
  ("lng_stickers_masks_tab"
   :value "Masks")
+ ("lng_stickers_search_sets"
+  :value "Search sticker sets")
+ ("lng_group_stickers_add"
+  :value "Choose sticker set")
+ ("lng_stickers_group_set"
+  :value "Group sticker set")
 
  ;; Prompt helpers
  ("lng_message_ph"
@@ -1527,6 +1598,8 @@ You can send them an invite link as message instead.")
   :value "Silent broadcast...")
  ("lng_story_reply_ph"
   :value "Reply privately...")
+ ("lng_message_paid_ph"
+  :value "Message for {amount}")
 
  ("lng_message_not_found"
   :value "Message doesn't exist.")
@@ -1693,11 +1766,15 @@ You can send them an invite link as message instead.")
   :value "Link copied to clipboard.")
 
  ;; Misc
+ ("lng_font_default"
+  :value "Default")
  ("lng_photos_comment"
   :value "Comment")
  ("lng_open_link"
   :value "Open")
  ("lng_channel_badge"
+  :value "channel")
+ ("lng_channel_status"
   :value "channel")
  ("lng_info_about_label"
   :value "Description")
@@ -1930,4 +2007,120 @@ You can send them an invite link as message instead.")
   :value "Views")
  ("lng_save_file"
   :value "Save File")
+
+ ("lng_send_charges_stars_text"
+  :value "{user} charges {amount} for each message.")
+ ("lng_payment_confirm_title"
+  :value "Confirm payment")
+ ("lng_payment_confirm_text"
+  :one_value "{name} charges **{count}** Star per message."
+  :other_value "{name} charges **{count}** Stars per message.")
+ ("lng_payment_confirm_sure"
+  :one_value "Would you like to pay {amount} to send **{count}** message?"
+  :other_value "Would you like to pay {amount} to send **{count}** messages?")
+ ("lng_payment_confirm_amount"
+  :one_value "**{count}** Star"
+  :other_value "**{count}** Stars")
+ ("lng_payment_confirm_button"
+  :one_value "Pay for {count} Message"
+  :other_value "Pay for {count} Messages")
+ ("lng_payment_confirm_dont_ask"
+  :value "Don't ask me again")
+ 
+ ("lng_bot_choose_chat"
+  :value "Select a chat")
+ ("lng_similar_bots_title"
+  :value "Similar bots")
+ ("lng_bot_status_users"
+  :one_value "{count} monthly user"
+  :other_value "{count} monthly users")
+ ("lng_bot_apps_popular"
+  :value "Grossing apps")
+ ("lng_bot_menu_button"
+  :value "Menu")
+
+ ("lng_filters_all_short"
+  :value "All")
+ ("lng_all_photos"
+  :value "Photos")
+ ("lng_all_videos"
+  :value "Videos")
+ ("lng_all_links"
+  :value "Links")
+ ("lng_all_files"
+  :value "Files")
+ ("lng_all_music"
+  :value "Music")
+ ("lng_all_voice"
+  :value "Voice")
+
+ ("lng_new_contact_not_contact"
+  :value "Not a contact")
+ ("lng_new_contact_phone_number"
+  :value "Phone number")
+ ("lng_new_contact_registration"
+  :value "Registration")
+ ("lng_new_contact_not_official"
+  :value "Not an official account")
+ ("lng_new_contact_updated_name"
+  :value "User updated name {when}")
+ ("lng_new_contact_updated_hours"
+  :one_value "{count} hour ago"
+  :other_value "{count} hours ago")
+ ("lng_new_contact_updated_photo"
+  :value "User updated photo {when}")
+ ("lng_new_contact_updated_days"
+  :one_value "{count} day ago"
+  :other_value "{count} days ago")
+
+ ;; Direct messages
+ ("lng_profile_direct_messages"
+  :value "Direct messages")
+ ("lng_action_direct_messages_disabled"
+  :value "Channel disabled Direct Messages.")
+ ("lng_action_direct_messages_paid"
+  :one_value "Channel allows Direct Messages for {count} Star each."
+  :other_value "Channel allows Direct Messages for {count} Stars each.")
+ ("lng_action_direct_messages_enabled"
+  :value "Channel enabled Direct Messages.")
+
+ ("lng_chat_status_direct"
+  :value "Direct messages")
+ ("lng_send_free_channel"
+  :value "Send a direct message to the administrator of {channel}.")
+ ("lng_direct_badge"
+  :value "DIRECT")
+
+ ;; Checklists
+ ("lng_todo_title"
+  :value "Checklist")
+ ("lng_todo_menu_item"
+  :value "Checklist")
+ ("lng_todo_create_title"
+  :value "New Checklist")
+ ("lng_todo_create"
+  :value "Create Checklist")
+ ("lng_todo_title_group"
+  :value "Group Checklist")
+ ("lng_todo_completed"
+  :one_value "{count} of {total} completed"
+  :other_value "{count} of {total} completed")
+ ("lng_todo_completed_none"
+  :value "None of {total} completed")
+ ("lng_todo_add_title"
+  :value "Add Tasks")
+ ("lng_todo_create_list_add"
+  :value "Add a task...")
+ ("lng_todo_create_allow_add"
+  :value "Allow Others to Add Tasks")
+ ("lng_todo_create_allow_mark"
+  :value "Allow Others to Mark As Done")
+
+ ("lng_my_notes"
+  :value "My Notes")
+ ("lng_hidden_author_messages"
+  :value "Author Hidden")
+
+ ("lng_monoforum_choose_to_reply"
+  :value "Choose a message to reply.")
  )

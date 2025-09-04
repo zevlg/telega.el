@@ -388,7 +388,7 @@ Keymap:
        (telega-webpage--ins-rt (plist-get pb :subheader))
        (telega-ins "\n")))
     (pageBlockParagraph
-     (unless (looking-back "\n\n")
+     (unless (looking-back "\n\n" nil)
        (telega-ins "\n"))
      (telega-webpage--ins-rt (plist-get pb :text)))
     (pageBlockPreformatted
@@ -488,8 +488,9 @@ Keymap:
     (pageBlockSlideshow
      (let ((page-blocks (plist-get pb :page_blocks)))
        (dotimes (n (length page-blocks))
-         (telega-ins--labeled (format "%d/%d " (1+ n) (length page-blocks)) nil
-           (telega-webpage--ins-pb (aref page-blocks n)))))
+         (telega-ins-from-newline
+          (telega-webpage--ins-pb (aref page-blocks n))
+          (telega-ins-fmt "%d/%d\n" (1+ n) (length page-blocks)))))
      (telega-webpage--ins-pb (plist-get pb :caption)))
     (pageBlockChatLink
      (telega-ins--with-face 'telega-webpage-chat-link
@@ -604,6 +605,7 @@ instant view for the URL."
     (telega-webpage-mode)
 
     (cursor-sensor-mode 1)
+    (cursor-face-highlight-mode 1)
     (visual-line-mode 1)
     (setq visual-fill-column-width telega-webpage-fill-column)
     (visual-fill-column-mode 1))

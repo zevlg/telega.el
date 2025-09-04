@@ -777,20 +777,26 @@ To be displayed in the modeline.")
 
 (defun telega-image-mode--chat-position-fetch ()
   "Asynchronously fetch message's position in the chat's history."
-  (telega--getChatMessageCount (telega-msg-chat telega-image--message)
-      '(:@type "searchMessagesFilterPhoto") nil
-    (lambda-with-current-buffer (count)
-      (setcdr telega-image--position count)
-      (when (car telega-image--position)
-        (telega-image-mode--update-modeline))))
+  (let* ((chat (telega-msg-chat telega-image--message))
+         (topic (with-telega-chatbuf chat
+                  (telega-chatbuf--thread-topic))))
+    (telega--getChatMessageCount chat
+        '(:@type "searchMessagesFilterPhoto")
+      :topic topic
+      :callback
+      (lambda-with-current-buffer (count)
+        (setcdr telega-image--position count)
+        (when (car telega-image--position)
+          (telega-image-mode--update-modeline))))
 
-  (telega--getChatMessagePosition
-      telega-image--message '(:@type "searchMessagesFilterPhoto")
-    :callback
-    (lambda-with-current-buffer (count)
-      (setcar telega-image--position count)
-      (when (cdr telega-image--position)
-        (telega-image-mode--update-modeline)))))
+    (telega--getChatMessagePosition
+        telega-image--message '(:@type "searchMessagesFilterPhoto")
+      :topic topic
+      :callback
+      (lambda-with-current-buffer (count)
+        (setcar telega-image--position count)
+        (when (cdr telega-image--position)
+          (telega-image-mode--update-modeline))))))
 
 (defvar telega-image-mode-map
   (let ((map (make-sparse-keymap)))
@@ -974,9 +980,9 @@ Can be enabled only for content from editable messages."
 
   (if telega-edit-file-mode
       (let ((msg telega--help-win-param))
-        (if (or (not (telega-msg-p msg)
+        (if (or (not (telega-msg-p msg))
                 (not (telega-msg-match-p msg
-                       '(message-property :can_be_edited)))))
+                       '(message-property :can_be_edited))))
             (progn
               ;; No message or message can't be edited
               (telega-edit-file-mode -1)
@@ -1198,6 +1204,7 @@ UFILE specifies Telegram file being uploading."
     (5974516348 :source private        :since_date 1695584567)
     (86646581   :source private        :since_date 1700213789)
     (5225160431 :source opencollective :since_date 1611792000) ;keke New
+    (791665463  :source opencollective :since_date 1754518867)
     )
   "Alist of telega patrons.")
 
@@ -1452,8 +1459,7 @@ EVENT must be \"updateDeleteMessages\"."
           :with-brackets-p t)))
 
     (telega-ins " ")
-    (cl-destructuring-bind (live-for updated-ago)
-        (telega-msg-location-live-for msg)
+    (seq-let (live-for updated-ago) (telega-msg-location-live-for msg)
       (telega-ins--location-live-header live-for updated-ago))
     (when (and (not (telega-me-p user)) telega-my-location)
       (telega-ins ", " (telega-symbol 'distance))
@@ -1571,14 +1577,18 @@ Set to nil to disable active video chats in the modeline."
     (cond ((and has-participants-p
                 group-call
                 (not (zerop (plist-get group-call :participant_count))))
-           (telega-ins (telega-symbol 'video-chat-active)
-                       (telega-tl-str group-call :title)
-                       " ")
+           (telega-ins (telega-symbol 'video-chat-active))
+           (telega-ins-prefix " "
+             (when (telega-ins (telega-tl-str group-call :title))
+               (telega-ins " ")))
            (seq-doseq (recent-speaker (plist-get group-call :recent_speakers))
              (telega-ins--image
               (telega-group-call--participant-image recent-speaker)))
-           (telega-ins-fmt "/%d" (plist-get group-call :participant_count)))
-          ((null has-participants-p)
+           (telega-ins--with-face 'telega-shadow
+             (telega-ins "/")
+             (telega-ins-i18n "lng_group_call_members"
+               :count (plist-get group-call :participant_count))))
+          ((not has-participants-p)
            (telega-ins (telega-symbol 'video-chat-passive))))
     (telega-ins " ")
     (telega-ins (telega-symbol 'right-arrow))

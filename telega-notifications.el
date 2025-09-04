@@ -141,14 +141,14 @@ SCOPE-TYPE is same an in `telega-chat-notification-scope'."
       (telega-ins " " "Mute Stories")
       (telega-ins "\n"))
 
-    (let ((show-story-sender-p (plist-get sconf :show_story_sender)))
-      (telega-ins--text-button (if show-story-sender-p
+    (let ((show-story-poster-p (plist-get sconf :show_story_poster)))
+      (telega-ins--text-button (if show-story-poster-p
                                    (telega-symbol 'checkbox-on)
                                  (telega-symbol 'checkbox-off))
         'face 'telega-link
         'action (lambda (_button)
                   (telega--setScopeNotificationSettings scope-type
-                    :show_story_sender (if show-story-sender-p :false t))))
+                    :show_story_poster (if show-story-poster-p :false t))))
       (telega-ins " " "Show Story Sender")
       (telega-ins "\n"))
 

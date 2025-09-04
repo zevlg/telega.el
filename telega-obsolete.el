@@ -309,6 +309,22 @@
                            'telega-msg-heading-trail
                            "0.8.393")
 
+(telega-obsolete--variable 'telega-msg-always-show-topic-info
+                           'telega-msg-temex-show-topic
+                           "0.8.520")
+(telega-obsolete--variable 'telega-symbol-topic-brackets
+                           'telega-topic-brackets
+                           "0.8.520")
+
+(telega-obsolete--variable 'telega-msg-make-observable-recenter-arg
+                           nil
+                           "0.8.520")
+
+;; Uncomment once `telega-ins--box-button2' is everywhere in use
+;; (telega-obsolete--variable 'telega-box-button-endings
+;;                            'telega-box-button-brackets
+;;                            "0.8.460")
+                           
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

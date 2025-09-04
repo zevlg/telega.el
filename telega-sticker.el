@@ -395,7 +395,9 @@ Return path to png file."
 (defun telega-sticker--image (sticker &optional image-create-fun cache-prop)
   "Return image for the STICKER."
   (unless (plist-get sticker :telega-image)
-    (telega--getStickerOutline (plist-get sticker :file)
+    (cl-assert sticker)
+    (cl-assert (plist-get sticker :sticker))
+    (telega--getStickerOutline (plist-get sticker :sticker)
       :callback (lambda (outline)
                   (unless (telega--tl-error-p outline)
                     (plist-put sticker :outline outline)
@@ -425,9 +427,8 @@ If SLICES-P is non-nil, then insert STICKER using slices."
 
 (defun telega-ins--stickerset-change-button (sset)
   (telega-ins--box-button (if (telega-stickerset-installed-p sset)
-                              ;; I18N: XXX
-                              "Uninstall"
-                            "Install")
+                              (telega-i18n "lng_stickers_remove_pack_button")
+                            (telega-i18n "lng_stickers_add_pack"))
     :value sset
     'action 'telega-button--stickerset-change-action))
 
@@ -650,7 +651,8 @@ stickers for the EMOJI."
                     ((memq 'ivy--queue-exhibit post-command-hook)
                      ;; ivy used
                      (nth ivy--index ivy--old-cands))
-                    (t (buffer-substring start end))))
+                    (t
+                     (car (completion-all-sorted-completions start end)))))
          (comp (when str (car (all-completions str telega-minibuffer--choices))))
          (sset-id (when comp (cadr (assoc comp telega-minibuffer--choices))))
          (sset (when sset-id
@@ -737,7 +739,8 @@ Return sticker set."
 
 (defun telega-stickerset-choose (sset &optional chat)
   "Interactive choose stickerset."
-  (interactive (list (telega-stickerset-completing-read "Sticker set: ")))
+  (interactive (list (telega-stickerset-completing-read
+                      (concat (telega-i18n "lng_group_stickers_add") ": "))))
   (let ((tss-buffer (get-buffer "*Telegram Sticker Set*"))
         (chat (or chat telega-chatbuf--chat)))
     (if (and (buffer-live-p tss-buffer)
@@ -764,12 +767,15 @@ PROMPT is displayed in case of multiple sticker sets."
 
 (defun telega-stickerset-search (query)
   "Search interactively for sticker matching QUERY."
-  (interactive "sStickerSet query: ")
+  (interactive
+   (list (read-string (concat (telega-i18n "lng_stickers_search_sets") ": "))))
+
   (let ((sticker-sets (telega--searchStickerSets query)))
     (unless sticker-sets
       (user-error "No sticker set found for: %s" query))
 
-    (telega-stickerset--choose-from-multiple "Sticker set: " sticker-sets)))
+    (telega-stickerset--choose-from-multiple
+     (concat (telega-i18n "lng_group_stickers_add") ": ") sticker-sets)))
 
 (defun telega-stickerset-trends (&optional premium-p)
   "Show trending stickers.

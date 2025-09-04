@@ -35,15 +35,19 @@
 (defvar telega-topic--default-icons nil
   "Cached list of topic icons which can be used by all users.")
 
-(defun telega-topic-icon-custom-emoji-id (topic)
-  "Return custom emoji id for the TOPIC."
-  (let ((cid (telega--tl-get topic :info :icon :custom_emoji_id)))
+(defun telega-forum-topic-icon-custom-emoji-id (forum-topic)
+  "Return custom emoji id for the FORUM-TOPIC."
+  (let ((cid (telega--tl-get forum-topic :info :icon :custom_emoji_id)))
     (unless (equal "0" cid)
       cid)))
 
-(defun telega-topic-avatar-image (topic &optional cheight)
+(defun telega-forum-topic-color (forum-topic)
+  "Return color of the FORUM-TOPIC icon."
+  (format "#%06x" (telega--tl-get forum-topic :info :icon :color)))
+
+(defun telega-forum-topic-avatar-image (topic &optional cheight)
   "Return avatar image for the TOPIC."
-  (if-let* ((cid (telega-topic-icon-custom-emoji-id topic))
+  (if-let* ((cid (telega-forum-topic-icon-custom-emoji-id topic))
             (sticker (telega-custom-emoji-get cid)))
       (telega-sticker--image sticker)
 
@@ -58,14 +62,13 @@
            (font-size (if general-p xh (/ xh 2))))
       (unless general-p
         ;; Draw topic icon
-        (let* ((palette (telega-palette-by-color-id
-                         (% (telega-topic-msg-thread-id topic) 7)))
-               (c1 (telega-color-name-as-hex-2digits
-                    (or (telega-palette-attr palette :background) "gray75")))
-               (c2 (telega-color-name-as-hex-2digits
-                    (or (telega-palette-attr palette :foreground) "gray25")))
+        (let* ((color (telega-forum-topic-color topic))
                (co (telega-color-name-as-hex-2digits
-                    (or (telega-palette-attr palette :outline) c2))))
+                    (color-darken-name color 40)))
+               (c1 (telega-color-name-as-hex-2digits
+                    (color-darken-name color 15)))
+               (c2 (telega-color-name-as-hex-2digits
+                    (color-darken-name color 30))))
           (svg-gradient svg "cgrad" 'linear (list (cons 0 c1) (cons xh c2)))
           (telega-svg-forum-topic-icon svg xw
             :stroke-width (/ xh 20.0)
@@ -100,55 +103,112 @@
 
 (defun telega-topic-muted-p (topic)
   "Return non-nil if TOPIC is muted."
-  (> (telega-topic-notification-setting topic :mute_for) 0))
+  (not (telega-zerop (telega-topic-notification-setting topic :mute_for))))
 
-(defun telega-chat-topics (chat &optional force-update-p)
-  "Get CHAT's topics.
-If FORCE-UPDATE-P is specified, then refetch topics from Telegram server."
-  ;; NOTE: since TDLib (1.8.25) does not yet have update events for
-  ;; the topics, we refetch topics when `TAB' is pressed on the forum
-  ;; chat in the rootbuf
-  (let ((topics (gethash (plist-get chat :id) telega--chat-topics)))
-    (when force-update-p
-      (let ((forum-topics (telega--getForumTopics chat "")))
-        ;; NOTE: `telega--getForumTopics' might return partial list of
-        ;; topics
-        (seq-doseq (topic (plist-get forum-topics :topics))
-          (telega-chat--topic-ensure chat topic))))
-    topics))
+(defun telega--MessageTopic-id (msg-topic)
+  "Return id of the MessageTopic MSG-TOPIC."
+  (cl-ecase (telega--tl-type msg-topic)
+    (messageTopicForum
+     (plist-get msg-topic :forum_topic_id))
+    (messageTopicDirectMessages
+     (plist-get msg-topic :direct_messages_chat_topic_id))
+    (messageTopicSavedMessages
+     (plist-get msg-topic :saved_messages_topic_id))))
 
-(defun telega-topic-get (chat msg-thread-id)
+(defun telega-topic-id (topic)
+  "Return TOPIC's id."
+  (cl-ecase (telega--tl-type topic)
+    ((savedMessagesTopic directMessagesChatTopic)
+     (plist-get topic :id))
+    (forumTopic
+     (telega--tl-get topic :info :forum_topic_id))))
+
+(defun telega-topic-chat-id (topic)
+  "Return TOPIC's chat id."
+  (cl-ecase (telega--tl-type topic)
+    (savedMessagesTopic
+     telega--me-id)
+    (directMessagesChatTopic
+     (plist-get topic :chat_id))
+    (forumTopic
+     (telega--tl-get topic :info :chat_id))))
+
+(defun telega-topic--MessageSource (topic)
+  "Return MessageSource structure for the TOPIC."
+  (cl-ecase (telega--tl-type topic)
+    (savedMessagesTopic
+     '(:@type "messageSourceOther"))
+    (directMessagesChatTopic
+     '(:@type "messageSourceDirectMessagesChatTopicHistory"))
+    (forumTopic
+     '(:@type "messageSourceForumTopicHistory"))))
+
+(defun telega-topic-chat (topic)
+  "Return chat for the TOPIC."
+  (or (plist-get topic :telega-chat)
+      (telega-chat-get (telega-topic-chat-id topic))))
+
+(defun telega-topic-get (chat topic-id)
+  "Return topic by TOPIC-ID in the CHAT."
+  (alist-get topic-id (telega-chat-topics-alist chat)))
+
+(defun telega-topic-by-thread-id (chat msg-thread-id)
   "Get CHAT's topic by THREAD-ID."
-  (let ((topics (telega-chat-topics chat)))
-    (cl-find msg-thread-id topics :key #'telega-topic-msg-thread-id)))
+  (cdr (cl-find msg-thread-id (telega-chat-topics-alist chat)
+                :key (lambda (tv)
+                       (telega-topic-msg-thread-id (cdr tv))))))
 
-(defun telega-chat--topic-ensure (chat topic)
+(defun telega-topic-brackets (topic)
+  "Return pair of brackets to use for TOPIC."
+  (or (when (eq 'savedMessagesTopic (telega--tl-type topic))
+        (let ((smtype (plist-get topic :type)))
+          (when (eq 'savedMessagesTopicTypeSavedFromChat
+                    (telega--tl-type smtype))
+            (telega-msg-sender-brackets
+             (telega-chat-get (plist-get smtype :chat_id) 'offline)))))
+      telega-topic-brackets))
+
+(defun telega-topic--ensure (topic &optional chat)
   "Ensure TOPIC for CHAT is stored in the `telega--chat-topics'."
-  (if-let ((existing-topic
-            (telega-topic-get chat (telega-topic-msg-thread-id topic))))
+  (unless chat
+    (setq chat (telega-topic-chat topic)))
+
+  (if-let ((existing-topic (telega-topic-get chat (telega-topic-id topic))))
       ;; Update topic inplace
       (setcdr existing-topic (cdr topic))
-    (puthash (plist-get chat :id)
-             (append (telega-chat-topics chat) (list topic))
-             telega--chat-topics))
+    (setf (alist-get (telega-topic-id topic) (telega-chat-topics-alist chat))
+          topic))
+
+  (when (eq 'forumTopic (telega--tl-type topic))
+    (telega-chat--forum-topics-icons-fetch chat topic))
 
   ;; Store back reference to chat in the `:telega-chat' property
   (plist-put topic :telega-chat chat)
   topic)
 
-(defun telega-topic-chat (topic)
-  "Return chat for the TOPIC."
-  (plist-get topic :telega-chat))
+(defun telega-chat--forum-topics-fetch (chat &optional callback)
+  "Fetch CHAT topics in async manner."
+  (declare (indent 1))
+  (let ((cb (lambda (reply)
+              (plist-put chat :telega_topics_count
+                         (plist-get reply :total_count))
+              (seq-doseq (topic (plist-get reply :topics))
+                (telega-topic--ensure topic))
 
-(defun telega-chat--topics-icons-fetch (chat topics)
-  "Asynchronously fetch icons for the list of the TOPICS."
+              (telega-chat--mark-dirty chat 'topics)
+              (when callback
+                (funcall callback reply)))))
+    (telega--getForumTopics chat ""
+      :callback cb)))
+
+(defun telega-chat--forum-topics-icons-fetch (chat &rest forum-topics)
+  "Asynchronously fetch icons for the list of the FORUM-TOPICS."
   (when-let ((custom-emoji-ids
               ;; NOTE: Fetch only uncached custom emojis
               (seq-remove (lambda (cid)
-                            (or (equal "0" cid)
-                                (telega-custom-emoji-get cid)))
+                            (or (equal "0" cid) (telega-custom-emoji-get cid)))
                           (mapcar (telega--tl-prop :info :icon :custom_emoji_id)
-                                  topics))))
+                                  forum-topics))))
     (telega--getCustomEmojiStickers custom-emoji-ids
       (lambda (stickers)
         (seq-doseq (sticker stickers)
@@ -157,26 +217,25 @@ If FORCE-UPDATE-P is specified, then refetch topics from Telegram server."
         (telega-chat--mark-dirty chat)))
     ))
 
-(defun telega-chat--topics-fetch (chat)
-  "Asynchronously fetch topics for the CHAT."
-  (telega--getForumTopics chat ""
-    :callback (lambda (reply)
-                (plist-put chat :telega_topics_count
-                           (plist-get reply :total_count))
+(defun telega-chat--topics-load (chat &optional callback)
+  "Load topics for the CHAT in async manner."
+  (cond ((telega-chat-match-p chat 'saved-messages)
+         (telega--loadSavedMessagesTopics
+             (plist-get telega--options
+                        :pinned_saved_messages_topic_count_max)
+           callback))
+        ((telega-chat-match-p chat 'is-direct-messages-group)
+         (telega--loadDirectMessagesChatTopics chat
+           nil callback))
+        ((telega-chat-match-p chat 'is-forum)
+         (telega-chat--forum-topics-fetch chat callback)
+         )))
 
-                (let ((topics (plist-get reply :topics)))
-                  (telega-chat--topics-icons-fetch chat topics)
-                  (seq-doseq (topic topics)
-                    (telega-chat--topic-ensure chat topic)))
-
-                (telega-chat--mark-dirty chat)))
-  )
-
-(defun telega-msg-topic (msg &optional _offline-p)
+(defun telega-msg-topic (msg)
   "Return topic for the message MSG."
-  (when (telega-msg-match-p msg 'is-topic)
+  (when-let ((msg-topic (plist-get msg :topic_id)))
     (telega-topic-get (telega-msg-chat msg)
-                      (plist-get msg :message_thread_id))))
+                      (telega--MessageTopic-id msg-topic))))
 
 (defun telega-topic-at (&optional pos)
   "Return topic at point POS."
@@ -193,8 +252,7 @@ If START-MSG-ID is specified, jump to the this message in the topic."
     ;; `telega-root--keep-cursor-at-chat' do the job for keeping
     ;; cursor at topic position
     (with-current-buffer buffer
-      (unless (eq topic (telega-chatbuf--thread-topic))
-        (telega-chatbuf-filter-by-topic topic start-msg-id)))
+      (telega-chatbuf-filter-by-topic topic start-msg-id))
 
     (telega-chat--pop-to-buffer topic-chat :no-history)))
 
@@ -207,7 +265,9 @@ If START-MSG-ID is specified, jump to the this message in the topic."
       (telega-ins-describe-item (telega-i18n "lng_forum_topic_title")
         (telega-ins--with-face 'telega-shadow
           (telega-ins (telega-symbol 'topic))
-          (telega-ins--topic-title topic 'with-icon))
+          (telega-ins--topic-title topic
+            :with-icon-p t
+            :with-maybe-pin-p t))
         (telega-ins " ")
         ;; TODO: [Open] button
         ;; (telega-ins--box-button "Open"

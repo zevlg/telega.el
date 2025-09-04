@@ -373,8 +373,8 @@ Return non-nil if url has been handled."
                    (concat "tg:privatepost?channel=" (match-string 1 path)
                            "&post=" (match-string 2 path)
                            (when query (concat "&" query))))
-                  ((string-match "^/addlist/\\([a-zA-Z0-9._-]+\\)$" path)
-                   (concat "tg:addlist?slug=" (match-string 1 path)))
+                  ;; ((string-match "^/addlist/\\([a-zA-Z0-9._-]+\\)$" path)
+                  ;;  (concat "tg:addlist?slug=" (match-string 1 path)))
                   ((string-match "^/\\+\\([^/]+\\)$" path)
                    (concat "tg:join?invite=" (match-string 1 path)))
                   ((string-match "^/\\(socks\\|proxy\\)$" path)
@@ -407,6 +407,11 @@ Return non-nil if url has been handled."
 To convert url to TDLib link, use `telega--getInternalLinkType'."
   (cl-ecase (telega--tl-type tdlib-link)
     ;; TODO: add other link types
+    (internalLinkTypeUpgradedGift
+     (let ((gift (telega--getUpgradedGift (telega-tl-str tdlib-link :name))))
+       (message "telega: TODO, show upgraded gift \"%s\""
+                (telega-tl-str tdlib-link :name))
+       ))
 
     (internalLinkTypePublicChat
      (when-let* ((username (plist-get tdlib-link :chat_username))
@@ -445,7 +450,7 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
        (cond ((telega-zerop thread-id)
               (telega-msg-goto-highlight msg))
              ((telega-msg-match-p msg 'is-topic)
-              (let ((topic (telega-topic-get chat thread-id)))
+              (let ((topic (telega-topic-by-thread-id chat thread-id)))
                 (telega-topic-goto topic (plist-get msg :id))))
              (t
               (telega-chat--goto-thread chat thread-id (plist-get msg :id))))))
@@ -488,7 +493,7 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
 
     (internalLinkTypeStory
      (let* ((chat (telega--searchPublicChat
-                      (plist-get tdlib-link :story_sender_username)))
+                      (plist-get tdlib-link :story_poster_username)))
             (story (telega--getStory
                        (plist-get chat :id) (plist-get tdlib-link :story_id))))
        (telega-story-open story)))
@@ -522,8 +527,23 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
 
     (internalLinkTypeBackground
      (error "TODO: searchBackground"))
+
+    (internalLinkTypeChatFolderInvite
+     (let ((folder-info (telega--checkChatFolderInviteLink
+                         (plist-get tdlib-link :invite_link))))
+       (error "TODO: telega-describe-chat-folder-info")
+       ))
     ))
 
+(defun browse-url-telega (url &rest args)
+  "Browse Telegram urls with telega."
+  (telega-tme-open url))
+(function-put 'browse-url-telega 'browse-url-browser-kind 'internal)
+
 (provide 'telega-tme)
+
+
+(add-to-list 'browse-url-default-handlers
+             (cons telega-tme--url-regexp 'browse-url-telega))
 
 ;;; telega-tme.el ends here

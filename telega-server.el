@@ -247,6 +247,12 @@ Return parsed command."
             (cl-assert (= (following-char) ?\n))
             (delete-char 1)))))))
 
+(defun telega-tl-error-equal (tl-error code &optional message)
+  "Return non-nil if TL-ERROR has CODE and MESSAGE."
+  (and (equal (plist-get tl-error :code) code)
+       (or (null message)
+           (equal (plist-get tl-error :message) message))))
+
 (defvar telega-server--last-error)
 (defsubst telega-server--dispatch-cmd (cmd value)
   "Dispatch command CMD."
@@ -267,16 +273,19 @@ Return parsed command."
                    ;; If the error code is 406, the error message must
                    ;; not be processed in any way and must not be
                    ;; displayed to the user
-                   (= (plist-get value :code) 406)
+                   (telega-tl-error-equal value 406)
                    ;; 404 - webpage or message not found
-                   (= (plist-get value :code) 404)
+                   (telega-tl-error-equal value 404)
 
                    ;; 400 - Special case for `downloadFile' to alsways
                    ;; call it's callback in order to delete update
                    ;; callback
-                   (and (= (plist-get value :code) 400)
-                        (string= "File download has failed or was canceled" ;XXX
-                                 (plist-get value :message)))
+                   (telega-tl-error-equal
+                    value 400
+                    "File download has failed or was canceled") ;XXX
+
+                   ;; For `joinChatByInviteLink'
+                   (telega-tl-error-equal value 400 "INVITE_REQUEST_SENT")
                    )
                (funcall call-cb value)
 
@@ -514,7 +523,7 @@ COMMAND is passed directly to `telega-server--send'."
         (remhash cb-extra telega-server--results)
 
         (when (and (not ret) telega-server--last-error)
-          (user-error
+          (error
            "telega error=%d: %s"
            (plist-get telega-server--last-error :code)
            (plist-get telega-server--last-error :message)))

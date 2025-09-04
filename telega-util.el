@@ -148,9 +148,10 @@ Could be used as value for `telega-online-status-function'."
 (defun telega-chars-xheight (n)
   "Return pixel height for N characters.
 `telega--default-face' is used for size calculation."
-  (* n (if-let ((tframe (telega-x-frame)))
-           (aref (font-info (face-font telega--default-face tframe) tframe) 3)
-         (frame-char-height))))
+  (ceiling
+   (* n (if-let ((tframe (telega-x-frame)))
+            (aref (font-info (face-font telega--default-face tframe) tframe) 3)
+          (frame-char-height)))))
 
 (defun telega-chars-in-height (pixels)
   "Return how many lines needed to cover PIXELS height."
@@ -650,7 +651,7 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
 (defun telega-svg-embed-image-fitting (svg filename data-p img-width img-height
                                            &rest embed-attrs)
   "Create svg image by embedding FILENAME image into SVG fitting into its size."
-  (cl-destructuring-bind (x-fit y-fit w-fit h-fit)
+  (seq-let (x-fit y-fit w-fit h-fit)
       (telega-svg-fit-into img-width img-height
                            (telega-svg-width svg) (telega-svg-height svg))
     (apply #'telega-svg-embed
@@ -775,8 +776,8 @@ If LONG-P is specified, then use long form."
   (setq seconds (round seconds))
   (let ((ncomponents (or n 3))
         (intervals
-         `((,(* 365 7 24 60 60) . ,(concat "lng_years" (unless long-p "_tiny")))
-           (,(round (* 30.5 7 24 60 60)) . ,(concat "lng_months" (unless long-p "_tiny")))
+         `((,(* 365 24 60 60) . ,(concat "lng_years" (unless long-p "_tiny")))
+           (,(round (* 30.5 24 60 60)) . ,(concat "lng_months" (unless long-p "_tiny")))
            (,(* 7 24 60 60) . ,(concat "lng_weeks" (unless long-p "_tiny")))
            (,(* 24 60 60) . ,(concat "lng_days" (unless long-p "_tiny")))
            (,(* 60 60) . ,(concat "lng_hours" (unless long-p "_tiny")))
@@ -809,9 +810,12 @@ If LONG-P is specified, then use long form."
         ((< timestamp-ago 3600)
          (telega-i18n "lng_mediaview_minutes_ago"
            :count (/ timestamp-ago 60)))
-        (t
+        ((< timestamp-ago 86400)
          (telega-i18n "lng_mediaview_hours_ago"
-           :count (telega-float-clamp (/ timestamp-ago 3600.0) 1)))))
+           :count (telega-float-clamp (/ timestamp-ago 3600.0) 0)))
+        (t
+         (telega-i18n "lng_new_contact_updated_days"
+           :count (telega-float-clamp (/ timestamp-ago 86400.0) 0)))))
 
 (defun telega-link-props (link-type link-to &rest props)
   "Generate props for link button openable with `telega-link--button-action'."
@@ -2093,17 +2097,27 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
                                            nil t))))
     (cdr (assoc choice choices))))
 
-(defun telega-completing-read-topic (chat prompt)
+(defun telega-completing-read-topic (chat &optional prompt)
   "Read a CHAT's topic completing user input."
   (let* ((completion-ignore-case t)
          (choices (mapcar (lambda (topic)
                             (cons (telega-ins--as-string
-                                   (telega-ins--topic-title topic 'with-icon))
+                                   (telega-ins--topic-title topic
+                                     :with-icon-p t
+                                     :with-maybe-pin-p t))
                                   topic))
                           (telega-chat-topics chat)))
          (choice (telega-completing-read
-                  prompt (mapcar #'car choices) nil t)))
+                  (or prompt
+                      (concat (telega-i18n "lng_forum_topic_title") ": "))
+                  (mapcar #'car choices) nil t)))
     (cdr (assoc choice choices))))
+
+(defun telega-read-checklist-task ()
+  "Read a new checklist task title."
+  (telega-read-string-with-custom-emojis
+   (concat (string-trim (telega-i18n "lng_todo_create_list_add") nil "\\.+")
+           ": ")))
 
 (defun telega--animate-dots (text)
   "Animate TEXT's trailing dots.
@@ -2233,7 +2247,7 @@ Header and Footer are not deleted."
   "Return non-nil if there is no visible EWOC nodes."
   (let ((n0 (ewoc-nth ewoc 0)))
     (or (null n0)
-        (= (ewoc-location (ewoc-nth ewoc 0))
+        (= (ewoc-location n0)
            (ewoc-location (ewoc--footer ewoc))))))
 
 (defun telega-ewoc--move-node (ewoc node before-node
@@ -2265,15 +2279,14 @@ Return new node."
               (if before-node
                   (ewoc-enter-before ewoc before-node node-value)
                 (ewoc-enter-last ewoc node-value)))))
-
     (when (and point-off
                ;; See https://github.com/zevlg/telega.el/issues/197
                (not (equal (ewoc-location node)
                            (when-let ((next-node (ewoc-next ewoc node)))
                              (ewoc-location next-node)))))
       (goto-char (+ (ewoc-location node) point-off))
-      (dolist (win (get-buffer-window-list))
-        (set-window-point win (point))))
+      (telega-buffer--update-win-point))
+
     node))
 
 (defun telega-svg-create-vertical-bar (&optional bar-width bar-position bar-str
@@ -2354,6 +2367,65 @@ integer values, then absolute value in pixels is used."
          (telega-emoji--image-cache-put bar-str 1 image)
          image))))
 
+(defun telega-box-button--edge-image (which style)
+  "Create left or right button edge image
+WHICH is one of: `left' or `right'.
+STYLE is a style plist."
+  (declare (indent 1))
+  (cl-assert (memq which '(left right)))
+  (let ((cacheprop (format "button-edge-%S-%S" which style)))
+    (or (telega-emoji--image-cache-get cacheprop 1)
+        (let* ((w (telega-chars-xwidth 1))
+               (h (telega-chars-xheight 1))
+               (svg (telega-svg-create w h))
+               (mask (dom-node 'mask `((id . "hole"))))
+               (left-p (eq which 'left))
+               (pos-fraction
+                (or (telega-box-button--style-get style :x-margin) 0.5))
+               (round-fraction
+                (or (telega-box-button--style-get style :round-corner) 0.25))
+               (xpos (round (* w (if left-p pos-fraction (- 1 pos-fraction)))))
+               (sw (or (telega-box-button--style-get style :outline-width) 0))
+               (sw2 (/ sw 2.0))
+               image)
+          (svg--def svg mask)
+          (svg-rectangle mask 0 0 w h :fill "white")
+          (svg-rectangle mask (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
+                         (if left-p (+ w w) (+ w xpos)) (- h sw)
+                         :stroke-width sw
+                         :stroke-color "black"
+                         :fill "black" :rx (round (* h round-fraction)))
+
+          (let ((fill-color (or (telega-box-button--style-get style :background)
+                                (face-background 'default))))
+            (svg-rectangle svg 0 0 w h
+                           :fill (telega-color-name-as-hex-2digits fill-color)
+                           :mask "url(#hole)"))
+          (when sw
+            (svg-rectangle svg (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
+                           (if left-p (+ w w) (+ w xpos)) (- h sw)
+                           :rx (round (* h round-fraction))
+                           :fill "none"
+                           :stroke-width sw
+                           :stroke-color
+                           (if-let ((o-color (telega-box-button--style-get
+                                              style :outline-color)))
+                               (telega-color-name-as-hex-2digits o-color)
+                             "currentColor")))
+          ;; Icon in the right top corner
+          (unless left-p
+            (when-let ((icon (telega-box-button--style-get style :icon-symbol)))
+              (svg-text svg icon :font-size w :x 0 :y w
+                        :stroke-color "currentColor")))
+
+          (setq image (telega-svg-image svg
+                        :scale 1.0
+                        :height (telega-ch-height 1)
+                        :telega-text (if left-p "[" "]")
+                        :ascent 'center))
+          (telega-emoji--image-cache-put cacheprop 1 image)
+          image))))
+
 (cl-defun telega-svg-create-checkmark (checkmark-sym &key double-p
                                                      (stroke-width 1.0))
   "Create a checkmark."
@@ -2401,7 +2473,7 @@ of generating svg for the EMOJI."
                       (telega-emoji-create-svg emoji)))))
     (propertize emoji 'rear-nonsticky '(display) 'display image)))
 
-(defun telega-symbol (ending)
+(defun telega-symbol (ending &optional image)
   "Return possible emojified value for the symbol denoted by ENDING.
 ENDING could be a string or a symbol.
 If ENDING is a symbol, then value is taken from `telega-symbol-ENDING'
@@ -2410,13 +2482,13 @@ Only endings listed in `telega-symbols-emojify' are emojified."
   (let ((value (if (stringp ending)
                    ending
                  (symbol-value (intern (format "telega-symbol-%s" ending)))))
-        (image-spec (cdr (assoc ending telega-symbols-emojify))))
+        (image-spec (or image (nth 1 (assoc ending telega-symbols-emojify)))))
     (cond ((functionp image-spec)
            (funcall image-spec ending))
           ((or (and telega-use-images image-spec)
                (and telega-emoji-use-images
                     (member ending telega-symbols-emojify)))
-           (apply #'telega-symbol-emojify value image-spec))
+           (telega-symbol-emojify value image-spec))
           (t
            (or (and (functionp telega-symbols-emojify-function)
                     (funcall telega-symbols-emojify-function ending))
@@ -2474,12 +2546,16 @@ Same as `momentary-string-display', but keeps the point."
 
 (defun telega-remove-face-text-property (start end face &optional object)
   "Remove FACE value from face text property at START END region of the OBJECT."
-  (let ((faces (get-text-property start 'face object)))
-    (cond ((listp faces)
-           (setq faces (delete face faces)))
-          ((eq faces face)
-           (setq faces nil)))
-    (put-text-property start end 'face faces object)))
+  (alter-text-property
+   start end 'face
+   (lambda (faces)
+     (cond ((listp faces)
+            (delete face faces))
+           ((eq faces face)
+            nil)
+           (t
+            faces)))
+   object))
 
 (defun telega-button-highlight--sensor-func (_win oldpos dir)
   "Sensor function to highlight button when entered.
@@ -2489,20 +2565,12 @@ For box buttons use `telega-box-button-active' face, otherwise use
          (button-region (telega--region-with-cursor-sensor
                          (if (eq dir 'entered) (point) oldpos)))
          (start (car button-region))
-         (stop (cdr button-region))
-         (box-button-p (when button-region
-                         (let ((face (get-text-property
-                                      (car button-region) 'face)))
-                           (if (listp face)
-                               (memq 'telega-box-button face)
-                             (eq 'telega-box-button face)))))
-         (activate-face (if box-button-p
-                            'telega-box-button-active
-                          'telega-button-highlight)))
+         (stop (cdr button-region)))
     (when button-region
-      (if (eq dir 'entered)
-          (add-face-text-property start stop activate-face 'append)
-        (telega-remove-face-text-property start stop activate-face))
+      (when-let ((active-face (get-text-property start :active-face)))
+        (if (eq dir 'entered)
+            (add-face-text-property start stop active-face)
+          (telega-remove-face-text-property start stop active-face)))
 
       (when (eq dir 'entered)
         (when-let ((button (button-at start)))
@@ -2701,18 +2769,25 @@ RET\" string."
   (unless (zerop (call-process "xdg-open" nil nil nil url))
     (error "Telega: xdg-open failed on %S" url)))
 
-(defun telega-buffer--hack-win-point ()
+(defun telega-buffer--hack-win-point (&optional point)
   "Workaround Emacs bug.
 Emacs does not respect buffer local nil value for
 `switch-to-buffer-preserve-window-point', so we hack window point
 in `(window-prev-buffers)' to achive behaviour for nil-valued
 `switch-to-buffer-preserve-window-point'."
   (unless switch-to-buffer-preserve-window-point
-  ;(when (version< emacs-version "28.1.0")
-    (cl-assert (not (get-buffer-window)))
+    ;; (when (version< emacs-version "28.1.0")
     (when-let ((entry (assq (current-buffer) (window-prev-buffers))))
       (setf (nth 2 entry)
-            (copy-marker (point) (marker-insertion-type (nth 2 entry)))))))
+            (copy-marker (or point (point))
+                         (marker-insertion-type (nth 2 entry)))))))
+
+(defun telega-buffer--update-win-point (&optional point)
+  "Update current buffer's window points."
+  (let ((point (or point (point))))
+    (telega-buffer--hack-win-point point)
+    (dolist (win (get-buffer-window-list))
+      (set-window-point win point))))
 
 (defun telega-window-recenter (win &optional nlines from-point)
   "Set WIN's start point so there will be NLINES to FROM-POINT.
@@ -2748,16 +2823,17 @@ Also, applies `telega-image-transform-smoothing' setting."
            (nconc (list :transform-smoothing telega-image-transform-smoothing)
                   props))))
 
-(defun telega-etc-file-create-image (filename cwidth)
+(defun telega-etc-file-create-image (filename cwidth &rest props)
   "Create image from etc's FILENAME.
 Width for the resulting image will be of CWIDTH chars.
 Maximum height for the image is 1."
-  (telega-create-image (telega-etc-file filename) nil nil
-    :scale 1.0
-    :ascent 'center
-    :mask 'heuristic
-    :max-height (telega-ch-height 1)
-    :width (telega-cw-width cwidth)))
+  (apply #'telega-create-image (telega-etc-file filename) nil nil
+         :scale 1.0
+         :ascent 'center
+         :mask 'heuristic
+         :max-height (telega-ch-height 1)
+         :width (telega-cw-width cwidth)
+         props))
 
 (defconst telega-symbol-animations
   '((dots "." ".." "...")
@@ -3466,6 +3542,7 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
     s))
 
 (defun telega-stipple-fill-by-predicate (s predicate &optional no-cache-p)
+  (declare (indent 1))
   (let* ((w (nth 0 s))
          (h (nth 1 s))
          (cache-key (list w h predicate))
@@ -3518,8 +3595,16 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
           ((and (> y 1) (< y (- h 2)))
            (= x size)))))
 
-(defun telega-stipple-fill-button-middle (_x y _w h)
-  (or (= y 1) (= y (- h 2))))
+(defun telega-stipple--box-button-body-gen (style)
+  (let ((h-offset (or (telega-box-button--style-get style :h-offset) 0))
+        (sw (or (telega-box-button--style-get style :outline-width) 2)))
+    (lambda (_x y _w h)
+      (or (<= h-offset y (- sw 1))
+          (<= (- h h-offset sw) y (- h h-offset 1))))))
+
+(defun telega-stipple-hline-predicate (h-offset stroke-width)
+  (lambda (_x y _w _h)
+    (<= h-offset y (- stroke-width 1))))
 
 (defun telega-stipple-fill-sm-tag-right (x y w h)
   (let* ((r (/ w 5))

@@ -45,13 +45,13 @@
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 
 (defun telega-story-chat (story &optional offline-p)
-  (telega-chat-get (plist-get story :sender_chat_id) offline-p))
+  (telega-chat-get (plist-get story :poster_chat_id) offline-p))
 
 (defun telega-story-sender (story &optional offline-p)
   "Return STORY message sender."
-  (if-let ((sender (plist-get story :sender_id)))
+  (if-let ((sender (plist-get story :poster_id)))
       (telega-msg-sender sender)
-    ;; Prefer user as story sender to chat
+    ;; Prefer user as story poster to chat
     (let ((chat (telega-story-chat story offline-p)))
       (or (telega-chat-user chat)
           chat))))
@@ -93,7 +93,7 @@ Both callbacks are called with two arguments - story and file."
   "Ensure STORY being cached."
   (when telega-debug
     (cl-assert story))
-  (puthash (cons (plist-get story :sender_chat_id)
+  (puthash (cons (plist-get story :poster_chat_id)
                  (plist-get story :id))
            story telega--cached-stories)
 
@@ -138,7 +138,7 @@ telega-server has been made."
   ;; matcher returns msg content or link preview type
   (when-let* ((story-spec (telega-msg-match-p msg
                             '(or (type Story) (link-preview Story))))
-              (chat-id (plist-get story-spec :story_sender_chat_id))
+              (chat-id (plist-get story-spec :story_poster_chat_id))
               (story-id (plist-get story-spec :story_id)))
     (unless (or (telega-zerop chat-id) (telega-zerop story-id))
       (let ((story (telega-story-get chat-id story-id 'offline)))
@@ -367,6 +367,65 @@ telega-server has been made."
   (unless (telega-server-live-p)
     (setq telega-active-location--messages nil))
   )
+
+(defun telega-story-at (pos)
+  "Return story at POS."
+  (let ((button (button-at (or pos (point)))))
+    (when (and button (eq (button-type button) 'telega-story))
+      (button-get button :value))))
+
+(defun telega-story-forward (story)
+  "Forward STORY to a chat."
+  (interactive (list (telega-story-at (point))))
+  (cl-assert story)
+  (unless (plist-get story :can_be_forwarded)
+    (user-error "Can't forward this story"))
+
+    (let ((chat (telega-completing-read-chat
+                 (concat (telega-symbol 'forward)
+                         "Forward story to: ")
+                 ;; NOTE: Forward only to known/comments chats we can
+                 ;; write/post to.
+                 (telega-filter-chats telega--ordered-chats
+                   '(and (or is-known has-chatbuf) can-send-or-post
+                         ;; Can't forward stories to secret chats
+                         (not (type secret))))
+                 (cons 'chatbuf-current-is-last
+                       telega-chat-completing-sort-criteria))))
+
+      (telega-chat--pop-to-buffer chat)
+      (with-telega-chatbuf chat
+        (goto-char (point-max))
+        (telega-chatbuf-input-insert
+         (list :@type "inputMessageStory"
+               :story_poster_chat_id (plist-get story :poster_chat_id)
+               :story_id (plist-get story :id))))
+      ))
+
+(defun telega-describe-story (story)
+  "Describe STORY at point."
+  (interactive (list (telega-story-at (point))))
+  (with-telega-help-win "*Telegram Story Info*"
+    ;; TODO:
+    (telega-ins "TODO: describe story")
+    ))
+
+
+;;; Story button
+(defvar telega-story-button-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map button-map)
+    (define-key map [remap self-insert-command] #'undefined)
+    (define-key map (kbd "f") 'telega-story-forward)
+    (define-key map (kbd "i") 'telega-describe-story)
+    (define-key map (kbd "h") 'telega-describe-story)
+    map))
+
+(define-button-type 'telega-story
+  :supertype 'telega
+  :inserter telega-inserter-for-story-button
+  :action #'telega-story-open
+  'keymap telega-story-button-map)
 
 (provide 'telega-story)
 
