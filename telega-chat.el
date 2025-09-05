@@ -4560,18 +4560,20 @@ MARKUP-NAME names a markup function from
                                     inputMessagePhoto
                                     inputMessageVideo))
                             ;; New caption for the forwarded message?
-                            (and (eq (telega--tl-type attach)
+                            (and (eq (telega--tl-type next-attach)
                                      'telegaForwardMessage)
-                                 (plist-get attach :send_copy)
-                                 (plist-get attach :remove_caption)
+                                 (plist-get next-attach :send_copy)
+                                 (plist-get next-attach :remove_caption)
                                  (memq (telega--tl-type
-                                        (telega--tl-get attach :message :content))
+                                        (telega--tl-get next-attach
+                                                        :message :content))
                                        '(messageAnimation
                                          messagePaidMedia
                                          messagePhoto
                                          messageVideo)))))
                    (plist-put next-attach :caption
                               (telega-string-fmt-text text markup-function))
+                   (plist-put next-attach :show_caption_above_media t)
                    (setq attaches (cdr attaches))
                    (push next-attach result))
 
