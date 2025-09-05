@@ -267,7 +267,7 @@ Multiple params with same name in QUERY-STRING is disallowed."
   "Build a query string for the QUERY-PARAMS.
 QUERY-PARAMS should be in form returned from `telega-tme-parse-query-string'.
 SEMICOLONS and KEEP-EMPTY are passed directly to `url-build-query-string'."
-  
+
   (url-build-query-string
    (telega-plist-map (lambda (key val)
                        (cl-assert (keywordp key))
@@ -543,10 +543,16 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
 (provide 'telega-tme)
 
 
-(add-to-list (if (boundp 'browse-url-default-handlers)
-                 'browse-url-default-handlers
-               ;; Old Emacs
-               'browse-url-handlers)
-             (cons telega-tme--url-regexp 'browse-url-telega))
+(if (boundp 'browse-url-default-handlers)
+    (add-to-list 'browse-url-default-handlers
+                 (cons telega-tme--url-regexp 'browse-url-telega))
+  ;; Old Emacs
+  (if (and (consp browse-url-browser-function)
+           (not (functionp browse-url-browser-function)))
+      (add-to-list 'browse-url-browser-function
+                   (cons telega-tme--url-regexp 'browse-url-telega))
+    (setq browse-url-browser-function
+          (cons (cons telega-tme--url-regexp 'browse-url-telega)
+                (cons "." browse-url-browser-function)))))
 
 ;;; telega-tme.el ends here
