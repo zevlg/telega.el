@@ -2020,6 +2020,14 @@ If help message has been inserted, insert newline at the end."
                                              style :outline-color)))
                           (list :color o-color)))))))
 
+(if (version< emacs-version "28.0")
+    ;; NOTE: Emacs 27 has only one argument to `string-width'
+    (defun telega-string-width (str &optional from to)
+      (when (or from to)
+        (setq str (substring str from to)))
+      (string-width str))
+  (defalias 'telega-string-width 'string-width))
+
 (defmacro telega-ins--box-button2 (style &rest body)
   "Insert box button of STYLE."
   (declare (indent 1))
@@ -2096,10 +2104,10 @@ Return what BODY returns."
               (progn
                 ;; Correct `elide-trail' in case of multibyte chars
                 (while (and (> elide-trail 0)
-                            (> (string-width str (- str-len elide-trail))
+                            (> (telega-string-width str (- str-len elide-trail))
                                (floor (* max (- 1 elide-pos)))))
                   (setq elide-trail (1- elide-trail)))
-                (string-width str (- str-len elide-trail))))
+                (telega-string-width str (- str-len elide-trail))))
              (elide-lead (- (min max str-len) elide-width trail-width)))
         ;; Fix elide-lead in case of negative max
         ;; See https://github.com/zevlg/telega.el/issues/517
@@ -2109,7 +2117,8 @@ Return what BODY returns."
         ;; Correct `elide-lead' in case of multibyte chars, by chopping
         ;; char by char from the end of leading chars
         (while (and (> elide-lead 0)
-                    (> (+ (string-width str 0 elide-lead) elide-width trail-width)
+                    (> (+ (telega-string-width str 0 elide-lead)
+                          elide-width trail-width)
                        max))
           (setq elide-lead (1- elide-lead)))
         (add-text-properties elide-lead (- str-len elide-trail)

@@ -543,7 +543,10 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
 (provide 'telega-tme)
 
 
-(add-to-list 'browse-url-default-handlers
+(add-to-list (if (boundp 'browse-url-default-handlers)
+                 'browse-url-default-handlers
+               ;; Old Emacs
+               'browse-url-handlers)
              (cons telega-tme--url-regexp 'browse-url-telega))
 
 ;;; telega-tme.el ends here

@@ -83,12 +83,14 @@ Use `telega-root-aux-inserters' to customize it.")
 (defvar telega-idle--timer nil
   "Runs when Emacs gets idle.")
 
-(defvar-keymap telega-root-view-contacts-map
-  :doc "Keymap to view contacts."
-  "s" #'telega-view-contacts-search
-  "a" #'telega-view-contacts-all
-  "f" #'telega-view-close-friends
-  "o" #'telega-view-owned-bots)
+(defvar telega-root-view-contacts-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "s") #'telega-view-contacts-search)
+    (define-key map (kbd "a") #'telega-view-contacts-all)
+    (define-key map (kbd "f") #'telega-view-close-friends)
+    (define-key map (kbd "o") #'telega-view-owned-bots)
+    map)
+  "Keymap to view contacts.")
 
 (defvar telega-root-view-map
   (let ((map (make-sparse-keymap)))
