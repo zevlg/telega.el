@@ -64,7 +64,7 @@
 
 (defcustom telega-adblock-for '(and (type channel)
                                     (not unmuted)
-                                    (not verified))
+                                    (not (is-verified by-telegram)))
   "Chat Temex to match chats for which to apply adblock logic."
   :type 'telega-chat-temex
   :group 'telega-adblock)
