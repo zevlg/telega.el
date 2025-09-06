@@ -2081,7 +2081,7 @@ You can attach various media into chatbuf input, using next bindings:
      Attach clipboard image to the chatbuf as photo.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach clipboard as document.
 
-- @@html:<kbd>@@C-c C-e@@html:</kbd>@@ (~telega-chabuf-input-formatting-set~) :: 
+- @@html:<kbd>@@C-c C-e@@html:</kbd>@@ (~telega-chatbuf-input-formatting-set~) :: 
      Attach formatting to the region in the chatbuf input.
      Use @@html:<kbd>@@C-u@@html:</kbd>@@ to clear formatting from selected region.
 

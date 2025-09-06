@@ -1752,7 +1752,7 @@ See `mode-line-buffer-identification'."
     (:eval (telega-mode-line-align
             'center
             (telega-chatbuf-header-concat
-             " " (telega-chabuf-header-unread-messages))
+             " " (telega-chatbuf-header-unread-messages))
             telega-chat-fill-column))
     (:eval (telega-mode-line-align
             'right
