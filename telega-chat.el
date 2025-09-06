@@ -5605,13 +5605,15 @@ voice-note.  Otherwise record voice note inplace.
 If `\\[universal-argument]' is given, then attach clipboard as document."
   (interactive "P")
   (if (eq system-type 'darwin)
-      (progn
+      (let* ((temporary-file-directory telega-temp-dir)
+             (tmpfile (telega-temp-name "clipboard" ".png")))
         ;; NOTE: On MacOS, try extracting clipboard using pngpaste
         (unless (executable-find "pngpaste")
           (error "Please install pngpaste to paste images"))
-        (unless (= 0 (telega-screenshot-with-pngpaste
-                      (telega-temp-name "clipboard" ".png")))
-          (error "No image in CLIPBOARD")))
+        (unless (= 0 (telega-screenshot-with-pngpaste tmpfile))
+          (error "No image in CLIPBOARD"))
+        (telega-chatbuf-attach-media tmpfile (when doc-p 'preview)))
+
     (apply #'telega-chatbuf--yank-media
            (or (catch 'found
                  (dolist (mime-type '(image/png image/jpeg))
