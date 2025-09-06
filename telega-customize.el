@@ -1583,11 +1583,10 @@ different days. Such as:
     ("clipboard"
      (and (my-permission :can_send_photos)
           (eval
-           (or (eq system-type 'darwin) ; always try "pngpaste"
-               (let ((selection-coding-system 'no-conversion)
-                     ;; Avoid "Selection owner couldn't convert" error
-                     (or (gui-get-selection 'CLIPBOARD 'image/png)
-                         (gui-get-selection 'CLIPBOARD 'image/jpeg)))))))
+           (let ((selection-coding-system 'no-conversion))
+             (or (eq system-type 'darwin) ; always try "pngpaste"
+                 (gui-get-selection 'CLIPBOARD 'image/png)
+                 (gui-get-selection 'CLIPBOARD 'image/jpeg)))))
      telega-chatbuf-attach-clipboard)
     ("markup"
      (return t) telega-chatbuf-attach-markup)
