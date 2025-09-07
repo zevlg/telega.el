@@ -1759,9 +1759,9 @@ new Chat buffers.")
     (define-key map (kbd "C-c C-v") 'telega-chatbuf-attach-clipboard)
 
     ;;; ellit-org: chatbuf-attach-bindings
-    ;; - {{{where-is(telega-chabuf-input-formatting-set,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chabuf-input-formatting-set,2)}}}
-    (define-key map (kbd "C-c C-e") #'telega-chabuf-input-formatting-set)
+    ;; - {{{where-is(telega-chatbuf-input-formatting-set,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-input-formatting-set,2)}}}
+    (define-key map (kbd "C-c C-e") #'telega-chatbuf-input-formatting-set)
 
     ;;; ellit-org: chatbuf-filtering-bindings
     ;; - {{{where-is(telega-chatbuf-filter,telega-chat-mode-map)}}} ::
@@ -2019,7 +2019,7 @@ Use this to surrond header with some prefix and suffix."
             (propertize telega-highlight-text-regexp
                         'face 'telega-highlight-text-face))))
 
-(defun telega-chabuf-header-unread-messages ()
+(defun telega-chatbuf-header-unread-messages ()
   "Formatter for the number of unread messages."
   (telega-chatbuf--dirtiness-init
    "updateChatReadInbox"                ;unread_count
@@ -3116,7 +3116,7 @@ Recover previous active action after BODY execution."
     ))
 
 (defun telega-chatbuf--post-command ()
-  "Chabuf `post-command-hook' function."
+  "Chatbuf `post-command-hook' function."
   ;; Possible view last message if point inside the prompt
   (telega-chatbuf--manage-point (point) 'if-inside-prompt)
 
@@ -4438,7 +4438,7 @@ argument - total number of loaded messages."
       (telega-chatbuf--load-history from-msg-id
           (- 1 telega-chat-history-limit) telega-chat-history-limit))))
 
-(defun telega-chabuf-input-formatting-set (begin end ent-type)
+(defun telega-chatbuf-input-formatting-set (begin end ent-type)
   "Attach formatting to the region in the chatbuf input.
 Use `\\[universal-argument] to clear formatting from selected region."
   (interactive
