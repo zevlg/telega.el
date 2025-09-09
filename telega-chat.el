@@ -2586,7 +2586,7 @@ These users can be added to group only via invite link."
                          (telega-chatbuf-match-p
                           '(and (type supergroup)
                                 (not (info :join_to_send_messages))
-                                'can-send-or-post)))
+                                can-send-or-post)))
                      nil)
 
                     ((telega-chatbuf-match-p '(type channel))
