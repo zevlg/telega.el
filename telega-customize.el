@@ -1993,9 +1993,10 @@ So different messages could have different aux heading formatting."
   :group 'telega-msg)
 
 (defcustom telega-msg-save-dir nil
-  "*Directory to save files with `telega-msg-save' to."
+  "*Directory to save files with `telega-msg-save' to.
+If unset, always ask for a directory to save file to."
   :type '(choice (const :tag "Always ask for a directory to save to" nil)
-                 string)
+                 directory)
   :group 'telega-msg)
 
 (defcustom telega-msg-temex-show-reactions '(return t)
