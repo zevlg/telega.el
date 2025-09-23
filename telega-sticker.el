@@ -893,7 +893,7 @@ Install from https://github.com/zevlg/tgs2png"))
       (if (eq dir 'entered)
           (telega-sticker--animate sticker)
         ;; dir == left
-        (telega--cancelDownloadFile (plist-get sticker :sticker))))))
+        (telega-file--cancel-download (plist-get sticker :sticker))))))
 
 
 ;;; Animations
@@ -1024,7 +1024,7 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
                   (list #'telega-animation--ffplay-callback anim)))))
 
         ;; dir == left
-        (telega--cancelDownloadFile (plist-get anim :animation))))))
+        (telega-file--cancel-download (plist-get anim :animation))))))
 
 (defun telega-animation-choose (for-chat animations &optional window-select)
   "Choose one of the ANIMATIONS for insertation into FOR-CHAT."

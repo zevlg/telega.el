@@ -231,12 +231,11 @@ Matches only if CHAR does not apper in the middle of the word."
            ;; some username from Main chat list, then complete it
            (cl-remove-if-not
             (lambda (username)
-              (and username (string-prefix-p arg username 'ignore-case)))
-            (mapcar (lambda (chat)
-                      (when (telega-chat-match-p chat
-                              telega-company-username-complete-nonmember-for)
-                        (telega-msg-sender-username chat 'with-@)))
-                    telega--ordered-chats))
+              (and username
+                   (string-prefix-p arg (concat "@" username) 'ignore-case)))
+            (mapcar #'telega-msg-sender-username
+                    (telega-filter-chats (telega-chats-list)
+                      telega-company-username-complete-nonmember-for)))
            )))
     (annotation
      ;; Use non-nil `company-tooltip-align-annotations' to align

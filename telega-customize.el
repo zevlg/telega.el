@@ -1682,9 +1682,9 @@ timespan, then do not group messages."
   :group 'telega-chat)
 
 (defcustom telega-chat-completing-sort-criteria
-  '(chatbuf-visibility chatbuf-recency)
+  '(chatbuf-visibility chatbuf-recency order id)
   "Criteria to sort chats in `telega-completing-read-chat'."
-  :package-version '(telega . "0.6.30")
+  :package-version '(telega . "0.8.530")
   :type '(choice symbol (list symbol))
   :group 'telega-chat)
 
@@ -1776,7 +1776,7 @@ See `mode-line-buffer-identification'."
      (telega-chatbuf-footer-ins-active-video-chat)
      (telega-chatbuf-footer-ins-active-stories)
      (telega-chatbuf-footer-ins-pinned-stories)
-     (telega-chatbuf-footer-ins-invite-forbidden-users)
+     (telega-chatbuf-footer-ins-invite-failed-to-add-users)
      (telega-chatbuf-footer-ins-auto-delete-messages)
      (telega-chatbuf-footer-ins-reply-markup-buttons)
      (telega-chatbuf-footer-ins-restriction-reason)
@@ -2118,6 +2118,13 @@ Used for such messages as audio/document/etc."
 Inlined photos are displayed, when sending messages via bots, for
 example @gif `TAB' will popup buffer with inlined photos. "
   :package-version '(telega . "0.7.5")
+  :type '(list integer integer integer integer)
+  :group 'telega)
+
+(defcustom telega-album-size-limits '(16 6 70 24)
+  "*Limits overall size for the media album.
+Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
+  :package-version '(telega . "0.8.550")
   :type '(list integer integer integer integer)
   :group 'telega)
 

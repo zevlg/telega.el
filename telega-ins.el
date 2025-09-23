@@ -53,6 +53,7 @@
 (declare-function telega-chat-delete "telega-chat" (chat &optional leave-p))
 (declare-function telega-chat-admin-get "telega-chat" (chat user))
 
+(declare-function telega--full-info "telega-info" (tlobj &optional _callback))
 (declare-function telega-topic-button-action "telega-root" (chat-topic))
 
 (defun telega-ins--text-button (label &rest props)
@@ -548,6 +549,15 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
                        :no-display-if (not telega-user-show-avatars))
     ;; Setup `off-column' for "invited by" string
     (setq off-column (current-column))
+    (when-let* ((use-image-p telega-use-images)                
+                (full-info (let ((telega-full-info-offline-p nil))
+                             (telega--full-info user)))
+                (user-rating (plist-get full-info :rating)))
+      (telega-ins--with-face (assq :foreground (telega-msg-sender-palette user))
+        (telega-ins--image
+         (telega-svg-create-user-rating-image
+          (plist-get user-rating :level))))
+      (telega-ins " "))
     (telega-ins--user-status user)
 
     (when-let ((join-date (plist-get member :joined_chat_date)))
@@ -648,7 +658,7 @@ E-CHAR - empty char, default is non-break space."
            (telega-ins-fmt "%d%%]%c" progress-100 nbsp-char)
            (telega-ins--box-button (telega-i18n "lng_context_cancel_download")
              'action (lambda (_ignored)
-                       (telega--cancelDownloadFile file)))))
+                       (telega-file--cancel-download file)))))
 
         ((not (telega-file--downloaded-p file))
          (let* ((progress (telega-file--downloading-progress file))
@@ -809,7 +819,7 @@ If MUSIC-SYMBOL is specified, use it instead of play/pause."
                                       :elide t
                                       :elide-trail (/ telega-chat-fill-column 4))
           (if (telega-file--downloaded-p audio-file)
-              (let ((local-path (telega--tl-get audio-file :local :path)))
+              (let ((local-path (telega-file--path audio-file)))
                 (telega-ins--raw-button
                     (telega-link-props 'file local-path 'face 'telega-link)
                   (telega-ins (telega-short-filename local-path))))
@@ -841,7 +851,14 @@ If MUSIC-SYMBOL is specified, use it instead of play/pause."
           (telega-ins--with-face 'bold
             (telega-ins title))
           (when-let ((performer (telega-tl-str audio :performer)))
-            (telega-ins " --" performer))))
+            (telega-ins " --" performer)))
+
+        (telega-ins-prefix "\n"
+          (let ((album-id (plist-get msg :media_album_id)))
+            (unless (telega-zerop album-id)
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins "album-id: " album-id)))))
+        )
       (setq ret t))
 
     ;; Album cover
@@ -868,7 +885,7 @@ and thumbnail are shown."
     (unless (eq how 'thumbnail)
       (telega-ins (telega-symbol 'video) " ")
       (if (telega-file--downloaded-p video-file)
-          (let ((local-path (telega--tl-get video-file :local :path)))
+          (let ((local-path (telega-file--path video-file)))
             (telega-ins--raw-button
                 (telega-link-props 'file local-path 'face 'telega-link)
               (telega-ins (telega-short-filename local-path))))
@@ -1126,7 +1143,7 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachment symbol."
       (telega-ins (telega-symbol 'attachment) " "))
 
     (if (telega-file--downloaded-p doc-file)
-        (let ((local-path (telega--tl-get doc-file :local :path)))
+        (let ((local-path (telega-file--path doc-file)))
           (telega-ins--raw-button (telega-link-props 'file local-path
                                                      'face 'telega-link)
             (telega-ins (telega-short-filename local-path))))
@@ -1800,7 +1817,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
   (let ((anim-file (telega-file--renew animation :animation)))
     (telega-ins (propertize "GIF" 'face 'telega-shadow) " ")
     (if (telega-file--downloaded-p anim-file)
-        (let ((local-path (telega--tl-get anim-file :local :path)))
+        (let ((local-path (telega-file--path anim-file)))
           (telega-ins--raw-button
               (telega-link-props 'file local-path 'face 'telega-link)
             (telega-ins (telega-short-filename local-path))))
@@ -2435,16 +2452,24 @@ Special messages are determined with `telega-msg-special-p'."
                            ", ")
          :chat (telega-i18n "lng_action_invite_user_chat")))
       (messageChatSetTheme
-       (let ((theme (telega-tl-str content :theme_name))
+       (let* ((theme (plist-get content :theme))
+              (theme-name
+               (when theme
+                 (cl-ecase (telega--tl-type theme)
+                   (chatThemeEmoji
+                    (telega-tl-str theme :name))
+                   (chatThemeGift
+                    (telega-tl-str
+                     (telega--tl-get theme :gift_theme :gift) :title)))))
              (sender-me-p (telega-me-p sender)))
          (cond ((and sender-me-p theme)
                 (telega-ins-i18n "lng_action_you_theme_changed"
-                  :emoji theme))
+                  :emoji theme-name))
                (sender-me-p
                 (telega-ins-i18n "lng_action_you_theme_disabled"))
                (theme
                 (telega-ins-i18n "lng_action_theme_changed"
-                  :from sender-name :emoji theme))
+                  :from sender-name :emoji theme-name))
                (t
                 (telega-ins-i18n "lng_action_theme_disabled"
                   :from sender-name)))))
@@ -3495,8 +3520,7 @@ If SENDER is specified, use it instead of messageOrigin from FWD-INFO."
 
 (cl-defun telega-ins--message0 (msg &key no-header sender addon-header-inserter)
   "Insert message MSG.
-If NO-HEADER is non-nil, then do not display message header
-unless message is edited.
+If NO-HEADER is non-nil, then do not display message header.
 ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
   (declare (indent 1))
   (if (telega-msg-special-p msg)
@@ -3547,9 +3571,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
            (content-prefix (make-string l1width ?\s))
            (content-wrap (make-string (+ awidth l1width) ?\s)))
 
-      (if (and no-header
-               (zerop (plist-get msg :edit_date))
-               (zerop (plist-get msg :via_bot_user_id)))
+      (if no-header
           (setq content-prefix (concat header-prefix (make-string awidth ?\s)))
 
         ;; Header is required, set it up
@@ -3892,8 +3914,9 @@ If SHORT-P is non-nil then use short version."
       (telega-ins "LinkPreviewOptions")
       (telega-ins-fmt " %S" (plist-get imc :options)))
      (telegaChatTheme
-      (telega-ins "Theme: " (or (telega-tl-str imc :name)
-                                "disable")))
+      (let ((theme (plist-get imc :theme)))
+        (telega-ins "Theme: " (or (telega-tl-str theme :name)
+                                  "disable"))))
      (telegaDelimiter
       (telega-ins "Delimiter"))
      (t

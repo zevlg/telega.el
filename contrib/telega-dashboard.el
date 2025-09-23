@@ -85,8 +85,8 @@
   (if (not (telega-server-live-p))
       (insert (propertize "\n    --- telega not running ---" 'face 'error))
 
-    (let ((ichats (seq-take (telega-filter-chats
-                             telega--ordered-chats telega-dashboard-chat-filter)
+    (let ((ichats (seq-take (telega-filter-chats (telega-chats-list)
+                              telega-dashboard-chat-filter)
                             list-size)))
       (if (not ichats)
           (insert (propertize "\n    --- No important chats ---"

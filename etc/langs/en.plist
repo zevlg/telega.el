@@ -71,6 +71,8 @@
   :value "Bio:")
  ("lng_profile_photos_header"
   :value "Photos")
+ ("lng_settings_profile_photo_privacy"
+  :value "Profile photos")
  ("lng_settings_about_bio"
   :value "Any details such as age, occupation or city.
 Example: 23 y.o. designer from San Francisco")
@@ -916,6 +918,16 @@ Example: 23 y.o. designer from San Francisco")
   :value "Cancel Download")
  ("lng_context_report_msg"
   :value "Report")
+ ("lng_context_save_gif"
+  :value "Add to GIFs")
+ ("lng_context_save_music_to"
+  :value "Save to...")
+ ("lng_context_save_music_profile"
+  :value "Profile")
+ ("lng_context_save_music_saved"
+  :value "Saved Messages")
+ ("lng_context_save_music_folder"
+  :value "Downloads")
 
  ("lng_settings_sensitive_disable_filtering"
   :value "Disable filtering")
@@ -1332,6 +1344,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "{ready} of {total} {mb}")
  ("lng_media_chat_background"
   :value "Chat Wallpaper")
+ ("lng_media_music_title"
+  :value "Music")
 
  ;; media types
  ("lng_in_dlg_photo"
@@ -2123,4 +2137,31 @@ You can send them an invite link as message instead.")
 
  ("lng_monoforum_choose_to_reply"
   :value "Choose a message to reply.")
+
+ ("lng_boosts_level"
+  :value "Level")
+ ("lng_stars_rating_title"
+  :value "Rating")
+ ("lng_search_tab_public_posts"
+  :value "Public Posts")
+ ("lng_posts_search_button"
+  :value "Search {query}")
+ ("lng_posts_remaining"
+  :one_value "{count} free search remaining today"
+  :other_value "{count} free searches remaining today")
+
+ ("lng_selected_delete_sure_this"
+  :value "Do you want to delete this message?")
+ ("lng_selected_delete_sure"
+  :one_value "Do you want to delete {count} message?"
+  :other_value "Do you want to delete {count} messages?")
+ ("lng_delete_for_everyone_hint"
+  :one_value "This will delete it for everyone in this chat."
+  :other_value "This will delete them for everyone in this chat.")
+ ("lng_delete_for_me_hint"
+  :one_value "This will delete it just for you."
+  :other_value "This will delete them just for you.")
+ ("lng_delete_for_me_chat_hint"
+  :one_value "This will delete it just for you, not for other participants of the chat."
+  :other_value "This will delete them just for you, not for other participants of the chat.")
  )

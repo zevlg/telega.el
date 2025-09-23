@@ -327,7 +327,7 @@ Keymap:
                 (list #'telega-webpage--animation-ffplay-callback anim)))))
 
       (telega-ffplay-stop)
-      (telega--cancelDownloadFile (plist-get anim :animation)))))
+      (telega-file--cancel-download (plist-get anim :animation)))))
 
 (defun telega-webpage--animation-inserter (anim)
   "Inserter for the animation button."
@@ -340,7 +340,7 @@ Keymap:
 (defun telega-webpage--animation-action (anim)
   "Action to take when animation button in pressed."
   (telega-ffplay-stop)
-  (telega--cancelDownloadFile (plist-get anim :animation))
+  (telega-file--cancel-download (plist-get anim :animation) 'sync)
 
   (telega-file--download (telega-file--renew anim :animation)
     :priority 32

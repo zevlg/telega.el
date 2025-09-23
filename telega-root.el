@@ -541,8 +541,24 @@ EWOC-SPEC is plist with keyword elements:
     (setq telega-root-view--ewocs-alist
           (append telega-root-view--ewocs-alist
                   (list (cons (plist-get ewoc-spec :name) ewoc))))
-    (dolist (item (plist-get ewoc-spec :items))
+    (dolist (item (sort (plist-get ewoc-spec :items)
+                        (or (plist-get ewoc-spec :sorter) #'ignore)))
       (ewoc-enter-last ewoc item))))
+
+(defun telega-root-view--ewoc-destroy (ewoc-name)
+  "Destroy a root view ewoc named EWOC-NAME."
+  (with-telega-root-view-ewoc ewoc-name ewoc
+    (let ((start (ewoc-location (ewoc--header ewoc)))
+          (end (ewoc-location (ewoc--footer ewoc))))
+      (save-excursion
+        (goto-char end)
+        (when (looking-at telega-root-view-ewocs-delim)
+          (delete-char 1))
+        (delete-region start end))))
+
+  (setq telega-root-view--ewocs-alist
+        (cl-remove ewoc-name telega-root-view--ewocs-alist
+                   :key #'car :test #'string=)))
 
 (defun telega-root-view--ewoc-spec (ewoc-name)
   "Return ewoc spec for ewoc with name EWOC-NAME."
@@ -582,7 +598,11 @@ ITEMS is a list of loaded items to be added into ewoc."
         (seq-doseq (item (sort items (telega-root-view--ewoc-sorter ewoc-name)))
           (ewoc-enter-last ewoc item)))
 
-      (run-hooks 'telega-root-update-hook))))
+      (when (and (plist-get ewoc-spec :hide-if-empty)
+                 (telega-ewoc--empty-p ewoc))
+        (telega-root-view--ewoc-destroy ewoc-name)))
+
+    (run-hooks 'telega-root-update-hook)))
 
 (defun telega-root--keep-cursor-at-chat (chat)
   "Keep cursor position at CHAT.
@@ -824,6 +844,21 @@ CONTACT is some user you have exchanged contacts with."
       (telega-ins "\n")
       )))
 
+(defun telega-root--public-message-pp (msg &optional custom-inserter)
+  "Pretty printer for the public MSG button shown in root buffer."
+  (declare (indent 1))
+  (let ((telega-chat-button-width
+         (round (* (telega-canonicalize-number telega-chat-button-width
+                                               telega-root-fill-column)
+                   1.5)))
+        (telega-chat-button-format-plist
+         (list :with-title-faces-p nil
+               :with-username-p 'telega-username
+               :with-members-trail-p t
+               :with-status-icons-trail-p t))
+        (telega-temex-remap-list '((chat chat-list . (return t)))))
+    (telega-root--message-pp msg custom-inserter)))
+
 (defun telega-root--message-call-pp (msg)
   "Pretty printer for call MSG button shown in root buffer."
   (telega-root--message-pp msg #'telega-ins--root-msg-call))
@@ -1015,13 +1050,15 @@ If corresponding chat node does not exists in EWOC, then create new one."
 (defun telega-root--loading-animate ()
   "Animate loading dots for the footers of search ewocs."
   (let ((need-animation-p nil))
-    (dolist (ewoc (mapcar #'cdr telega-root-view--ewocs-alist))
-      (let ((new-footer (telega--animate-dots (cdr (ewoc-get-hf ewoc)))))
-        (when new-footer
-          (with-telega-root-buffer
-            (telega-save-cursor
-              (setq need-animation-p t)
-              (telega-ewoc--set-footer ewoc (concat new-footer "\n")))))))
+    (dolist (view-ewoc telega-root-view--ewocs-alist)
+      (when-let* ((ewoc-spec (telega-root-view--ewoc-spec (car view-ewoc)))
+                  (loading (plist-get ewoc-spec :loading))
+                  (ewoc (cdr view-ewoc))
+                  (new-footer (telega--animate-dots (cdr (ewoc-get-hf ewoc)))))
+        (with-telega-root-buffer
+          (telega-save-cursor
+            (setq need-animation-p t)
+            (telega-ewoc--set-footer ewoc (concat new-footer "\n"))))))
 
     (unless need-animation-p
       (cancel-timer telega-loading--timer)
@@ -1040,16 +1077,25 @@ If corresponding chat node does not exists in EWOC, then create new one."
   (telega-root-view--ewoc-loading-done
    ewoc-name (plist-get found-messages :messages))
 
-  ;; NOTE: if `next_offset' is non-empty, then more messages are
-  ;; available
-  (when-let ((next-offset (telega-tl-str found-messages :next_offset)))
-    (with-telega-root-view-ewoc ewoc-name ewoc
-      (telega-save-cursor
-        (telega-ewoc--set-footer ewoc
-          (telega-ins--as-string
-           (telega-ins--box-button "Load More"
-             :value next-offset
-             :action search-func)))))))
+  (let ((total-count (plist-get found-messages :total_count))
+        (next-offset (telega-tl-str found-messages :next_offset)))
+    (cond ((zerop total-count)
+           (with-telega-root-view-ewoc ewoc-name ewoc
+             (telega-save-cursor
+               (telega-ewoc--set-footer ewoc
+                 (telega-ins--as-string
+                  (telega-ins--help-message
+                   (telega-ins-i18n "lng_search_no_results")))))))
+          (next-offset
+           ;; NOTE: if `next_offset' is non-empty, then more messages
+           ;; are available
+           (with-telega-root-view-ewoc ewoc-name ewoc
+             (telega-save-cursor
+               (telega-ewoc--set-footer ewoc
+                 (telega-ins--as-string
+                  (telega-ins--box-button "Load More"
+                    :value next-offset
+                    :action search-func)))))))))
 
 (defun telega-root--messages-search (&optional offset)
   "Search for messages in all chats."
@@ -1075,6 +1121,36 @@ If corresponding chat node does not exists in EWOC, then create new one."
                    #'telega-root--found-messages-add
                    "outgoing-doc-messages"
                    #'telega-root--outgoing-doc-messages-search)))))
+
+(defun telega-root--public-posts-search (&optional offset)
+  (let* ((ewoc-spec (telega-root-view--ewoc-spec "public-posts"))
+         (query (plist-get ewoc-spec :search-query)))
+    (cl-assert query)
+    (telega-root-view--ewoc-loading-start "public-posts"
+      (telega--searchPublicPosts query
+        :offset offset
+        :callback (apply-partially
+                   #'telega-root--found-messages-add
+                   "public-posts"
+                   #'telega-root--public-posts-search)))))
+
+(defun telega-root--public-posts-limits (pp-limits)
+  "Callback for the `telega--getPublicPostSearchLimits'."
+  (let* ((ewoc-spec (telega-root-view--ewoc-spec "public-posts"))
+         (query (plist-get ewoc-spec :search-query)))
+    (plist-put ewoc-spec :loading nil)
+    (with-telega-root-view-ewoc "public-posts" ewoc
+      (telega-save-cursor
+        (telega-ewoc--set-footer ewoc
+          (telega-ins--as-string
+           (telega-ins--box-button (telega-i18n "lng_posts_search_button"
+                                     :query query)
+             :value ""             ; `offset' arg to action func
+             :action #'telega-root--public-posts-search)
+           (telega-ins "\n")
+           (telega-ins--help-message
+            (telega-ins-i18n "lng_posts_remaining"
+              :count (plist-get pp-limits :remaining_free_query_count)))))))))
 
 (defun telega-root--call-messages-search (&optional offset)
   "Search for call messages."
@@ -1331,7 +1407,7 @@ VIEW-FILTER is additional chat filter for this root view."
                               (telega-root--chat-known-pp chat custom-inserter))
                           #'telega-root--chat-known-pp)
         :sorter #'telega-chat>
-        :items telega--ordered-chats
+        :items (telega-chats-list)
         :on-chat-update #'telega-root--any-on-chat-update
         :on-message-update
         (unless (eq custom-inserter #'telega-ins--chat-compact)
@@ -1412,6 +1488,7 @@ VIEW-FILTER is additional chat filter for this root view."
          (list :name "contacts"
                :pretty-printer #'telega-root--contact-pp
                :header (upcase (telega-i18n "lng_contacts_header"))
+               :hide-if-empty t
                :search-query query
                :sorter #'telega-user-cmp-by-status
                :loading (telega--searchContacts query nil
@@ -1422,6 +1499,7 @@ VIEW-FILTER is additional chat filter for this root view."
          (list :name "recent"
                :pretty-printer #'telega-root--global-chat-pp
                :header (upcase (telega-i18n "lng_recent_title"))
+               :hide-if-empty t
                :search-query query
                :sorter #'telega-chat>
                :loading (telega--searchRecentlyFoundChats query nil
@@ -1431,6 +1509,7 @@ VIEW-FILTER is additional chat filter for this root view."
          (list :name "global"
                :pretty-printer #'telega-root--global-chat-pp
                :header "GLOBAL CHATS"
+               :hide-if-empty t
                :search-query query
                :sorter #'telega-chat>
                :loading (telega--searchPublicChats query
@@ -1441,6 +1520,16 @@ VIEW-FILTER is additional chat filter for this root view."
          (list :name "outgoing-doc-messages"
                :pretty-printer #'telega-root--message-pp
                :header "OUTGOING DOCUMENTS"
+               :hide-if-empty t
+               :search-query query
+               :sorter #'telega-root--messages-sorter
+               :on-message-update #'telega-root--on-message-update)
+
+         (list :name "public-posts"
+               :pretty-printer #'telega-root--public-message-pp
+               :header (upcase (telega-i18n "lng_search_tab_public_posts"))
+               :loading (telega--getPublicPostSearchLimits query
+                          #'telega-root--public-posts-limits)
                :search-query query
                :sorter #'telega-root--messages-sorter
                :on-message-update #'telega-root--on-message-update)
@@ -1533,8 +1622,8 @@ If QUERY is empty string, then show all contacts."
          "Last Messages"
          (list :name "root"
                :pretty-printer #'telega-root--chat-last-message-pp
-               :items telega--ordered-chats
                :sorter #'telega-chat>
+               :items (telega-chats-list)
                :on-chat-update #'telega-root--any-on-chat-update))))
 
 (defun telega-view-calls (arg)
@@ -1570,7 +1659,8 @@ If `\\[universal-argument]' is given, then view missed calls only."
          (list :name "blocked"
                :sorter #'telega-chat>
                :pretty-printer #'telega-root--blocked-chat-pp
-               :items (telega-filter-chats telega--ordered-chats 'is-blocked)
+               :items (telega-filter-chats (telega-chats-list)
+                        'is-blocked)
                :on-chat-update #'telega-root--any-on-chat-update))))
 
 (defun telega-root--grouping-on-chat-update (ewoc-name ewoc chat)
@@ -1594,7 +1684,8 @@ If `\\[universal-argument]' is given, then view missed calls only."
           :header (funcall (if no-upcase-p #'identity #'upcase) group-name)
           :pretty-printer #'telega-root--chat-known-pp
           :sorter #'telega-chat>
-          :items (telega-filter-chats telega--ordered-chats group-temex)
+          :items (telega-filter-chats (telega-chats-list)
+                   group-temex)
           :on-chat-update #'telega-root--grouping-on-chat-update)))
 
 (defun telega-view-grouping ()
@@ -1629,7 +1720,8 @@ If `\\[universal-argument]' is given, then view missed calls only."
                   :header "OTHER CHATS"
                   :pretty-printer #'telega-root--chat-known-pp
                   :sorter #'telega-chat>
-                  :items (telega-filter-chats telega--ordered-chats other-temex)
+                  :items (telega-filter-chats (telega-chats-list)
+                           other-temex)
                   :on-chat-update #'telega-root--grouping-on-chat-update)))))))
 
 (defun telega-view-top--sorter (chat1 chat2)
@@ -1904,7 +1996,7 @@ Default Disable Notification setting"))
           :pretty-printer (telega-view-folders--gen-pp folder-name)
           :header (telega-folder-format "%i%f" folder-name)
           :sorter (telega-view-folders--gen-sorter folder-name)
-          :items (telega-filter-chats telega--ordered-chats
+          :items (telega-filter-chats (telega-chats-list)
                    (list 'folder folder-name))
           :on-chat-update #'telega-root--folders-on-chat-update)))
 
@@ -2001,7 +2093,7 @@ Default Disable Notification setting"))
            (telega-ins "  ")
            (telega-ins--text-button (telega-i18n "lng_context_cancel_download")
              :value file
-             :action #'telega--cancelDownloadFile))
+             :action #'telega-file--cancel-download))
           ((eq 'telega-file--partially-downloaded-p predicate)
            (telega-ins "  ")
            (telega-ins--box-button (telega-i18n "lng_media_download")
@@ -2139,8 +2231,8 @@ state kinds to show. By default all kinds are shown."
    (nconc (list 'telega-view-favorite-messages
                 (concat (telega-symbol 'favorite) "Favorite Messages"))
           (mapcar #'telega-view-favorite-msg--ewoc-spec
-                  (telega-filter-chats
-                   telega--ordered-chats 'has-favorite-messages)))))
+                  (telega-filter-chats (telega-chats-list)
+                    'has-favorite-messages)))))
 
 (defun telega-view-similar-bots (bot)
   "View bots similar to a BOT user."
@@ -2148,7 +2240,8 @@ state kinds to show. By default all kinds are shown."
    (list (telega-chat-user
           (telega-completing-read-chat
            (concat (telega-i18n "lng_bot_choose_chat") ": ")
-           (telega-filter-chats telega--ordered-chats '(type bot))))))
+           (telega-filter-chats (telega-chats-list)
+             '(type bot))))))
 
   (telega-root-view--apply
    (list 'telega-view-similar-bots
@@ -2169,15 +2262,16 @@ state kinds to show. By default all kinds are shown."
 
 (defun telega-view-similar-channels (chat)
   "View channels similar to the given CHAT."
-  (interactive (let ((chat (or (telega-chat-at (point))
-                               (telega-completing-read-chat
-                                (capitalize
-                                 (concat (telega-i18n "lng_channel_badge") ": "))
-                                (telega-filter-chats telega--ordered-chats
-                                  '(and is-known (type channel)))))))
-                 (unless (and chat (telega-chat-channel-p chat))
-                   (user-error "telega: need channel at point"))
-                 (list chat)))
+  (interactive
+   (let ((chat (or (telega-chat-at (point))
+                   (telega-completing-read-chat
+                    (capitalize
+                     (concat (telega-i18n "lng_channel_badge") ": "))
+                    (telega-filter-chats (telega-chats-list)
+                      '(and is-known (type channel)))))))
+     (unless (and chat (telega-chat-channel-p chat))
+       (user-error "telega: need channel at point"))
+     (list chat)))
 
   (telega-root-view--apply
    (list 'telega-view-similar-channels
@@ -2202,7 +2296,7 @@ state kinds to show. By default all kinds are shown."
                  ichat))
              (telega-completing-read-chat
               (concat (telega-i18n "lng_bot_choose_chat") ": ")
-              (telega-filter-chats telega--ordered-chats
+              (telega-filter-chats (telega-chats-list)
                 '(and is-known (type bot channel)))))))
 
   (cond ((telega-chat-match-p chat '(type channel))

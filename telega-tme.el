@@ -129,9 +129,8 @@ PARAMS are additional params."
                       ;; TODO: i18n
                       (format "Start «%s» in group: "
                               (propertize (concat "@" username) 'face 'bold))
-                      (telega-filter-chats
-                       telega--ordered-chats
-                       '(my-permission :can_invite_users)))))
+                      (telega-filter-chats (telega-chats-list)
+                        '(my-permission :can_invite_users)))))
            (telega-chat--pop-to-buffer chat)
            (telega--sendBotStartMessage
             bot-user chat (plist-get params :startgroup))))
@@ -535,7 +534,7 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
        ))
     ))
 
-(defun browse-url-telega (url &rest args)
+(defun browse-url-telega (url &rest _args)
   "Browse Telegram urls with telega."
   (telega-tme-open url))
 (function-put 'browse-url-telega 'browse-url-browser-kind 'internal)

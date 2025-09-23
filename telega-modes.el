@@ -174,9 +174,11 @@ If MESSAGES-P is non-nil then use number of unread unmuted messages."
 (defun telega-mode-line-mentions (&optional messages-p)
   "Format number of chats/messages with mentions.
 If MESSAGES-P is non-nil then use number of messages with mentions."
-  (let* ((m-chats (telega-filter-chats telega--ordered-chats '(mention)))
+  (let* ((m-chats (telega-filter-chats (telega-chats-list)
+                    '(mention)))
          (m-count (if messages-p
-                      (apply '+ (mapcar (telega--tl-prop :unread_mention_count) m-chats))
+                      (apply '+ (mapcar (telega--tl-prop :unread_mention_count)
+                                        m-chats))
                     (length m-chats))))
     (unless (zerop m-count)
       (concat
@@ -431,8 +433,8 @@ Return filename of the generated icon."
            (mentions-num
             (or (when (and telega-appindicator-use-label
                            telega-appindicator-show-mentions)
-                  (length (telega-filter-chats
-                           telega--ordered-chats '(mention))))
+                  (length (telega-filter-chats (telega-chats-list)
+                            '(mention))))
                 0))
            (mentions-str
             (unless (zerop mentions-num)
@@ -460,7 +462,8 @@ Return filename of the generated icon."
          (x-focus-frame nil)
          (telega)
          ;; If there is single important chat, then switch to it
-         (let ((ichats (telega-filter-chats telega--ordered-chats 'important)))
+         (let ((ichats (telega-filter-chats (telega-chats-list)
+                         'important)))
            (when (= 1 (length ichats))
              (telega-switch-important-chat (car ichats)))))
 
@@ -570,7 +573,7 @@ Play in muted mode."
 Cancel downloading of the corresporting file."
   (when (telega-msg-match-p msg telega-autoplay-msg-temex)
     (when-let ((file (telega-msg--content-file msg)))
-      (telega--cancelDownloadFile file))))
+      (telega-file--cancel-download file))))
 
 ;;;###autoload
 (define-minor-mode telega-autoplay-mode
@@ -825,8 +828,7 @@ Could be used as condition function in `display-buffer-alist'."
   ;; NOTE: Use `pop-to-buffer' so `display-buffer-alist' is considered
   ;; when showing the image
   (pop-to-buffer-same-window
-   (with-current-buffer (find-file-noselect
-                         (telega--tl-get tl-file :local :path) nil t)
+   (with-current-buffer (find-file-noselect (telega-file--path tl-file) nil t)
      (telega-image-mode)
      (setq telega-image--message for-msg)
      (telega-image-mode--update-modeline)
@@ -1037,7 +1039,7 @@ Can be enabled only for content from editable messages."
   "Callback for the file uploading progress.
 UFILE specifies Telegram file being uploading."
   (cond ((telega-file--uploaded-p ufile)
-         (message "Uploaded %s (%s%s)" (telega--tl-get ufile :local :path)
+         (message "Uploaded %s (%s%s)" (telega-file--path ufile)
                   (file-size-human-readable (telega-file--size ufile))
                   (if (< (telega-file--size ufile) 1024)
                       " bytes"
@@ -1649,7 +1651,7 @@ Set to nil to disable active video chats in the modeline."
   (if telega-active-video-chats-mode
       (progn
         (setq telega-active-video-chats--chats
-              (telega-filter-chats telega--ordered-chats
+              (telega-filter-chats (telega-chats-list)
                 telega-active-video-chats-temex))
 
         (unless (memq telega-active-video-chats-mode-line-format

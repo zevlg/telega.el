@@ -237,7 +237,7 @@
               (chat
                (telega-completing-read-chat
                 (concat (telega-tl-str kbd-button :text) ": ")
-                (telega-filter-chats telega--ordered-chats
+                (telega-filter-chats (telega-chats-list)
                   chat-temex))))
          (when chat
            (telega--shareChatWithBot msg (plist-get kbd-type :id) chat))))
@@ -305,7 +305,7 @@
            (thumb-file (when thumb (telega-file--renew thumb :file)))
            (thumb-img (when (telega-file--downloaded-p thumb-file)
                         (telega-create-image
-                            (telega--tl-get thumb-file :local :path) nil nil
+                            (telega-file--path thumb-file) nil nil
                           :scale 1.0
                           :ascent 'center
                           :height (telega-ch-height 1)))))

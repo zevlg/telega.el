@@ -137,7 +137,7 @@ As side-effect might update root view, if current root view is \"Files\"."
 PRIORITY - (1-32) the higher the PRIORITY, the earlier the file
 will be downloaded. (default=1)
 Run UPDATE-CALLBACK every time FILE gets updated.
-To cancel downloading use `telega--cancelDownloadFile', it will
+To cancel downloading use `telega-file--cancel-download', it will
 remove the UPDATE-CALLBACK as well.
 OFFSET and LIMIT specifies file part to download."
   (declare (indent 1))
@@ -159,44 +159,86 @@ OFFSET and LIMIT specifies file part to download."
                  (telega-file--downloading-p file)))))
 
           ((telega-file--can-download-p dfile)
-           ;; NOTE: There might be pending updateFile event after
-           ;; calling `telega--cancelDownloadFile', and it will remove
-           ;; our newly installed callback, so we install it
-           ;; permanently (by returning t) and remove after
-           ;; `telega--downloadFile' completes
-           (let ((cb (when update-callback
-                       (lambda (file)
-                         (funcall update-callback file)
-                         t))))
-             (when cb
-               (telega-file--add-update-callback file-id cb))
+           (when update-callback
+             (telega-file--add-update-callback file-id
+               (lambda (file)
+                 (funcall update-callback file)
+                 (telega-file--downloading-p file))))
 
+             ;; NOTE: Mark file as being downloading before calling
+             ;; `telega--downloadFile', so subsequent calls to
+             ;; `telega-file--download' won't call to
+             ;; `telega--downloadFile' multiple times
+             (plist-put (plist-get file :local) :is_downloading_active t)
              (telega--downloadFile file-id
                :priority priority
                :offset offset
                :limit limit
-               :sync-p t
-               :callback
-               (when cb
-                 (lambda (file-or-error)
-                   (unless (telega--tl-error-p file-or-error)
-                     (telega-file--update file-or-error 'force))
-                   (telega-file--del-update-callback file-id cb)))))))))
+               :callback #'ignore)))))
+
+(defun telega-file--cancel-download (file &optional sync-p)
+  "Cancel downloading a FILE.
+If SYNC-P is specified, wait for file being canceled to download."
+  (telega--cancelDownloadFile file nil (unless sync-p #'ignore)))
 
 ;; NOTE: `telega--downloadFile' downloads data in pretty random order
 ;; Use `telega-file--split-to-parts' to split file to parts for
 ;; sequentual downloading.
-(defun telega-file--split-to-parts (file chunk-size)
+(defun telega-file--split-to-parts (file chunk-size &optional from to)
   "Split FILE by CHUNK-SIZE and return parts list."
-  (let ((size (telega-file--size file))
+  (let ((from (or from 0))
+        (to (or to (telega-file--size file)))
         (parts nil))
-    (while (> size 0)
-      (setq size (- size chunk-size))
-      (when (< size 0)
-        (setq chunk-size (+ chunk-size size)
-              size 0))
-      (setq parts (cons (cons size chunk-size) parts)))
-    parts))
+    (while (< from to)
+      (when (> (+ from chunk-size) to)
+        (setq chunk-size (- to from)))
+      (push (cons from chunk-size) parts)
+      (setq from (+ from chunk-size)))
+    (nreverse parts)))
+
+(cl-defun telega-file--download-incrementally (file parts
+                                                    &key (priority 32)
+                                                    update-callback
+                                                    internal-update-callback)
+  "Download file incrementally by CHUNK-SIZE."
+  (declare (indent 2))
+  (when (and update-callback (not internal-update-callback))
+    (setq internal-update-callback
+          (lambda (dfile)
+            (when (or (telega-file--downloading-p dfile)
+                      (telega-file--downloaded-p dfile))
+              ;; Ignore start/stop downloading flickering while
+              ;; fetching parts of the file
+              (funcall update-callback dfile))
+            (not (telega-file--downloaded-p dfile))))
+    (telega-file--add-update-callback
+        (plist-get file :id) internal-update-callback))
+
+  (let ((file-id (plist-get file :id))
+        (file-part (car parts))
+        (other-parts (cdr parts)))
+    (telega--downloadFile file-id
+      :priority priority
+      :offset (car file-part)
+      :limit (cdr file-part)
+      :sync-p t
+      :callback
+      (lambda (dfile)
+        (if (telega--tl-error-p dfile)
+            (progn
+              (telega-file--del-update-callback file-id internal-update-callback)
+              ;; NOTE: file is not yet updated properly, so we use
+              ;; `getFile' to update it
+              (let ((nfile (telega--getFile file-id)))
+                (telega-file--ensure nfile)
+                (funcall update-callback nfile)))
+          
+          (funcall update-callback dfile 'chunk-done)
+          (when other-parts
+            (telega-file--download-incrementally dfile other-parts
+              :update-callback update-callback
+              :internal-update-callback internal-update-callback))))
+      )))
 
 (cl-defun telega-file--upload (filename &key file-type priority
                                         update-callback)
@@ -321,7 +363,7 @@ If FOR-MSG is non-nil, then FOR-MSG is message containing PHOTO."
           (when (telega--tl-get for-msg :content :is_secret)
             (telega--openMessageContent for-msg))
           (if (memq 'photo telega-open-message-as-file)
-              (telega-open-file (telega--tl-get tl-file :local :path) for-msg)
+              (telega-open-file (telega-file--path tl-file) for-msg)
             (telega-image-view-file tl-file for-msg)))))))
 
 
@@ -528,15 +570,16 @@ Return nil if preview image is unavailable."
     (let* ((create-svg-fun (or telega-preview--create-svg-one-line-function
                                #'telega-photo-preview--create-svg-one-line))
            (best (telega-photo--best photo '(1 1 1 1)))
+           (best-file (plist-get best :photo))
            (minithumb (plist-get photo :minithumbnail))
            (cached-preview (unless telega-preview--inhibit-cached-preview
                              (plist-get photo :telega-preview-1)))
            (preview-new
-            (cond ((and (telega-file--downloaded-p (plist-get best :photo))
+            (cond ((and (telega-file--downloaded-p best-file)
                         (not (eq 'best (car cached-preview))))
                    (cons 'best
                          (funcall create-svg-fun
-                                  (telega--tl-get best :photo :local :path)
+                                  (telega-file--path best-file)
                                   nil
                                   (plist-get best :width)
                                   (plist-get best :height))))
@@ -561,6 +604,7 @@ Return nil if preview image is unavailable."
     (let* ((create-svg-fun (or telega-preview--create-svg-one-line-function
                                #'telega-video-preview--create-svg-one-line))
            (thumb (plist-get video :thumbnail))
+           (thumb-file (plist-get thumb :file))
            (minithumb (plist-get video :minithumbnail))
            (cached-preview (unless telega-preview--inhibit-cached-preview
                              (plist-get video :telega-preview-1)))
@@ -568,11 +612,11 @@ Return nil if preview image is unavailable."
             (cond ((and thumb
                         (memq (telega--tl-type (plist-get thumb :format))
                               '(thumbnailFormatJpeg thumbnailFormatPng))
-                        (telega-file--downloaded-p (plist-get thumb :file))
+                        (telega-file--downloaded-p thumb-file)
                         (not (eq 'best (car cached-preview))))
                    (cons 'best
                          (funcall create-svg-fun
-                                  (telega--tl-get thumb :file :local :path)
+                                  (telega-file--path thumb-file)
                                   nil
                                   (plist-get thumb :width)
                                   (plist-get thumb :height))))
@@ -614,7 +658,7 @@ Return nil if preview image is unavailable."
       (cond ((and (memq (telega--tl-type (plist-get thumb :format))
                         '(thumbnailFormatJpeg thumbnailFormatPng))
                   (telega-file--downloaded-p thumb-file))
-             (setq base-uri-fname (telega--tl-get thumb-file :local :path))
+             (setq base-uri-fname (telega-file--path thumb-file))
              (telega-svg-embed-image-fitting
               svg base-uri-fname nil
               (plist-get thumb :width) (plist-get thumb :height)))
@@ -809,7 +853,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
   ;;   is increased, there will be no gap between two slices
   (unless cheight (setq cheight 2))
   (let* ((base-dir (telega-directory-base-uri telega-database-dir))
-         (photofile (telega--tl-get file :local :path))
+         (photofile (telega-file--path file))
          (factors (alist-get cheight telega-avatar-factors-alist))
          (cfactor (or (car factors) 0.9))
          (mfactor (or (cdr factors) 0.1))
@@ -980,7 +1024,7 @@ SENDER can be a nil, meaning venue location is to be displayed."
                                 (cl-assert (telega-chat-p sender))
                                 (telega--tl-get sender :photo :small))))
       (when (telega-file--downloaded-p sender-photo)
-        (let* ((photofile (telega--tl-get sender-photo :local :path))
+        (let* ((photofile (telega-file--path sender-photo))
                (img-type (telega-image-supported-file-p photofile))
                (clip-name (make-temp-name "user-clip"))
                (clip (telega-svg-clip-path svg clip-name))
@@ -1067,7 +1111,7 @@ SENDER can be a nil, meaning venue location is to be displayed."
   (let* ((base-dir (telega-directory-base-uri telega-database-dir))
          (map-photo (telega-file--renew map :photo))
          (map-photofile (when map-photo
-                          (telega--tl-get map-photo :local :path)))
+                          (telega-file--path map-photo)))
          ;; NOTE: `raw-map-sender' is nil for `venue' locations
          (raw-map-sender (plist-get map :sender_id))
          (map-sender (when raw-map-sender

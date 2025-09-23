@@ -47,10 +47,7 @@ DIRTINESS specifies additional CHAT dirtiness."
                   (telega-chat-title chat) chat-dirtiness)
 
     (when dirtiness
-      (plist-put chat :telega-dirtiness chat-dirtiness)
-      (when (memq 'reorder dirtiness)
-        (setq telega--ordered-chats (delq chat telega--ordered-chats))
-        (telega--ordered-chats-insert chat))))
+      (plist-put chat :telega-dirtiness chat-dirtiness)))
 
   ;; Update root ewocs, filters and chatbuf
   (telega-root-view--update :on-chat-update chat)
@@ -88,17 +85,7 @@ DIRTINESS specifies additional CHAT dirtiness."
 (defun telega-chats-dirty--update ()
   "Update dirty chats."
   (let* ((dirty-chats (prog1 telega--dirty-chats
-                        (setq telega--dirty-chats nil)))
-         (reorder-chats
-          (cl-remove-if-not #'telega-chat-order-dirty-p dirty-chats)))
-    ;; NOTE: To reorder REORDER-CHATS we fist remove all of them from
-    ;; the ordered chat list and then insert them one by one, so
-    ;; chat's dirty orders won't affect insertion point
-    (dolist (rc reorder-chats)
-      (setq telega--ordered-chats (delq rc telega--ordered-chats)))
-    (dolist (rc reorder-chats)
-      (telega--ordered-chats-insert rc))
-
+                        (setq telega--dirty-chats nil))))
     (dolist (dc dirty-chats)
       (telega-chat--update dc))))
 
@@ -479,7 +466,7 @@ NOTE: we store the number as custom chat property, to use it later."
 (defun telega--on-updateChatTheme (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
-    (plist-put chat :theme_name (plist-get event :theme_name))
+    (plist-put chat :theme (plist-get event :theme))
     (telega-chat--mark-dirty chat event)))
 
 (defun telega--on-updateChatMessageAutoDeleteTime (event)
@@ -495,10 +482,7 @@ NOTE: we store the number as custom chat property, to use it later."
     (telega--info-update secretchat)
 
     ;; update corresponding secret chat button
-    (when-let ((chat (cl-find secretchat
-                              (telega-filter-chats
-                               telega--ordered-chats '(type secret))
-                              :test 'eq :key #'telega-chat--info-locally)))
+    (when-let ((chat (telega-chat-by-secretchat secretchat)))
       (telega-chat--mark-dirty chat event))))
 
 (defun telega--on-blocked-senders-load (reply)
@@ -538,7 +522,12 @@ NOTE: we store the number as custom chat property, to use it later."
     ;; side messages ignoring.  Also trigger reordering, since
     ;; ignoring last message might affect chat order, see
     ;; `contrib/telega-adblock.el'
-    (dolist (chat telega--ordered-chats)
+    ;; 
+    ;; TODO: do it only for chats displayed in the rootbuf
+    ;; maybe use `telega-chats-fetched-hook' in the telega-root code
+    ;; to do this
+    (maphash
+     (lambda (_chat-id chat)
       (when-let ((last-message (plist-get chat :last_message)))
         (when (telega-msg-run-ignore-predicates last-message 'last-msg)
           (telega-chat--update chat 'reorder))
@@ -554,6 +543,7 @@ NOTE: we store the number as custom chat property, to use it later."
         (when telega-use-images
           (telega-msg--custom-emojis-fetch last-message))
         ))
+     telega--chats)
 
     (run-hooks 'telega-chats-fetched-hook)))
 
@@ -615,8 +605,8 @@ NOTE: we store the number as custom chat property, to use it later."
       (telega-folder-name--fetch-custom-emojis
        (telega-folder--chat-folder-info folder-name))
 
-      (dolist (fchat (telega-filter-chats
-                      telega--ordered-chats `(folder ,folder-name)))
+      (dolist (fchat (telega-filter-chats (telega-chats-list)
+                       `(folder ,folder-name)))
         (telega-chat--mark-dirty fchat)))
     (telega-chats-dirty--update)
 
@@ -1078,9 +1068,9 @@ messages."
   (when telega-animation-download-saved
     (mapc 'telega--downloadFile telega--animations-saved)))
 
-(defun telega--on-updateChatThemes (event)
+(defun telega--on-updateEmojiChatThemes (event)
   "List of chat themes has been updated."
-  (setq telega--chat-themes
+  (setq telega--chat-emoji-themes
         (append (plist-get event :chat_themes) nil))
   )
 
@@ -1093,8 +1083,7 @@ messages."
   (let ((basicgroup (plist-get event :basic_group)))
     (telega--info-update basicgroup)
 
-    (when-let ((chat (cl-find basicgroup telega--ordered-chats
-                              :test 'eq :key #'telega-chat--info-locally)))
+    (when-let ((chat (telega-chat-by-basicgroup basicgroup)))
       ;; NOTE: Updating basicgroup info might affect sorting or/and
       ;; chatbuf's prompt
       (when (or telega--sort-criteria
@@ -1125,10 +1114,8 @@ messages."
     (when-let ((v-status (plist-get supergroup :verification_status)))
       (telega--verification-fetch-custom-emoji v-status))
 
-    (when-let ((chat (cl-find supergroup telega--ordered-chats
-                              :test #'eq
-                              :key #'telega-chat--supergroup-locally)))
-      ;; Fetch forum topics in async manner
+    (when-let ((chat (telega-chat-by-supergroup supergroup)))
+      ;; Fetch chat topics in async manner
       (when (and (not (plist-get old-supergroup :is_forum))
                  (plist-get supergroup :is_forum)
                  (telega-chat-match-p chat telega-chat-load-topics-early-for))
@@ -1495,14 +1482,6 @@ Please downgrade TDLib and recompile `telega-server'"
     (when node
       (with-telega-chatbuf chat
         (telega-chatbuf--redisplay-node node)))
-    ))
-
-(defun telega--on-updateAddChatMembersPrivacyForbidden (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id)))
-        (users (mapcar #'telega-user-get (plist-get event :user_ids))))
-    (plist-put chat :telega-add-member-forbidden-users users)
-    (with-telega-chatbuf chat
-      (telega-chatbuf--footer-update))
     ))
 
 ;; Stories

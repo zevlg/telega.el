@@ -308,18 +308,20 @@ To be marked as ignored it need to have at least one external link."
            (last-p (>= (plist-get msg :id)
                        (or (telega--tl-get chat :last_message :id) 0)))
            (media-file (telega-msg--content-file msg))
-           (chats-list telega--ordered-chats)
            (other-messages nil))
       (when (and last-p media-file (not (plist-get msg :forward_info)))
-        (while (and chats-list
-                    (not (eq chat (car chats-list)))
-                    (< (length other-messages)
-                                  3     ;Trigger number
-                                  ))
-          (when-let* ((ochat (car chats-list))
-                      (olast-msg (plist-get ochat :last_message))
-                      (ofile (telega-msg--content-file olast-msg)))
-            (setq other-messages (cons olast-msg other-messages)))))
+        (telega-chat-by
+         (lambda (ochat)
+           (when (telega-chat> ochat chat)
+             (let* ((olast-msg (plist-get ochat :last_message))
+                    (ofile (telega-msg--content-file olast-msg)))
+               (when (equal (telega--tl-get ofile :remote :id)
+                            (telega--tl-get media-file :remote :id))
+                 (setq other-messages (cons olast-msg other-messages)))))
+
+           (>= (length other-messages)
+               3     ;Trigger number
+               ))))
 
       (>= (length other-messages) 3))))
 

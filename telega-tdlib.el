@@ -180,13 +180,12 @@ Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
 (defun telega--createNewBasicGroupChat (title users &optional callback)
   "Create new basicgroup with TITLE and USERS.
 Return (or call the CALLBACK with) newly created chat."
-  (with-telega-server-reply (reply)
-      (telega-chat-get (plist-get reply :id))
-
-    (list :@type "createNewBasicGroupChat"
-          :user_ids (cl-map #'vector (telega--tl-prop :id) users)
-          :title title)
-    callback))
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "createNewBasicGroupChat"
+         :user_ids (cl-map #'vector (telega--tl-prop :id) users)
+         :title title)
+   callback))
 
 (cl-defun telega--createNewSupergroupChat (title &key forum-p channel-p
                                                  description location callback)
@@ -852,7 +851,7 @@ Return nil if URL is not available for instant view."
    (nconc (list :@type "resendMessages"
                 :chat_id (plist-get (car messages) :chat_id)
                 :message_ids (cl-map 'vector (telega--tl-prop :id) messages))
-          (when quote
+          (when tl-inputTextQuote
             (list :quote tl-inputTextQuote))
           (when pay-star-count
             (list :paid_message_star_count pay-star-count)))))
@@ -1005,21 +1004,23 @@ STATUS is a tl object."
          :banned_until_date (or until-date 0))
    callback))
 
-(defun telega--addChatMember (chat user &optional forward-limit)
+(defun telega--addChatMember (chat user &optional forward-limit callback)
   "Add new member USER to the CHAT."
-  (telega-server--send
+  (telega-server--call
    (list :@type "addChatMember"
          :chat_id (plist-get chat :id)
          :user_id (plist-get user :id)
-         :forward_limit (or forward-limit 100))))
+         :forward_limit (or forward-limit 100))
+   callback))
 
-(defun telega--addChatMembers (chat users)
+(defun telega--addChatMembers (chat users &optional callback)
   "Add new members to the CHAT.
 CHAT must be supergroup or channel."
-  (telega-server--send
+  (telega-server--call
    (list :@type "addChatMembers"
          :chat_id (plist-get chat :id)
-         :user_ids (cl-map #'vector (telega--tl-prop :id) users))))
+         :user_ids (cl-map #'vector (telega--tl-prop :id) users))
+   callback))
 
 (defun telega--canTransferOwnership (&optional callback)
   (telega-server--call
@@ -1438,12 +1439,12 @@ by 86400."
            :chat_id (plist-get chat :id)
            :permissions request))))
 
-(defun telega--setChatTheme (chat theme-name)
-  "For private or secret CHAT set theme denoted by THEME-NAME."
+(defun telega--setChatTheme (chat input-theme)
+  "For private or secret CHAT set theme by INPUT-THEME."
   (telega-server--send
    (list :@type "setChatTheme"
          :chat_id (plist-get chat :id)
-         :theme_name theme-name)))
+         :theme input-theme)))
 
 (defun telega--setChatNotificationSettings (chat &rest settings)
   "Set CHAT's notification settings to SETTINGS."
@@ -1679,7 +1680,7 @@ hasn't been started, i.e. request hasn't been sent to server."
    (list :@type "cancelDownloadFile"
          :file_id (plist-get file :id)
          :only_if_pending (if only-if-pending t :false))
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--getSuggestedFileName (file directory)
   "Return suggested name for saving a FILE in a given DIRECTORY.
@@ -2071,17 +2072,15 @@ If CALLBACK is specified, call it with one argument - CHAT."
 
 (defun telega--searchPublicChats (query &optional callback)
   "Search public chats by looking for specified QUERY.
-Return nil if QUERY is less then 5 chars.
 If CALLBACK is specified, then do async call and run CALLBACK
 with list of chats received."
   (declare (indent 1))
-  (unless (< (length query) 5)
-    (with-telega-server-reply (reply)
-        (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
 
-      (list :@type "searchPublicChats"
-            :query query)
-      callback)))
+    (list :@type "searchPublicChats"
+          :query query)
+    callback))
 
 (defun telega--searchChats (query &optional limit callback)
   "Search already known chats by QUERY."
@@ -2463,6 +2462,26 @@ Return FoundMessages TL structure."
          :only_missed (if only-missed-p t :false))
    callback))
 
+(cl-defun telega--searchPublicPosts (query &key offset (limit 100) star-count
+                                           callback)
+  "Searche for public channel posts using the given QUERY.
+Return FoundPublicPosts."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "searchPublicPosts"
+         :query query
+         :offset (or offset "")
+         :limit limit
+         :star_count (or star-count 0))
+   callback))
+
+(defun telega--getPublicPostSearchLimits (query &optional callback)
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getPublicPostSearchLimits"
+         :query query)
+   callback))
+  
 ;; Group Calls section
 (defun telega--getGroupCall (group-call-id &optional callback)
   (declare (indent 1))
@@ -3510,6 +3529,42 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
          :message_id (plist-get msg :id)
          :marked_as_done_task_ids (apply #'vector done-tasks-ids)
          :marked_as_not_done_task_ids (apply #'vector not-done-tasks-ids))))
+
+(cl-defun telega--getUserProfileAudios (user &key (offset 0) (limit 100)
+                                             callback)
+  (telega-server--call
+   (list :@type "getUserProfileAudios"
+         :user_id (plist-get user :id)
+         :offset offset
+         :limit limit)
+   callback))
+
+(cl-defun telega--isProfileAudio (file &optional callback)
+  "Return non-nil if FILE is in the profile audio files of me."
+  (with-telega-server-reply (reply)
+      (not (telega--tl-error-p reply))
+    (list :@type "isProfileAudio"
+          :file_id (plist-get file :id))
+    callback))
+
+(cl-defun telega--addProfileAudio (file)
+  "Add an audio FILE to the beginning of the profile audio files of me."
+  (telega-server--send
+   (list :@type "addProfileAudio"
+         :file_id (plist-get file :id))))
+
+(cl-defun telega--removeProfileAudio (file)
+  "Remove an audio FILE from the profile audio files of me."
+  (telega-server--send
+   (list :@type "removeProfileAudio"
+         :file_id (plist-get file :id))))
+
+(cl-defun telega--getGiftChatThemes (&key (offset "") (limit 50) callback)
+  (telega-server--call
+   (list :@type "getGiftChatThemes"
+         :offset offset
+         :limit limit)
+   callback))
 
 (provide 'telega-tdlib)
 

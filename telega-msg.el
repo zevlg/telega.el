@@ -112,7 +112,25 @@
     ["copy-link" telega-msg-copy-link
      :label (telega-i18n "lng_context_copy_link")]
     ["save" telega-msg-save
-     :label (telega-i18n "lng_context_save_file")]
+     :label (if (telega-msg-match-p (telega-msg-for-interactive)
+                  '(type Animation))
+                (telega-i18n "lng_context_save_gif")
+              (telega-i18n "lng_context_save_file"))
+     :visible (telega-msg-match-p (telega-msg-for-interactive)
+                '(not (type Audio)))]
+    ("save-music-to"
+     :label (telega-i18n "lng_context_save_music_to")
+     :visible (telega-msg-match-p (telega-msg-for-interactive)
+                '(type Audio))
+     ["profile" telega-msg-save-audio-to-profile
+      :label (telega-i18n "lng_context_save_music_profile")]
+     ["saved" telega-msg-save-to-saved-messages
+      :label (telega-i18n "lng_context_save_music_saved")]
+     ["downloads" telega-msg-save-to-downloads
+      :label (telega-i18n "lng_context_save_music_folder")]
+     ["file" telega-msg-save
+      :label (telega-i18n "lng_context_save_file")])
+
     ["favorite" telega-msg-favorite-toggle
      :label "Toggle Favorite"
      :style toggle
@@ -122,7 +140,7 @@
      :label (propertize (telega-i18n "lng_context_delete_msg") 'face 'error)
      :visible (telega-msg-match-p (telega-msg-for-interactive)
                 '(or (message-property :can_be_deleted_for_all_users)
-                    (message-property :can_be_deleted_only_for_self)))]
+                     (message-property :can_be_deleted_only_for_self)))]
     ["ban-sender" telega-msg-ban-sender
      :label (propertize "Ban Sender" 'face 'error)
      :visible (telega-msg-match-p (telega-msg-for-interactive)
@@ -139,7 +157,7 @@
     ["view-topic" telega-msg-open-thread-or-topic
      :label (telega-i18n "lng_replies_view_topic")
      :visible (telega-msg-match-p (telega-msg-for-interactive)
-                'is-topic)]
+                '(and is-topic (chat is-forum)))]
     "---"
     ["mark" telega-msg-mark-toggle
      :label (telega-i18n "lng_context_select_msg")
@@ -417,7 +435,7 @@ Return nil for deleted messages."
     (when (eq telega-emoji-animated-play 'with-sound)
       (when-let ((sfile (telega--tl-get msg :content :animated_emoji :sound)))
         (when (telega-file--downloaded-p sfile)
-          (telega-ffplay-run (telega--tl-get sfile :local :path)
+          (telega-ffplay-run (telega-file--path sfile)
               (cdr (assq 'animated-emoji telega-open-message-ffplay-args))))))
 
     (telega--clickAnimatedEmojiMessage msg
@@ -443,7 +461,7 @@ Return nil for deleted messages."
   (if (memq 'video telega-open-message-as-file)
       (progn
         (cl-assert (telega-file--downloaded-p file))
-        (telega-open-file (telega--tl-get file :local :path) msg))
+        (telega-open-file (telega-file--path file) msg))
 
     (let* ((start-timestamp
             (or (telega--tl-get msg :content :start_timestamp)
@@ -452,71 +470,55 @@ Return nil for deleted messages."
            (telega-ffplay-media-timestamp
             (unless (telega-zerop start-timestamp)
               start-timestamp)))
-      (telega-video-player-run
-          (telega--tl-get file :local :path) msg done-callback))))
+      (telega-video-player-run (telega-file--path file) msg done-callback))))
 
-(defun telega-msg--play-video-incrementally (msg video _file)
+(defun telega-msg--play-video-incrementally (msg video video-file)
   "For massage MSG start playing VIDEO file, while still downloading it."
   ;; NOTE: search `moov' atom at the beginning or ending
   ;; Considering 2k of index data per second
-  (let ((video-file (telega-file--renew video :video)))
-    (if (and (telega-file--downloaded-p video-file)
-             (plist-get video :telega-video-pending-open))
-        (telega-msg--play-video msg video-file)
+  (cond ((and (telega-file--downloaded-p video-file)
+              (plist-get video :telega-video-pending-open))
+         (telega-msg--play-video msg video-file))
 
-      ;; File is partially downloaded, start playing incrementally if:
-      ;; 1) At least 5 seconds of the video is downloaded from the
-      ;;    beginning of the file
-      ;; 2) `moov' atom is available, we use
-      ;;    `telega-ffplay-get-resolution' function to check this
-      ;; 3) File downloads faster, than it takes time to play
-      (let* ((fsize (telega-file--size video-file))
-             (local-file (plist-get video-file :local))
-             (doffset (plist-get local-file :download_offset))
-             (psize (plist-get local-file :downloaded_prefix_size))
-             (dsize (telega-file--downloaded-size video-file))
-             (duration (or (plist-get video :duration) 50))
-             (probe-size (plist-get video :telega-video-probe-size))
-             (open-time (plist-get video :telega-video-pending-open))
-             ;; Size for 10 seconds of the video
-             (d5-size (/ (* 10 fsize) duration))
-             ;; Downloaded duration
-             (ddur (* duration (/ (float (- dsize (min dsize (or probe-size 0))))
-                                  fsize))))
-        (when (and ;; Check for 1)
-                   (zerop doffset)
-                   probe-size
-                   (>= psize probe-size)
-                   (> dsize (+ probe-size d5-size))
-                   ;; Check for 3)
-                   open-time (> ddur (- (time-to-seconds) open-time)))
-          ;; Check for 2)
-          (if (not (telega-ffplay-get-resolution
-                    (telega--tl-get video-file :local :path)))
-              ;; NOTE: Can't play this file incrementally, so start
-              ;; playing it after full download
-              (plist-put video :telega-video-probe-size nil)
+        ((not (telega-file--downloading-p video-file))
+         ;; Some chunk has been downloaded and no other downloading
+         ;; is started yet, filename is locked, so we try to start
+         ;; playing it incrementally
 
-            ;; NOTE: By canceling downloading process we lock
-            ;; filename, so file won't be updated at video player start
-            ;; time.  After video player is started, we continue
-            ;; downloading process, canceling it only on video player
-            ;; exit
-            (plist-put video :telega-video-pending-open nil)
-            (telega--cancelDownloadFile video-file nil
-              (lambda (_ignored)
-                (let ((vfile (telega-file-get (plist-get video-file :id) 'local)))
-                  (telega-msg--play-video msg vfile
-                    (lambda ()
-                      (telega--cancelDownloadFile vfile)))
-                  ;; Continue downloading file in 0.5 seconds, giving
-                  ;; time for video player command to run
-                  (run-with-timer 0.5 nil #'telega-file--download vfile
-                                  :priority 32
-                                  :update-callback
-                                  (lambda (_ignored)
-                                    (telega-msg-redisplay msg)))
-                  )))))))))
+         ;; File is partially downloaded, start playing incrementally if:
+         ;; 1) At least 3 seconds of the video is downloaded
+         ;; 2) `moov' atom is available, we use
+         ;;    `telega-ffplay-get-resolution' function to check this
+         ;; 3) Time to download file to the end is less than it takes
+         ;;    to play it
+         (let* ((fsize (telega-file--size video-file))
+                (dsize (telega-file--downloaded-size video-file))
+                (duration (or (plist-get video :duration) 50))
+                (probe-size (plist-get video :telega-video-probe-size))
+                (open-time (plist-get video :telega-video-pending-open))
+                ;; Downloaded duration
+                (ddur (* duration (/ (float dsize) fsize))))
+           (when (and
+                  ;; Check for 1)
+                  probe-size (> dsize probe-size) (> ddur 3)
+                  ;; Check for 3)
+                  open-time
+                  (let* ((dtime (- (time-to-seconds) open-time))
+                         (dspeed (/ ddur (if (zerop dtime) 1 dtime)))
+                         (left-dtime (/ (- duration ddur 3) dspeed)))
+                    (< left-dtime duration)))
+             ;; Check for 2)
+             (if (not (telega-ffplay-get-resolution
+                       (telega-file--path video-file)))
+                 ;; NOTE: Can't play this file incrementally, so start
+                 ;; playing it after full download
+                 (plist-put video :telega-video-probe-size nil)
+
+               (plist-put video :telega-video-pending-open nil)
+               (telega-msg--play-video msg video-file
+                 (lambda ()
+                   (telega-file--cancel-download video-file))))
+             )))))
 
 (defun telega-msg-open-video (msg &optional video)
   "Open content for video message MSG."
@@ -525,53 +527,49 @@ Return nil for deleted messages."
                             msg :content :link_preview :type :video))))
 
   (let* ((video (or video (telega--tl-get msg :content :video)))
-         (video-file (telega-file--renew video :video))
-         (incremental-part
+         ;; NOTE: always actualize info about file, because file state
+         ;; might not be updated properly due to various reasons
+         (video-file (telega--getFile (telega--tl-get video :video :id)))
+         (video-file-size (telega-file--size video-file))
+         (incremental-size
           (and telega-video-play-incrementally
+               ;; NOTE: non-nil `video.supports_streaming' means there
+               ;; is a moov atom in the video file.  We try both -
+               ;; moov at the beginning and moov at the end of the
+               ;; file
                (plist-get video :supports_streaming)
                (not (memq 'video telega-open-message-as-file))
-               ;; Store moov-size at the end to download
-               (let ((moov-size (* 2 1024 (or (plist-get video :duration) 50)))
-                     (vsize (telega-file--size video-file)))
-               (when (> vsize moov-size)
-                 (cons (- vsize moov-size) moov-size))))))
+               (let ((moov-size (* 2 1024 (or (plist-get video :duration) 50))))
+                 (when (> video-file-size (* 2 moov-size))
+                   moov-size)))))
     (when (telega--tl-get msg :content :is_secret)
       (telega--openMessageContent msg))
 
     (cond ((telega-file--downloaded-p video-file)
            (telega-msg--play-video msg video-file))
 
-          (incremental-part
+          (incremental-size
            ;; Play video incrementally
            (plist-put video :telega-video-pending-open (time-to-seconds))
-           (plist-put video :telega-video-probe-size (cdr incremental-part))
-           (telega-file--download video-file
-             :priority 32
+           (plist-put video :telega-video-probe-size (* 2 incremental-size))
+
+           ;; NOTE: if part of the file is already downloaded, start
+           ;; playing it right away before starting to download it
+           (unless (zerop (telega-file--downloaded-size video-file))
+             (telega-msg--play-video-incrementally msg video video-file))
+
+           (telega-file--download-incrementally video-file
+               (nconc (list (cons 0 incremental-size)
+                            (cons (- video-file-size incremental-size)
+                                  incremental-size))
+                      (telega-file--split-to-parts
+                       video-file (* 256 1024)
+                       incremental-size (- video-file-size incremental-size)))
              :update-callback
-             (lambda (dfile)
-               (telega-msg-redisplay msg)
-               (telega-msg--play-video-incrementally msg video dfile)))
-           ;; TODO: download incremental-part first, because moov atom
-           ;; might be at the end of the file
-           ;; However, code below does not work for some reason
-           ;; (telega-file--download video-file
-           ;;   :priority 32
-           ;;   :offset (car incremental-part)
-           ;;   :limit (cdr incremental-part)
-           ;;   :update-callback
-           ;;   (lambda (dfile)
-           ;;     (telega-msg-redisplay msg)
-           ;;     (unless (telega-file--downloading-p dfile)
-           ;;       (telega-msg--play-video-incrementally msg video dfile)
-           ;;       ;; Continue downloading whole file
-           ;;       (telega-file--download dfile
-           ;;         :priority 32
-           ;;         :update-callback
-           ;;         (lambda (ddfile)
-           ;;           (telega-msg-redisplay msg)
-           ;;           (telega-msg--play-video-incrementally msg video ddfile)))
-           ;;       )))
-           )
+             (lambda (dfile &optional chunk-done-p)
+               (if chunk-done-p
+                   (telega-msg--play-video-incrementally msg video dfile)
+                 (telega-msg-redisplay msg)))))
 
           (t
            (telega-file--download video-file
@@ -605,9 +603,9 @@ Return nil for deleted messages."
           (telega-msg-redisplay msg)
           (when (telega-file--downloaded-p file)
             (if (memq 'audio telega-open-message-as-file)
-                (telega-open-file (telega--tl-get file :local :path) msg)
+                (telega-open-file (telega-file--path file) msg)
               (plist-put msg :telega-ffplay-proc
-                         (telega-ffplay-run (telega--tl-get file :local :path)
+                         (telega-ffplay-run (telega-file--path file)
                              (concat
                               (when paused-p
                                 (format "-ss %.2f " paused-p))
@@ -678,14 +676,14 @@ note finishes."
             )
 
            ((memq 'voice-note telega-open-message-as-file)
-            (telega-open-file (telega--tl-get file :local :path) msg))
+            (telega-open-file (telega-file--path file) msg))
 
            (t
             ;; NOTE: Set moment we resumed for `:progress' correction
             ;; in the `telega-msg-voice-note--ffplay-callback'
             (plist-put msg :telega-ffplay-resumed-at paused-p)
             (plist-put msg :telega-ffplay-proc
-                       (telega-ffplay-run (telega--tl-get file :local :path)
+                       (telega-ffplay-run (telega-file--path file)
                            (concat
                             (when paused-p
                               (format "-ss %.2f " paused-p))
@@ -766,7 +764,7 @@ non-nil."
             )
 
            ((memq 'video-note telega-open-message-as-file)
-            (telega-open-file (telega--tl-get file :local :path) msg))
+            (telega-open-file (telega-file--path file) msg))
 
            ((and telega-video-note-play-inline
                  ;; *NOT* called interactively
@@ -777,7 +775,7 @@ non-nil."
             (plist-put msg :telega-ffplay-resumed-at paused-p)
             (plist-put msg :telega-ffplay-proc
                        (telega-ffplay-to-png
-                           (telega--tl-get file :local :path)
+                           (telega-file--path file)
                            (concat
                             "-vf scale=120:120"
                             (unless (equal telega-vvnote-play-speed 1)
@@ -791,7 +789,7 @@ non-nil."
               (telega-chatbuf--activate-vvnote-msg msg)))
 
            (t
-            (telega-ffplay-run (telega--tl-get file :local :path)
+            (telega-ffplay-run (telega-file--path file)
                 (cdr (assq 'video-note telega-open-message-ffplay-args)))))
 
           ;; NOTE: always redisplay the message to actualize
@@ -840,14 +838,14 @@ non-nil."
             (plist-put msg :telega-ffplay-proc
                        ;; NOTE: "-an" for no sound
                        (telega-ffplay-to-png
-                           (telega--tl-get file :local :path) "-an"
+                           (telega-file--path file) "-an"
                          (list #'telega-animation--ffplay-callback anim))))
 
            ((memq 'animation telega-open-message-as-file)
-            (telega-open-file (telega--tl-get file :local :path) msg))
+            (telega-open-file (telega-file--path file) msg))
 
            (t
-            (telega-ffplay-run (telega--tl-get file :local :path)
+            (telega-ffplay-run (telega-file--path file)
                 (cdr (assq 'animation telega-open-message-ffplay-args)))))
 
           ;; NOTE: always redisplay the message to actualize
@@ -864,7 +862,7 @@ non-nil."
       (lambda (file)
         (telega-msg-redisplay msg)
         (when (telega-file--downloaded-p file)
-          (telega-open-file (telega--tl-get file :local :path) msg))))))
+          (telega-open-file (telega-file--path file) msg))))))
 
 (defun telega-msg-open-location (msg)
   "Open content for location message MSG."
@@ -1736,6 +1734,24 @@ Saved Messages."
                                  save-dir)))
                 (copy-file dfile-name new-fpath 1)
                 (message (format "Wrote %s" new-fpath)))))))))))
+
+(defun telega-msg-save-audio-to-profile (msg)
+  "Save audio message MSG into profile."
+  (interactive (list (telega-msg-for-interactive)))
+  (user-error "TODO: save to profile")
+  )
+
+(defun telega-msg-save-to-saved-messages (msg)
+  "Save a message MSG into Saved Messages."
+  (interactive (list (telega-msg-for-interactive)))
+  (user-error "TODO: save to saved messages")
+  )
+
+(defun telega-msg-save-to-downloads (msg)
+  "Add message's MSG file into Downloads folder."
+  (interactive (list (telega-msg-for-interactive)))
+  (user-error "TODO: save to downloads")
+  )
 
 (defun telega-msg-copy-link (msg &optional for-thread-p)
   "Copy link to message to kill ring.

@@ -564,13 +564,13 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
 (define-telega-matcher chat can-get-statistics (chat)
   "Matches if statistics available for the chat."
   (when (telega-chat-match-p chat '(type supergroup channel))
-    (let ((full-info (telega--full-info (telega-chat--info chat))))
+    (let ((full-info (telega--full-info (telega-chat--supergroup-locally chat))))
       (plist-get full-info :can_get_statistics))))
 
 (define-telega-matcher chat has-custom-stickerset (chat)
   "Matches if statistics available for the chat."
   (when (telega-chat-match-p chat '(type supergroup channel))
-    (let ((full-info (telega--full-info (telega-chat--info chat))))
+    (let ((full-info (telega--full-info (telega-chat--supergroup-locally chat))))
       (not (telega-zerop (plist-get full-info :custom_emoji_sticker_set_id))))))
 
 ;;; ellit-org: chat-temex
@@ -802,7 +802,8 @@ LIST is one of `main' or `archive'."
   "Matches if supergroup or channel has least N my boosts.
 By default N is 1."
   (when (telega-chat-match-p chat '(type supergroup channel))
-    (let ((full-info (telega--full-info (telega-chat--info chat 'local))))
+    (let ((full-info (telega--full-info
+                      (telega-chat--supergroup-locally chat))))
       (>= (or (plist-get full-info :my_boost_count) 0) (or n 1)))))
 
 ;;; ellit-org: chat-temex
@@ -866,9 +867,19 @@ Return number of stars to be paid for a message."
 ;;; ellit-org: chat-temex
 ;; - (info [ ~PROP-NAME~ ]) ::
 ;;   {{{temexdoc(chat, info, 2)}}}
-(define-telega-matcher chat info (chat prop-name)
+(define-telega-matcher chat info (chat prop-name &rest props)
   "Matches if chat's locally available info has non-nil PROP-NAME."
-  (plist-get (telega-chat--info chat 'local) prop-name))
+  (when-let ((ret (plist-get (telega-chat--info chat 'local) prop-name)))
+    (dolist (prop props)
+      (setq ret (plist-get ret prop)))
+    ret))
+
+(define-telega-matcher chat full-info (chat prop-name)
+  "Matches if chat's full info has property PROP-NAME."
+  (when (telega-chat-match-p chat '(not (type secret)))
+    (let* ((telega-full-info-offline-p nil)
+           (full-info (telega--full-info (telega-chat--info-locally chat))))
+      (plist-get full-info prop-name))))
 
 
 ;;; User Temexes
@@ -1036,6 +1047,14 @@ Return number of stars to be paid for a message."
   (let ((price (plist-get user :paid_message_star_count)))
     (when (and price (>= price (or stars 1)))
       price)))
+
+;;; ellit-org: user-temex
+;; - has-rating ::
+;;   {{{temexdoc(user, has-rating, 2)}}}
+(define-telega-matcher user has-rating (user)
+  "Matches if user has rating.
+Return rating."
+  (plist-get (telega--full-info user) :rating))
 
 
 ;;; Message Temexes

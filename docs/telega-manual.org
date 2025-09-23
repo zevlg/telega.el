@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.522)
+#+title: Telega Manual (v0.8.550)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -1478,6 +1478,10 @@ Use ~telega-user-match-p~ to match a user.
 
 - is-me :: 
      Matches if user is me.
+
+- has-rating :: 
+     Matches if user has rating.
+     Return rating.
 ** List of Message Sender Temexes
 :PROPERTIES:
 :CUSTOM_ID: list-of-message-sender-temexes
@@ -1850,7 +1854,7 @@ For other sorting keybindings see below.
 
   Criteria to sort chats in ~telega-completing-read-chat~. 
 
-  Default value: ~(chatbuf-visibility chatbuf-recency)~
+  Default value: ~(chatbuf-visibility chatbuf-recency order id)~
 - User Option: ~telega-chat-switch-buffer-sort-criteria~ 
 
   Criteria to sort open chats when switching with ~telega-switch-buffer~. 
@@ -2775,7 +2779,7 @@ To toggle sticker being favorite, press
 @@html:<kbd>@@*@@html:</kbd>@@, @@html:<kbd>@@f@@html:</kbd>@@ (~telega-sticker-toggle-favorite~)
 while point is under sticker in the ~*Telega Sticker Set*~ buffer.
 
-Or you can press @@html:<kbd>@@S@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save>@@html:</kbd>@@ (~telega-msg-save~)
+Or you can press @@html:<kbd>@@S@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save-music-to> <file>@@html:</kbd>@@ (~telega-msg-save~)
 on the sticker message to add that sticker to the favorite stickers
 list.
 ** Animations
@@ -2795,7 +2799,7 @@ To play animation message press @@html:<kbd>@@RET@@html:</kbd>@@ on the message.
 messages.
 
 To explicitly add animation to Saved Animations list, press
-@@html:<kbd>@@S@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save>@@html:</kbd>@@ (~telega-msg-save~) on the
+@@html:<kbd>@@S@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save-music-to> <file>@@html:</kbd>@@ (~telega-msg-save~) on the
 corresponding animation message.
 * Stories
 :PROPERTIES:
@@ -3687,7 +3691,7 @@ Customizable options:
 
   Chat Temex to match chats for which to apply adblock logic. 
 
-  Default value: ~(and (type channel) (not unmuted) (not verified))~
+  Default value: ~(and (type channel) (not unmuted) (not (is-verified by-telegram)))~
 - User Option: ~telega-adblock-chat-order-if-last-message-ignored~ 
 
   Custom chat order for chats with last message being ignored by adblock.

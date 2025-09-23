@@ -1717,8 +1717,8 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
    prompt
    (telega-sort-chats
     (or sort-criteria telega-chat-completing-sort-criteria)
-    (telega-filter-chats (or chats telega--ordered-chats)
-                         '(or is-known has-chatbuf)))))
+    (telega-filter-chats (or chats (telega-chats-list))
+      '(or is-known has-chatbuf)))))
 
 (defmacro telega-gen-completing-read-list (prompt items-list item-fmt-fun
                                                   item-read-fun &rest args)
@@ -1754,8 +1754,8 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
                                                 sort-criteria)
   "Read multiple chats from CHATS-LIST."
   (setq chats-list
-        (telega-filter-chats (or chats-list telega--ordered-chats)
-                             '(or is-known has-chatbuf)))
+        (telega-filter-chats (or chats-list (telega-chats-list))
+          '(or is-known has-chatbuf)))
   (telega-gen-completing-read-list prompt chats-list #'telega-chatbuf--name
                                    #'telega-completing-read-chat sort-criteria))
 
@@ -2366,6 +2366,32 @@ integer values, then absolute value in pixels is used."
                        :telega-text bar-str))
          (telega-emoji--image-cache-put bar-str 1 image)
          image))))
+
+(defun telega-svg-create-user-rating-image (level)
+  "Generate user level image."
+  (let ((svg (telega-svg-create 32 32))
+        (mask (dom-node 'mask `((id . "hole"))))
+        (outline1 "M 24.635398,5.5565663 16.86354,2.4262347 c -0.647655,-0.2158849 -1.295309,-0.2158849 -1.835022,0 L 7.3646025,5.5565663 C 6.3931203,5.8803937 5.7454655,6.8518759 5.7454655,7.8233581 V 21.532052 c 0,0.755597 0.4317699,1.511194 0.9714822,2.050906 l 7.6639153,5.613009 c 0.43177,0.323827 0.971483,0.539712 1.511195,0.539712 0.539712,0 0.971482,-0.107942 1.511194,-0.43177 l 7.771858,-5.613008 c 0.647655,-0.43177 1.079425,-1.187367 1.079425,-2.050907 V 7.8233581 c 0,-0.9714822 -0.647655,-1.9429644 -1.619137,-2.2667918 z"))
+    (svg--def svg mask)
+    (svg-rectangle mask 0 0 32 32 :fill "white")
+    (svg-text mask (format "%d" level)
+              :font-size (/ 32 2)
+              :font-family "monospace"
+              :font-weight "bold"
+              :fill-color "black"
+              :text-anchor "middle"
+              :x "50%"
+              :y "66%")
+    (telega-svg-apply-outline
+     svg outline1 1
+     '(:fill "currentColor" :stroke "currentColor" :mask "url(#hole)"))
+    (telega-svg-image svg
+      :scale 1.0
+      :max-height (telega-ch-height 1)
+      :width (telega-cw-width 2)
+      :ascent 'center
+      :mask 'heuristic
+      :telega-text "()")))
 
 (defun telega-box-button--edge-image (which style)
   "Create left or right button edge image

@@ -386,7 +386,7 @@ telega-server has been made."
                          "Forward story to: ")
                  ;; NOTE: Forward only to known/comments chats we can
                  ;; write/post to.
-                 (telega-filter-chats telega--ordered-chats
+                 (telega-filter-chats (telega-chats-list)
                    '(and (or is-known has-chatbuf) can-send-or-post
                          ;; Can't forward stories to secret chats
                          (not (type secret))))

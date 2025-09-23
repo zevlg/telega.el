@@ -314,7 +314,7 @@ You can add chat to multiple folders."
    (cl-remove-if-not #'stringp
                      (mapcar (lambda (chat)
                                (telega-chat-uaprop chat :label))
-                             telega--ordered-chats))))
+                             (telega-chats-list)))))
 
 (defun telega-folders-migrate-custom-labels ()
   "Migrate custom chat labels into Chat Folders."
@@ -324,7 +324,7 @@ You can add chat to multiple folders."
       (let ((chats (cl-remove-if-not (lambda (chat)
                                        (equal (telega-chat-uaprop chat :label)
                                               label))
-                                     telega--ordered-chats)))
+                                     (telega-chats-list))))
         (if (member label folders)
             (when (yes-or-no-p
                    (format "Add %d chats into already existing «%s» Folder? "
@@ -365,7 +365,7 @@ migrate your custom labels %S to Telegram Folders." custom-labels))))
     (telega-ins--with-face 'telega-shadow
       (telega-ins " (")
       (telega-ins-i18n "lng_filters_chats_count"
-        :count (length (telega-filter-chats telega--ordered-chats
+        :count (length (telega-filter-chats (telega-chats-list)
                          (list 'folder folder-name))))
       (when (plist-get folder-info :is_shareable)
         (telega-ins " • ")

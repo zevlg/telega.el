@@ -316,9 +316,9 @@ Return GROUP-CALL."
 
 (defun telega-group-call-get-chat (group-call-id)
   "Return chat with group call of GROUP-CALL-ID."
-  (cl-find group-call-id
-           telega--ordered-chats
-           :key (telega--tl-prop :video_chat :group_call_id)))
+  (telega-chat-by (lambda (chat)
+                    (eq group-call-id
+                        (telega--tl-get chat :video_chat :group_call_id)))))
 
 (defun telega-group-call--participant-svg-outline (svg circle
                                                        &optional speaking-p)

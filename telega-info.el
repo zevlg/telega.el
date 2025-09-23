@@ -82,6 +82,12 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (puthash tlobj-id full-info fi-hash))
     full-info))
 
+(defun telega-chat-full-info (chat &optional locally-p)
+  "Return CHAT's full info.
+For secret chats return nil."
+  (unless (telega-chat-match-p chat '(type secret))
+    (telega--full-info (telega-chat--info chat locally-p))))
+
 
 (defun telega--account-ttl-button-value ()
   "Return value for the Account TTL button."
@@ -218,7 +224,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
 
   (let* ((telega-full-info-offline-p nil)
          (full-info (telega--full-info user))
-         (user-blocked-p (telega-user-match-p user 'is-blocked)))
+         (user-blocked-p (telega-user-match-p user 'is-blocked)))      
     (when (plist-get full-info :can_be_called)
       (telega-ins--box-button (concat (telega-symbol 'phone)
                                       (telega-i18n "lng_call_start"))
@@ -239,8 +245,23 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                     (telega-msg-sender-block user)))))
     (telega-ins "\n")
 
+    ;; Первый трек музыкальный
+    (when-let ((profile-audio (plist-get full-info :first_profile_audio)))
+      (telega-ins-describe-item (telega-i18n "lng_media_music_title")
+        (telega-ins "\n")
+        (telega-ins--line-wrap-prefix "  "
+          (telega-ins--audio nil profile-audio))))
+
+    ;; Rating
+    (when-let ((user-rating (plist-get full-info :rating)))
+      (telega-ins-describe-item (telega-i18n "lng_stars_rating_title")
+        (telega-ins-fmt "%d (%s: %d)"
+          (plist-get user-rating :rating)
+          (telega-i18n "lng_boosts_level")
+          (plist-get user-rating :level))))
+
     ;; Clickable user's profile photos
-    (telega-ins-describe-item "Profile Photos"
+    (telega-ins-describe-item (telega-i18n "lng_settings_profile_photo_privacy")
       (telega-help-win--add-tdlib-callback
        (telega--getUserProfilePhotos user nil nil
          (telega--gen-ins-continuation-callback 'loading
@@ -865,7 +886,9 @@ and chat permission restrictions"
       (telega-ins-describe-item (telega-i18n "lng_info_about_label")
         (telega-ins--line-wrap-prefix "  "
           (telega-ins "\n" descr))))
-    (when-let ((restr-reason (telega-tl-str supergroup :restriction_reason)))
+    (when-let ((restr-reason
+                (telega-tl-str (plist-get supergroup :restriction_info)
+                               :restriction_reason)))
       (telega-ins--labeled "Restriction: " nil
         (telega-ins restr-reason "\n")))
 

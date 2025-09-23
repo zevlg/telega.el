@@ -213,8 +213,8 @@ otherwise toggle custom filter in the active chat filters."
                    (list (button-get button :value)))))
 
   (when (telega-filter--folder-p (nth 1 custom-filter))
-    (let* ((folder-chats (telega-filter-chats
-                             telega--ordered-chats (nth 1 custom-filter)))
+    (let* ((folder-chats (telega-filter-chats (telega-chats-list)
+                           (nth 1 custom-filter)))
            (unread-chats (telega-filter-chats folder-chats 'unread))
            (nchats (length unread-chats)))
       (when (and (> nchats 0)
@@ -391,8 +391,8 @@ Actually return active chat filter corresponding to CUSTOM filter."
 (defun telega-filter--custom-chats (custom)
   "Return chats matching CUSTOM chat filter."
   (if (telega-filter-active-special-p (cdr custom))
-      (telega-filter-chats
-       telega--ordered-chats (telega-filter-active-prepare t (cdr custom)))
+      (telega-filter-chats (telega-chats-list)
+        (telega-filter-active-prepare t (cdr custom)))
     (telega-filter-chats telega--filtered-chats (cdr custom))))
 
 (defun telega-filters--refresh ()
@@ -479,12 +479,10 @@ list, if no, then `main' is returned."
   ;; chat lists
   (let ((new-tdlib-chat-list (telega-filter-active-tdlib-chat-list)))
     (unless (equal telega-tdlib--chat-list new-tdlib-chat-list)
-      (setq telega-tdlib--chat-list new-tdlib-chat-list)
-      (setq telega--ordered-chats
-            (sort telega--ordered-chats #'telega-chat>))))
+      (setq telega-tdlib--chat-list new-tdlib-chat-list)))
 
   (setq telega--filtered-chats
-        (telega-filter-chats telega--ordered-chats))
+        (telega-filter-chats (telega-chats-list)))
 
   (dolist (ewoc-spec (ewoc-collect telega-filters--ewoc #'identity))
     (setcdr (cdr ewoc-spec)

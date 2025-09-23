@@ -244,7 +244,12 @@ Used for optimisations.")
 (defvar telega--status "Not Started" "Status of the connection to telegram.")
 (defvar telega--status-aux
   "Aux status used for long requests, such as fetching chats/searching/etc")
-(defvar telega--chats nil "Hash table (id -> chat) for all chats.")
+(defvar telega--chats (make-hash-table :test #'eq)
+  "Hash table (id -> chat) for all chats.")
+(defmacro telega-chats-list ()
+  "Return list of all available chats.."
+  `(hash-table-values telega--chats))
+
 (defvar telega--chat-topics nil
   "Hash table (id -> topics alist) for forum chats.")
 
@@ -271,7 +276,6 @@ Such as pinned, replies, etc.")
   "Return actions for the CHAT and optional MSG-THREAD-ID."
   (gethash (cons (plist-get chat :id) (or msg-thread-id 0)) telega--actions))
 
-(defvar telega--ordered-chats nil "Ordered list of all chats.")
 (defvar telega--filtered-chats nil
   "Chats filtered by currently active filters.
 Used to calculate numbers displayed in custom filter buttons.")
@@ -343,8 +347,8 @@ Used by `telega-stickerset-installed-p'.")
 
 (defvar telega--animations-saved nil
   "List of saved animations.")
-(defvar telega--chat-themes nil
-  "List of chat themes.")
+(defvar telega--chat-emoji-themes nil
+  "List of chat emoji themes.")
 
 (defvar telega--dice-emojis nil
   "List of supported emojis for random dice messages.")
@@ -725,7 +729,6 @@ Done when telega server is ready to receive queries."
   (setq telega--blocked-user-ids-alist
         (list (cons 'blockListMain (list 0))
               (cons 'blockListStories (list 0))))
-  (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
   (setq telega--dirty-chats nil)
   (setq telega--actions (make-hash-table :test 'equal))
@@ -775,7 +778,7 @@ Done when telega server is ready to receive queries."
   (setq telega--custom-emoji-stickers
         (make-hash-table :size 200 :test 'equal))
   (setq telega--animations-saved nil)
-  (setq telega--chat-themes nil)
+  (setq telega--chat-emoji-themes nil)
   (setq telega--dice-emojis nil)
   (setq telega--suggested-actions nil)
 
@@ -1099,10 +1102,14 @@ If TL-TYPES is nil, then return first TL entity from the TL-ENTITIES list."
         (esize (plist-get file :expected_size)))
     (if (zerop fsize) esize fsize)))
 
+(defmacro telega-file--path (file)
+  "Return TL FILE's filename."
+  `(telega--tl-get ,file :local :path))
+
 (defsubst telega-file--downloaded-p (file)
   "Return non-nil if FILE has been downloaded."
   (and (telega--tl-get file :local :is_downloading_completed)
-       (file-exists-p (telega--tl-get file :local :path))))
+       (file-exists-p (telega-file--path file))))
 
 (defsubst telega-file--downloading-p (file)
   "Return non-nil if FILE is downloading right now."
@@ -1113,14 +1120,14 @@ If TL-TYPES is nil, then return first TL entity from the TL-ENTITIES list."
 May return nil even when `telega-file--downloaded-p' returns non-nil."
   (telega--tl-get file :local :can_be_downloaded))
 
-(defsubst telega-file--need-download-p (file)
+(defun telega-file--need-download-p (file)
   (and (telega-file--can-download-p file)
        (not (telega-file--downloaded-p file))))
 
-(defsubst telega-file--downloaded-size (file)
-  (telega--tl-get file :local :downloaded_size))
+(defmacro telega-file--downloaded-size (file)
+  `(telega--tl-get ,file :local :downloaded_size))
 
-(defsubst telega-file--downloading-progress (file)
+(defun telega-file--downloading-progress (file)
   "Return progress of FILE downloading as float from 0 to 1."
   (let ((fsize (telega-file--size file)))
     (if (zerop fsize)
@@ -1140,7 +1147,7 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   "Return non-nil if FILE is uploading right now."
   (telega--tl-get file :remote :is_uploading_active))
 
-(defsubst telega-file--uploading-progress (file)
+(defun telega-file--uploading-progress (file)
   "Return progress of FILE uploading as float from 0 to 1."
   (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
                   (telega-file--size file))))

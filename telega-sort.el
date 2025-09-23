@@ -114,9 +114,13 @@ CRITERIA could be a lit of sort criterias."
           (not result)
         result))))
 
-(defun telega-sort-chats (criteria chats)
-  "Sort CHATS by criteria."
+(defun telega-sorted-chats (criteria chats)
+  "Non-destructive variant of `telega-sort-chats'."
   (sort (copy-sequence chats) (apply-partially 'telega-chats-compare criteria)))
+
+(defun telega-sort-chats (criteria chats)
+  "Destructively sort CHATS by CRITERIA."
+  (sort chats (apply-partially 'telega-chats-compare criteria)))
 
 (defun telega-sort-by-sorter (criteria &optional arg)
   "Interactively add CRITERIA to active sorter.
@@ -161,11 +165,6 @@ overwriting currently active one."
                                     (get criteria-sym :telega-order-events))
                                   telega--sort-criteria)))
 
-    ;; NOTE: compare function might do weird things, so
-    ;; `copy-sequence' is used
-    (setq telega--ordered-chats
-          (sort (copy-sequence telega--ordered-chats) #'telega-chat>))
-
     (telega-filters--redisplay-footer)
     (telega-root-view--redisplay)
     ))
@@ -174,6 +173,9 @@ overwriting currently active one."
 ;;; ellit-org: chat-sorting-criteria
 (define-telega-sorter order () (chat)
   (telega-chat-order chat))
+
+(define-telega-sorter id () (chat)
+  (plist-get chat :id))
 
 ;;; ellit-org: chat-sorting-criteria
 ;; - ~unread-count~, {{{where-is(telega-sort-by-unread-count,telega-root-mode-map)}}} ::

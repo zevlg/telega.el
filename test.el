@@ -17,7 +17,6 @@
           :is_contact t
           :is_mutual_contact t
           :is_verified nil
-          :restriction_reason ""
           :have_access t :type (:@type "userTypeRegular") :language_code ""))
 
 (telega--info-update
@@ -26,13 +25,12 @@
           :is_contact t
           :is_mutual_contact t
           :is_verified nil
-          :restriction_reason ""
           :have_access t :type (:@type "userTypeRegular") :language_code ""))
 (telega--info-update
  '(:@type "supergroup" :id 1263892563
-          :username (:@type "usernames" :active_usernames ["PremiumSignalsForward"] :editable_username "PremiumSignalsForward") :date 1523303192 :status (:@type "chatMemberStatusLeft") :member_count 54837 :anyone_can_invite nil :sign_messages nil :is_channel t :is_verified nil :restriction_reason ""))
+          :username (:@type "usernames" :active_usernames ["PremiumSignalsForward"] :editable_username "PremiumSignalsForward") :date 1523303192 :status (:@type "chatMemberStatusLeft") :member_count 54837 :anyone_can_invite nil :sign_messages nil :is_channel t :is_verified nil))
 
-(setq telega--ordered-chats
+(setq telega--filtered-chats
       `((:@type "chat"
                 :id 1111
                 :type
@@ -76,7 +74,7 @@ Targets 9%,18%,27%,40%.
 
 Have Stoploss 690 Satoshi." :entities []))))
         ))
-(dolist (chat telega--ordered-chats)
+(dolist (chat telega--filtered-chats)
   (puthash (plist-get chat :id) chat telega--chats))
 
 (setq telega-tdlib--chat-folders
@@ -108,18 +106,17 @@ Have Stoploss 690 Satoshi." :entities []))))
 
 (ert-deftest telega-filters ()
   "Test `telega-filter' functionality."
-  (should (not (null telega--ordered-chats)))
   (should (null (telega-chat-match-p 10 '(not all))))
   ;; NOTE: one chat (id=-1001263892563) has "0" order
-  (should (= (length (telega-filter-chats telega--ordered-chats '(main)))
-             (1- (length telega--ordered-chats))))
+  (should (= (length (telega-filter-chats (telega-chats-list) '(main)))
+             (1- (length (telega-chats-list)))))
   (should (telega-chat-match-p 10 '(not or)))
-  (should (telega-chat-match-p (car telega--ordered-chats) '(type channel)))
+  (should (telega-chat-match-p (car telega--filtered-chats) '(type channel)))
   (should (telega-chat-match-p
-           (car telega--ordered-chats) '(all (type channel) (name "chan"))))
+           (car telega--filtered-chats) '(all (type channel) (name "chan"))))
   (should-not
    (telega-chat-match-p
-    (car telega--ordered-chats) '(name "notmatching")))
+    (car telega--filtered-chats) '(name "notmatching")))
 
   ;; Test for `telega-filter-active-tdlib-chat-list'
   (should (equal (telega-filter-active-tdlib-chat-list)
