@@ -1076,9 +1076,11 @@ CHAT must be supergroup or channel."
 
 (defun telega--getProxies (&optional callback)
   "Return list of currently registered proxies."
-  (telega-server--call
-   (list :@type "getProxies")
-   callback))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :messages) nil)
+
+    (list :@type "getProxies")
+    callback))
 
 (defun telega--pinChatMessage (msg &optional disable-notifications only-for-self)
   "Pin message MSG.

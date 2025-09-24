@@ -1227,9 +1227,7 @@ Call CALLBACK on updates."
           (telega-ins "\n")))))
 
   (telega-ins-describe-section "Network Statistics")
-  (let* ((net-stats (telega-server--call
-                     (list :@type "getNetworkStatistics"
-                           :only_current (or only-current :false))))
+  (let* ((net-stats (telega--getNetworkStatistics only-current))
          (total-sent 0)
          (total-recv 0))
     (telega-ins-describe-item "Since"

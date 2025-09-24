@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.550)
+#+title: Telega Manual (v0.8.551)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -106,6 +106,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-auto-download-mode-wip][telega-auto-download-mode (WIP)]]
     - [[#telega-contact-birthdays-mode][telega-contact-birthdays-mode]]
     - [[#telega-play-media-sequence-mode][telega-play-media-sequence-mode]]
+    - [[#telega-network-stats-mode][telega-network-stats-mode]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
     - [[#ol-telegael--org-mode-links-to-telegram-chats-and-messages][/ol-telega.el/ -- Org mode links to telegram chats and messages]]
@@ -235,7 +236,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.52-5c77c4692.
+version equal to v1.8.55-369ee922b.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -3323,6 +3324,15 @@ Mode to display close birthdays of the contacts.
 :END:
 
 Play media content in subsequent manner.
+** telega-network-stats-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-network-stats-mode
+:END:
+
+Mode to display network stats of the current session in the root
+buffer's status section.
+
+~telega-network-stats-mode~ is enabled by default.
 ** telega-voip-sounds-mode
 :PROPERTIES:
 :CUSTOM_ID: telega-voip-sounds-mode

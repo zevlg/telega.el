@@ -25,6 +25,8 @@
 
 ;;; Code:
 
+(require 'format-spec)
+
 (require 'telega-customize)
 (require 'telega-server)
 (require 'telega-filter)
@@ -2037,7 +2039,7 @@ TDLib's autoDownloadSettings structure."
 ;; ** telega-contact-birthdays-mode
 ;;
 ;; Mode to display close birthdays of the contacts.
-;; 
+;;
 ;; ~telega-contact-birthdays-mode~ is enabled by default.
 (defvar telega-contact-birthdays--exclude-users nil)
 
@@ -2175,6 +2177,94 @@ TDLib's autoDownloadSettings structure."
 ;; Advice for the `telega-msg-voice-note--ffplay-callback'
 
 ;; Advice for the `telega-msg-video-note--ffplay-callback'
+
+
+;;; ellit-org: minor-modes
+;; ** telega-network-stats-mode
+;;
+;; Mode to display network stats of the current session in the root
+;; buffer's status section.
+;;
+;; ~telega-network-stats-mode~ is enabled by default.
+(defcustom telega-network-stats-update-period 10
+  "Update period for network stats."
+  :type 'integer
+  :group 'telega-modes)
+
+(defcustom telega-network-stats-format "Network: %d⭣/%u⭡"
+  "Format for the stats string.
+%d - for the download stats in a human readable form.
+%u - for the upload stats in a human readable form."
+  :type 'string
+  :group 'telega-modes)
+
+(defvar telega-network-stats-string ""
+  "Last network stats received with `telega--getNetworkStatistics'.")
+
+(defvar telega-network-stats--timer nil
+  "Timer used to update `telega-network-stats'.")
+
+(defun telega-network-stats--update ()
+  "Update `telega-network-stats-string' in async manner."
+  (if (not (telega-server-live-p))
+      ;; Server is down
+      (telega-network-stats--kill)
+
+    (telega--getNetworkStatistics t
+      (lambda (reply)
+        (let ((total-recv 0)
+              (total-sent 0))
+          (seq-doseq (entry (plist-get reply :entries))
+            (cl-incf total-recv (plist-get entry :received_bytes))
+            (cl-incf total-sent (plist-get entry :sent_bytes)))
+          (let ((new-stats
+                 (format-spec telega-network-stats-format
+                              (format-spec-make
+                               ?d (file-size-human-readable total-recv)
+                               ?u (file-size-human-readable total-sent)))))
+            (unless (string= new-stats telega-network-stats-string)
+              (setq telega-network-stats-string new-stats)
+              (telega-root-aux-redisplay 'telega-ins--status))))
+
+        (setq telega-network-stats--timer
+              (run-with-timer telega-network-stats-update-period nil
+                              #'telega-network-stats--update))))))
+
+(defun telega-network-stats--kill ()
+  "Reset everything on telega exit."
+  (when telega-network-stats--timer
+    (cancel-timer telega-network-stats--timer))
+  (setq telega-network-stats--timer nil)
+  (setq telega-network-stats-string ""))
+
+(defun telega-network-stats--insert ()
+  "Inserter for the network stats."
+  (unless (string-empty-p telega-network-stats-string)
+    (let ((scolumn (- telega-root-fill-column
+                      (string-width telega-network-stats-string))))
+      (when (> scolumn 0)
+        (telega-ins--move-to-column scolumn)
+        (telega-ins telega-network-stats-string))))
+  t)
+
+(define-minor-mode telega-network-stats-mode
+  "Global mode to display network stats in the rootbuf."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-network-stats-mode
+      (progn
+        (add-hook 'telega-ready-hook 'telega-network-stats--update)
+        (add-hook 'telega-kill-hook 'telega-network-stats--kill)
+        (advice-add 'telega-ins--status
+                    :after 'telega-network-stats--insert)
+        (when (telega-server-live-p)
+          (telega-network-stats--update)))
+
+    (advice-remove 'telega-ins--status 'telega-network-stats--insert)
+    (remove-hook 'telega-kill-hook 'telega-network-stats--kill)
+    (remove-hook 'telega-ready-hook 'telega-network-stats--update)
+    (telega-network-stats--kill)
+    (telega-root-aux-redisplay 'telega-ins--status)
+    ))
 
 (provide 'telega-modes)
 

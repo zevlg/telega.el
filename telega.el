@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (transient "0.3.0"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.550
-(defconst telega-version "0.8.550")
+;; Version: 0.8.551
+(defconst telega-version "0.8.551")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.8.55")
 (defconst telega-tdlib-max-version nil)
@@ -394,6 +394,7 @@ string at point."
 (telega-active-video-chats-mode 1)
 (telega-contact-birthdays-mode 1)
 (telega-active-stories-mode 1)
+(telega-network-stats-mode 1)
 
 ;; Enable root auto fill mode by default
 (telega-root-auto-fill-mode 1)

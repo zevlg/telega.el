@@ -877,8 +877,7 @@ Return number of stars to be paid for a message."
 (define-telega-matcher chat full-info (chat prop-name)
   "Matches if chat's full info has property PROP-NAME."
   (when (telega-chat-match-p chat '(not (type secret)))
-    (let* ((telega-full-info-offline-p nil)
-           (full-info (telega--full-info (telega-chat--info-locally chat))))
+    (let ((full-info (telega--full-info (telega-chat--info-locally chat))))
       (plist-get full-info prop-name))))
 
 
