@@ -550,8 +550,7 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
     ;; Setup `off-column' for "invited by" string
     (setq off-column (current-column))
     (when-let* ((use-image-p telega-use-images)                
-                (full-info (let ((telega-full-info-offline-p nil))
-                             (telega--full-info user)))
+                (full-info (telega--full-info user))
                 (user-rating (plist-get full-info :rating)))
       (telega-ins--with-face (assq :foreground (telega-msg-sender-palette user))
         (telega-ins--image
