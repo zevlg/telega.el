@@ -60,6 +60,7 @@
     ("telega_default" . "lng_font_default")
     ("telega_edit" . "lng_settings_edit")
     ("telega_none" . "lng_settings_empty_bio")
+    ("telega_show_more" . "lng_stories_show_more")
     )
   "i18n names aliases alist.")
 

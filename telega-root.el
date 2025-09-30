@@ -983,6 +983,13 @@ If corresponding chat node does not exists in EWOC, then create new one."
   (when-let ((chat-node (telega-ewoc--find-by-data ewoc chat)))
     (telega-root--on-chat-update0 ewoc-name ewoc chat chat-node)))
 
+(defun telega-root--message-on-chat-update (ewoc-name ewoc chat)
+  "Update messages in EWOC displayed for a CHAT."
+  (when-let ((msg-node (telega-ewoc--find-if ewoc
+                         (lambda (msg)
+                           (eq chat (telega-msg-chat msg))))))
+    (telega-root--on-message-update ewoc-name ewoc nil msg-node)))
+
 (defun telega-root--contact-on-user-update (ewoc-name ewoc user)
   "Update USER in EWOC."
   ;; User might change online status
@@ -1077,9 +1084,12 @@ If corresponding chat node does not exists in EWOC, then create new one."
   (telega-root-view--ewoc-loading-done
    ewoc-name (plist-get found-messages :messages))
 
+  ;; NOTE: `telega-root--found-messages-add' also used for
+  ;; `FoundPublicPosts' structure, which has no `:total_count'
+  ;; property
   (let ((total-count (plist-get found-messages :total_count))
         (next-offset (telega-tl-str found-messages :next_offset)))
-    (cond ((zerop total-count)
+    (cond ((and total-count (zerop total-count))
            (with-telega-root-view-ewoc ewoc-name ewoc
              (telega-save-cursor
                (telega-ewoc--set-footer ewoc
@@ -1093,9 +1103,10 @@ If corresponding chat node does not exists in EWOC, then create new one."
              (telega-save-cursor
                (telega-ewoc--set-footer ewoc
                  (telega-ins--as-string
-                  (telega-ins--box-button "Load More"
+                  (telega-ins--box-button (telega-i18n "telega_show_more")
                     :value next-offset
-                    :action search-func)))))))))
+                    :action search-func)
+                  (telega-ins "\n")))))))))
 
 (defun telega-root--messages-search (&optional offset)
   "Search for messages in all chats."
@@ -1447,10 +1458,13 @@ VIEW-FILTER is additional chat filter for this root view."
   (telega-view-default
    'telega-view-two-lines "Two Lines" #'telega-ins--chat-full-2lines))
 
-(defun telega-root--on-message-update (_ewoc-name _ewoc _msg)
+(defun telega-root--on-message-update (ewoc-name ewoc msg &optional msg-node)
   "Handle message update."
-  ;; TODO
-  )
+  (unless msg-node
+    (setq msg-node (telega-ewoc--find-by-data ewoc msg)))
+
+  (when msg-node
+    (telega-ewoc--move-node ewoc msg-node msg-node t)))
 
 (defun telega-root--messages-sorter (msg1 msg2)
   "Sorter for searched messages."
@@ -1532,6 +1546,7 @@ VIEW-FILTER is additional chat filter for this root view."
                           #'telega-root--public-posts-limits)
                :search-query query
                :sorter #'telega-root--messages-sorter
+               :on-chat-update #'telega-root--message-on-chat-update
                :on-message-update #'telega-root--on-message-update)
 
          (list :name "messages"

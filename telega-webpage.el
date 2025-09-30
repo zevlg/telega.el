@@ -204,22 +204,22 @@ Keymap:
      ;; TDLib 1.6.2
      (let ((ref-url (telega-tl-str rt :url)))
        (telega-ins--raw-button
-           (list 'face 'telega-link
-                 'action #'telega-button--action
+           (list 'action #'telega-button--action
                  :help-echo (concat "Reference: " ref-url)
                  :value ref-url
                  :action #'telega-browse-url)
-         (telega-webpage--ins-rt (plist-get rt :text)))))
+         (telega-ins--with-face 'telega-link
+           (telega-webpage--ins-rt (plist-get rt :text))))))
     (richTextAnchorLink
      ;; TDLib 1.6.2
      (let ((anchor (telega-tl-str rt :anchor_name)))
        (telega-ins--raw-button
-           (list 'face 'telega-link
-                 'action #'telega-button--action
+           (list 'action #'telega-button--action
                  :help-echo (concat "Anchor: #" anchor)
                  :value anchor
                  :action #'telega-webpage-goto-anchor)
-       (telega-webpage--ins-rt (plist-get rt :text)))))
+         (telega-ins--with-face 'telega-link
+           (telega-webpage--ins-rt (plist-get rt :text))))))
     (richTextIcon
      (telega-ins--image-slices
       (telega-webpage-rticon--image rt)))
@@ -248,12 +248,12 @@ Keymap:
     (richTextUrl
      (let ((url (telega-tl-str rt :url)))
        (telega-ins--raw-button
-           (list 'face 'telega-link
-                 'action #'telega-button--action
+           (list 'action #'telega-button--action
                  :help-echo (concat "URL: " url)
                  :value url
                  :action #'telega-browse-url)
-         (telega-webpage--ins-rt (plist-get rt :text)))))
+         (telega-ins--with-face 'telega-link
+           (telega-webpage--ins-rt (plist-get rt :text))))))
     (richTextEmailAddress
      (telega-ins--with-face 'telega-link
        (telega-webpage--ins-rt (plist-get rt :text))))

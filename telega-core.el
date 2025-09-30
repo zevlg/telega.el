@@ -167,6 +167,9 @@ Updated on `updateDefaultReactionType' event.")
   "Default paid reaction type for the messages.
 Updated on `updateDefaultPaidReactionType' event.")
 
+(defvar telega-init-time nil
+  "Telega start time.")
+
 (defconst telega-translate-languages-alist
   '(("Afrikaans" . "af") ("Albanian" . "sq") ("Amharic" . "am")
     ("Arabic" . "ar") ("Armenian" . "hy") ("Azerbaijani" . "az")
@@ -807,6 +810,8 @@ Done when telega server is ready to receive queries."
 
   (setq telega-default-reaction-type nil)
   (setq telega-default-paid-reaction-type nil)
+
+  (setq telega-init-time (current-time))
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -2353,6 +2358,20 @@ VAR-SEQ is used directly in the `seq-doseq' form."
   (seq-find (lambda (tag)
               (equal label (telega-tl-str tag :label)))
             (telega-saved-messages-tags sm-topic-id)))
+
+
+(defun telega-uptime (&optional insert-p n)
+  "Show telega uptime.
+If `\\[universal-argument]' is specified, insert uptime into current
+buffer."
+  (interactive "P")
+  (let ((str (telega-duration-human-readable
+              (time-convert (time-since telega-init-time) 'integer)
+              (or n 2))))
+    (if insert-p
+        (insert str)
+      (message "%s" str))
+    str))
 
 (provide 'telega-core)
 

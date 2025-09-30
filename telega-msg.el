@@ -1173,21 +1173,18 @@ discussion group.
 Or MSG could be in supergroup, then filter messages to the
 corresponding thread or topic."
   (interactive (list (telega-msg-for-interactive)))
-  (let ((topic (telega-msg-topic msg))) ;TODO
-    (cond ((telega-msg-match-p msg 'is-topic)
-           (telega-topic-goto
-            (telega-topic-get (telega-msg-chat msg 'offline)
-                              (plist-get msg :message_thread_id))
-            (plist-get msg :id)))
+  (cond ((telega-msg-match-p msg 'is-topic)
+         (telega-topic-goto (telega-msg-topic msg))
+         (plist-get msg :id))
 
-          ((telega-msg-match-p msg 'post-with-comments)
-           (telega-chat--goto-thread (telega-msg-chat msg 'offline)
-                                     (plist-get msg :id)))
+        ((telega-msg-match-p msg 'post-with-comments)
+         (telega-chat--goto-thread (telega-msg-chat msg 'offline)
+                                   (plist-get msg :id)))
 
-          ((telega-msg-match-p msg 'is-thread)
-           (telega-chat--goto-thread (telega-msg-chat msg 'offline)
-                                     (plist-get msg :message_thread_id)
-                                     (plist-get msg :id))))))
+        ((telega-msg-match-p msg 'is-thread)
+         (telega-chat--goto-thread (telega-msg-chat msg 'offline)
+                                   (plist-get msg :message_thread_id)
+                                   (plist-get msg :id)))))
 
 (defun telega-msg-can-open-media-timestamp-p (msg)
   "Return non-nil if MSG can be opened with custom media timestamp.

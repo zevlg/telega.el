@@ -1209,6 +1209,7 @@ UFILE specifies Telegram file being uploading."
     (86646581   :source private        :since_date 1700213789)
     (5225160431 :source opencollective :since_date 1611792000) ;keke New
     (791665463  :source opencollective :since_date 1754518867)
+    (777777202  :source private        :since_date 1759265570)
     )
   "Alist of telega patrons.")
 
@@ -2130,6 +2131,12 @@ TDLib's autoDownloadSettings structure."
                          (const :tag "Animation" animation)))
   :group 'telega-modes)
 
+(defcustom telega-play-media-sequence-preload 10
+  "Preload this number of seconds of the next media."
+  :type '(choice (const :tag "Disable preload" nil)
+                 (number :tag "Preload seconds"))
+  :group 'telega-modes)
+
 (defun telega-play-media-sequence-msg-match-p (msg sequence-type)
   "Return non-nil if a message MSG matches SEQUENCE-TYPE."
   (let ((msg-temex (nth 1 (assq sequence-type
@@ -2142,6 +2149,10 @@ TDLib's autoDownloadSettings structure."
 (defvar telega-play-media-sequence--current-type nil)
 (make-variable-buffer-local 'telega-play-media-sequence--current-type)
 
+(defvar telega-play-media-sequence--direction 'forward
+  "Direction to play media sequence.")
+(make-variable-buffer-local 'telega-play-media-sequence--direction)
+
 (defvar telega-play-media-sequence-mode-lighter
   (concat " " (telega-symbol 'mode) "Media Sequence")
   "Lighter for the `telega-play-media-sequence-mode'.")
@@ -2149,10 +2160,23 @@ TDLib's autoDownloadSettings structure."
 (define-minor-mode telega-play-media-sequence-mode
   "Minor mode to play media messages sequentially."
   :lighter telega-play-media-sequence-mode-lighter
+  (if telega-play-media-sequence-mode
+      (progn
+        (add-hook 'window-size-change-functions
+                  #'telega-chat-buffer-auto-fill nil 'local)
+        (add-hook 'text-scale-mode-hook
+                  #'telega-chat-buffer-auto-fill nil 'local)
+        (when-let ((chatbuf-win (get-buffer-window)))
+          (telega-chat-buffer-auto-fill chatbuf-win)))
+
+    (remove-hook 'text-scale-mode-hook
+                 #'telega-chat-buffer-auto-fill 'local)
+    (remove-hook 'window-size-change-functions
+                 #'telega-chat-buffer-auto-fill 'local))
   )
 
 (defun telega-play-media-sequence-once (_sequence-type)
-  "Play media SEQUENCE-TYPE once."
+  "Start playing media messages of SEQUENCE-TYPE once."
   (if telega-play-media-sequence-mode
       ;; todo
   ))
@@ -2163,7 +2187,7 @@ TDLib's autoDownloadSettings structure."
               (msg (plist-get proc-plist :message)))
     (with-telega-chatbuf (telega-msg-chat msg)
       (when telega-play-media-sequence-mode
-        ;; TODO
+        ;; TODO:
         ))))
 
 ;; Advice for the `telega-msg--
