@@ -71,7 +71,7 @@ CALL-SEXP and CALLBACK are passed directly to `telega-server--call'."
      (directMessagesChatTopic
       (list :@type "messageTopicDirectMessages"
             :direct_messages_chat_topic_id (telega-topic-id topic)))
-     (messageTopicForum
+     (forumTopic
       (list :@type "messageTopicForum"
             :forum_topic_id (telega-topic-id topic)))))
 

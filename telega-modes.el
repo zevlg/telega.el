@@ -763,9 +763,29 @@ squashing is not applied."
 To be displayed in the modeline.")
 (make-variable-buffer-local 'telega-image--position)
 
+(defun telega-image-mode--chat-title (chat)
+  "Return CHAT's title for use in the `telega-image-mode'."
+  (if-let ((topic (with-telega-chatbuf chat
+                    (telega-chatbuf--thread-topic))))
+      (telega-ins--as-string
+       (telega-ins--msg-sender chat
+         :with-avatar-p t
+         :with-brackets-p nil
+         :with-title "")
+       (telega-ins--with-face 'telega-shadow
+         (telega-ins (telega-symbol 'topic)))
+       (telega-ins--topic-title topic
+         :with-icon-p t
+         :with-brackets-p nil))
+
+    (telega-ins--as-string
+     (telega-ins--msg-sender chat
+       :with-avatar-p t
+       :with-username-p t
+       :with-brackets-p t))))
+
 (defun telega-image-mode-mode-line-chat-title ()
-  (substring-no-properties
-   (telega-chatbuf--name (telega-msg-chat telega-image--message))))
+  (telega-image-mode--chat-title (telega-msg-chat telega-image--message)))
 
 (defun telega-image-mode-mode-line-chat-position ()
   (when (and (car telega-image--position)
@@ -892,6 +912,8 @@ Could be used as condition function in `display-buffer-alist'."
           (plist-get telega-image--message :id)
           (if backward 0 -2)
         :limit 3
+        :topic (with-telega-chatbuf chat
+                 (telega-chatbuf--thread-topic))
         :callback
         (lambda (reply)
           (let ((found-messages (append (plist-get reply :messages) nil)))
@@ -900,11 +922,7 @@ Could be used as condition function in `display-buffer-alist'."
                     (telega-msg-id= img-msg (car found-messages)))
                 (message "telega: No %s image in the %s"
                          (if backward "previous" "next")
-                         (telega-ins--as-string
-                          (telega-ins--msg-sender chat
-                            :with-avatar-p t
-                            :with-username-p t
-                            :with-brackets-p t)))
+                         (telega-image-mode--chat-title chat))
               ;; Found a message
               (message "")
               (when (buffer-live-p img-buffer)
