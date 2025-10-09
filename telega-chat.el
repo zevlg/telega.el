@@ -426,9 +426,8 @@ end of the title."
 (defun telega-chat-topics (chat)
   "Return list of CHAT topics sorted by their order."
   (sort (mapcar #'cdr (telega-chat-topics-alist chat))
-        :key (telega--tl-prop :order)
-        :lessp #'string>
-        :in-place t))
+        (lambda (t1 t2)
+          (string> (plist-get t1 :order) (plist-get t2 :order)))))
 
 (defun telega-chat-reply-markup-msg (chat &optional callback)
   "Return reply markup for the CHAT."
