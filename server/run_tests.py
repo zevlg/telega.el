@@ -60,7 +60,11 @@ JSON_TO_PLIST_TESTS = TESTS + [
     (True, b'"hello there \u2764\ufe0f\u200d\ud83d\udd25"', '#("hello there \\u2764\\ufe0f\\u200d\\ud83d\\udd25" 12 17 (telega-emoji-p t telega-display "\\u2764\\ufe0f\\u200d\\U0001f525"))'),
 
     # Treat <digit>⃣ as emoji as in official client
-    (True, b'"3\u20e3\u20e30\u20e30\u20e30\u20e3"', '#("3\\u20e3\\u20e30\\u20e30\\u20e30\\u20e3" 0 2 (telega-emoji-p t telega-display "3\\u20e3") 3 5 (telega-emoji-p t telega-display "0\\u20e3") 5 7 (telega-emoji-p t telega-display "0\\u20e3") 7 9 (telega-emoji-p t telega-display "0\\u20e3"))')
+    (True, b'"3\u20e3\u20e30\u20e30\u20e30\u20e3"', '#("3\\u20e3\\u20e30\\u20e30\\u20e30\\u20e3" 0 2 (telega-emoji-p t telega-display "3\\u20e3") 3 5 (telega-emoji-p t telega-display "0\\u20e3") 5 7 (telega-emoji-p t telega-display "0\\u20e3") 7 9 (telega-emoji-p t telega-display "0\\u20e3"))'),
+
+    # \ufe0f inbetween emojis
+    (True, b'"need \ud83c\udd98\ufe0f\ud83d\ude4f friends"',
+     '#("need \\ud83c\\udd98\\ufe0f\\ud83d\\ude4f friends" 5 8 (telega-emoji-p t telega-display "\\U0001f198") 8 10 (telega-emoji-p t telega-display "\\U0001f64f"))')
 
     # TODO: [wo]man shrug without trailing \ufe0f should be an emoji, as in
     # official client

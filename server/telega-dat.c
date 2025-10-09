@@ -512,7 +512,7 @@ tdat_move_utf16codepoint(struct telega_dat* src, struct telega_dat* dst)
 }
 
 /**
- * Extract UTF16 char, possible dessurogating pairs
+ * Extract UTF16 char, possibly dessurogating surrogated pairs
  */
 uint32_t
 tdat_move_utf16char(struct telega_dat* src, struct telega_dat* dst)
@@ -578,8 +578,8 @@ tdat_move_emoji_sequence(struct telega_dat* src, struct telega_dat* dst,
                     || et->is_terminal)
                 {
                         /* FOUND */
-                        size_t nbytes = tdat_len(&ret);
-                        tdat_move(&ret, dst, nbytes);
+                        tdat_move(&ret, dst, tdat_len(&ret));
+                        tdat_drop(&ret);
                         return cn + utf16_clen(ch);
                         /* NOT REACHED */
                 }
@@ -635,6 +635,59 @@ tdat_emojify_append_props(struct telega_dat* props, size_t start,
         tdat_append_str(props, "\")");
 }
 
+/*
+ *
+ */
+static inline void
+tdat_backtrack_roll(struct emoji_backtrack* bt, size_t start, size_t offset)
+{
+        size_t i;
+        for (i = EMOJI_BACKTRACK_SIZE - 1; i > 0; i--) {
+                bt->starts[i] = bt->starts[i - 1];
+                bt->offsets[i] = bt->offsets[i - 1];
+        }
+        bt->starts[0] = start;
+        bt->offsets[0] = offset;
+
+        if (bt->size < EMOJI_BACKTRACK_SIZE)
+                bt->size++;
+}
+
+/*
+ * Backtrace table to find longest emoji sequence
+ * Return true if emoji sequence is found and placed into DST.
+ */
+static inline bool
+tdat_backtrack_emoji_sequence(struct emoji_backtrack* bt,
+                              struct emoji_match_table* tables,
+                              struct telega_dat* src,
+                              struct telega_dat* dst,
+                              size_t* ret_start,
+                              size_t* ret_end)
+{
+        size_t saved_start = src->start;
+
+        int bti_size = MIN(bt->size, tables->max_backtrack + 1);
+        for (int bti = 0; bti < bti_size; bti++) {
+                int btindex = bti_size - bti - 1;
+                src->start = bt->starts[btindex];
+                size_t coff = bt->offsets[btindex];
+
+                size_t cn = tdat_move_emoji_sequence(
+                        src, dst, tables->match_trie);
+                if (cn) {
+                        /* MATCHED */
+                        *ret_start = coff;
+                        *ret_end = coff + cn;
+                        return true;
+                        /* NOT REACHED */
+                }
+        }
+
+        src->start = saved_start;
+        return false;
+}
+
 /**
  * Extract emojis from SRC and put corresponding properties into PROPS
  * Return non-false if any of the property has been extracted.
@@ -645,24 +698,12 @@ tdat_emojify_string(struct telega_dat* src_str, struct telega_dat* props)
         struct telega_dat src_view = TDAT_INIT_VIEW(src_str);
         struct telega_dat disp = TDAT_INIT;
 
-        /* value for src_view->start for backtracking */
-        size_t backtrack[3];
-        size_t backtrack_size = 0;
-
-        /* Offsets in SRC_VIEW in utf16 chars */
-        size_t backtrack_offsets[3];
+        struct emoji_backtrack bt = {.size = 0 };
         size_t offset = 0;
 
         while (tdat_has_data(&src_view)) {
                 /* update the backtrack */
-                backtrack[2] = backtrack[1];
-                backtrack[1] = backtrack[0];
-                backtrack[0] = src_view.start;
-                backtrack_offsets[2] = backtrack_offsets[1];
-                backtrack_offsets[1] = backtrack_offsets[0];
-                backtrack_offsets[0] = offset;
-                if (backtrack_size < 3)
-                        backtrack_size++;
+                tdat_backtrack_roll(&bt, src_view.start, offset);
 
                 struct emoji_match_table* tables = NULL;
                 uint32_t ch = tdat_move_utf16char(&src_view, NULL);
@@ -687,54 +728,52 @@ tdat_emojify_string(struct telega_dat* src_str, struct telega_dat* props)
                         tables = emoji_null_tables;
 
                 bool found = false;
+                size_t found_pos;
                 for (; tables->match_trie; tables++) {
                         if ((ch < tables->min_match) || (ch > tables->max_match))
                                 continue;
 
-                        size_t saved_start = src_view.start;
-
-                        /** NOTE: Start backtracking from index
-                         * specified in table
-                         */
-                        int bti_size = MIN(backtrack_size,
-                                           tables->max_backtrack + 1);
-                        for (int bti = 0; bti < bti_size; bti++) {
-                                int btindex = bti_size - bti - 1;
-                                src_view.start = backtrack[btindex];
-                                size_t coff = backtrack_offsets[btindex];
-
-                                tdat_reset(&disp);
-                                size_t cn = tdat_move_emoji_sequence(
-                                        &src_view, &disp, tables->match_trie);
-                                if (cn) {
-                                        /* MATCHED */
-                                        found = true;
-                                        offset = coff + cn;
-
-                                        tdat_emojify_append_props(
-                                                props, coff, offset, true, &disp);
-                                        break;
-                                        /* NOT REACHED */
-                                }
-                        }
-
-                        if (found)
+                        tdat_reset(&disp);
+                        if (tdat_backtrack_emoji_sequence(
+                                    &bt, tables, &src_view, &disp,
+                                    &found_pos, &offset))
+                        {
+                                found = true;
                                 break;
-
-                        src_view.start = saved_start;
+                                /* NOT REACHED */
+                        }
                 }
 
-                /* NOTE: For surrogated pairs that are not part of the
-                 * emoji, add only `telega-display' property, not
-                 * marking as emoji.
-                 *
-                 * With only exception if surrogated pair codes basic
-                 * emoji and \xfe0f is missing at the end.
-                 *
-                 * See https://github.com/zevlg/telega.el/issues/251
-                 */
-                if (!found && (utf16_clen(ch) == 2)) {
-                        src_view.start = backtrack[0];
+                if (found) {
+                        /*
+                         * NOTE: if emoji sequence is already
+                         * fully-qualified, but xfe0f is following it,
+                         * then make \xfe0f part of the emoji, so
+                         * \xfe0f won't be displayed on its own.
+                         */
+                        struct telega_dat fe0f_view = TDAT_INIT_VIEW(&src_view);
+                        if (0xfe0f == tdat_move_utf16char(&fe0f_view, NULL)) {
+                                tdat_move_utf16char(&src_view, NULL);
+                                assert(utf16_clen(0xfe0f) == 1);
+                                offset += 1;
+                        }
+
+                        tdat_emojify_append_props(
+                                props, found_pos, offset, true, &disp);
+
+                } else if (utf16_clen(ch) == 2) {
+                        /* NOTE: For surrogated pairs that are not
+                         * part of the emoji, add only
+                         * `telega-display' property, not marking as
+                         * emoji.
+                         *
+                         * With only exception if surrogated pair
+                         * codes basic emoji and \xfe0f is missing at
+                         * the end.
+                         *
+                         * See https://github.com/zevlg/telega.el/issues/251
+                         */
+                        src_view.start = bt.starts[0];
                         tdat_reset(&disp);
                         uint32_t ch = tdat_move_utf16char(&src_view, &disp);
 

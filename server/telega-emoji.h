@@ -31,6 +31,18 @@ struct emoji_match_table {
         const struct emoji_trie* match_trie;
 };
 
+struct emoji_backtrack {
+        /* Number of valid starts and offsets */
+        size_t size;
+
+#define EMOJI_BACKTRACK_SIZE 3
+        /* Start positions in the telega_dat structure */
+        size_t starts[EMOJI_BACKTRACK_SIZE];
+
+        /* Offsets in utf16 chars */
+        size_t offsets[EMOJI_BACKTRACK_SIZE];
+};
+
 struct emoji_trie any_emoji[] = {{EMOJI_MATCH_ANY, true, NULL},
 {0, true, NULL}};
 

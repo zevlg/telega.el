@@ -33,6 +33,10 @@ LDFLAGS+=-ltgvoip
 SOURCES+=telega-voip.cpp
 endif
 
+ifdef WITH_ASAN
+LDFLAGS+=-fsanitize=address
+endif
+
 ifndef INSTALL_PREFIX
 INSTALL_PREFIX=$(HOME)/.telega
 endif
