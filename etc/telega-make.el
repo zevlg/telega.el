@@ -27,7 +27,10 @@
   (package-initialize)
 
   (let* ((core-pkgs '(visual-fill-column rainbow-identifiers))
-         (contrib-pkgs '(all-the-icons alert dashboard transient))
+         (contrib-pkgs `(all-the-icons
+                         alert
+                         ,(package-desc-from-define "dashboard" "1.9.0")
+                         transient))
          (all-pkgs (append core-pkgs contrib-pkgs))
          (need-pkgs (cl-remove-if #'package-installed-p all-pkgs)))
     (when need-pkgs
