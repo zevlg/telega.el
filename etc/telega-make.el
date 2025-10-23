@@ -27,10 +27,7 @@
   (package-initialize)
 
   (let* ((core-pkgs '(visual-fill-column rainbow-identifiers))
-         (contrib-pkgs `(all-the-icons
-                         alert
-                         ,(package-desc-from-define "dashboard" "1.9.0")
-                         transient))
+         (contrib-pkgs '(all-the-icons alert dashboard transient))
          (all-pkgs (append core-pkgs contrib-pkgs))
          (need-pkgs (cl-remove-if #'package-installed-p all-pkgs)))
     (when need-pkgs
@@ -38,6 +35,15 @@
 ;      (add-to-list 'package-archives '("melpa" . "http://www.mirrorservice.org/sites/melpa.org/packages/"))
 ;      (add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/"))
       (package-refresh-contents)
+
+      ;; NOTE: Github CI build uses Emacs-27.1, however newest dashboard
+      ;; packages requires Emacs-28.1, thats why we use
+      ;; dashboard-1.9.0
+      (when (memq 'dashboard need-pkgs)
+        (setq need-pkgs (cons (package-compute-transaction
+                               ()
+                               (list (list 'dashboard '(1 9 0))))
+                              (delq 'dashboard need-pkgs))))
 
       (dolist (pkg need-pkgs)
         (cl-assert (not (package-installed-p pkg)))
