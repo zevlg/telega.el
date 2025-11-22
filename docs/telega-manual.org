@@ -106,6 +106,8 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-auto-download-mode-wip][telega-auto-download-mode (WIP)]]
     - [[#telega-contact-birthdays-mode][telega-contact-birthdays-mode]]
     - [[#telega-play-media-sequence-mode][telega-play-media-sequence-mode]]
+    - [[#telega-network-stats-mode][telega-network-stats-mode]]
+    - [[#telega-ton-star-usd-rate-mode][telega-ton-star-usd-rate-mode]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
     - [[#ol-telegael--org-mode-links-to-telegram-chats-and-messages][/ol-telega.el/ -- Org mode links to telegram chats and messages]]
@@ -3342,6 +3344,61 @@ Mode to display close birthdays of the contacts.
 :END:
 
 Play media content in subsequent manner.
+** telega-network-stats-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-network-stats-mode
+:END:
+
+Mode to get network stats of the current session and display it in
+the root buffer's status section or/and in the root buffer's
+modeline.
+
+Enable it with ~(telega-network-stats-mode 1)~ or at =telega= load time:
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'telega-network-stats-mode)
+#+end_src
+
+Customizable options:
+- User Option: ~telega-network-stats-places~ 
+
+  Where to display network statistics. 
+
+  Default value: ~(mode-line)~
+- User Option: ~telega-network-stats-update-period~ 
+
+  Update period for network stats. 
+
+  Default value: ~10~
+- User Option: ~telega-network-stats-format~ 
+
+  Format for the stats string.
+  %d - for the download stats in a human readable form.
+  %u - for the upload stats in a human readable form. 
+
+  Default value: ~"Network: %d↓/ %u↑"~
+** telega-ton-star-usd-rate-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-ton-star-usd-rate-mode
+:END:
+
+Toggle TON and Telegram Star rate to USD in the rootbuf's mode line.
+
+Enable it with ~(telega-ton-star-usd-rate-mode 1)~ or at =telega= load time:
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'telega-ton-star-usd-rate-mode)
+#+end_src
+
+Customizable options:
+- User Option: ~telega-ton-star-usd-rate-format~ 
+
+  Format for TON and stars rate to USD.
+  %i - for the ~ton~ icon.
+  %t - USD price for the one TON.
+  %I - for the Telegram star icon.
+  %B - USD price for the 100 Telegram stars to buy.
+  %S - USD price for the 100 Telegram star to sell. 
+
+  Default value: ~"%i$%t, 100%I$%B/$%S"~
 ** telega-voip-sounds-mode
 :PROPERTIES:
 :CUSTOM_ID: telega-voip-sounds-mode

@@ -2225,7 +2225,7 @@ TDLib's autoDownloadSettings structure."
 ;; Advice for the `telega-msg-video-note--ffplay-callback'
 
 ;
-;; ellit-org: minor-modes
+;;; ellit-org: minor-modes
 ;; ** telega-network-stats-mode
 ;;
 ;; Mode to get network stats of the current session and display it in
@@ -2341,7 +2341,7 @@ TDLib's autoDownloadSettings structure."
     ))
 
 
-;; ellit-org: minor-modes
+;;; ellit-org: minor-modes
 ;; ** telega-ton-star-usd-rate-mode
 ;;
 ;; Toggle TON and Telegram Star rate to USD in the rootbuf's mode line.

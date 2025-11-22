@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2025-11-22 Сб 11:28 -->
+<!-- 2025-11-23 Вс 00:50 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.8.560)</title>
@@ -174,6 +174,8 @@
 <li><a href="#telega-auto-download-mode-wip">telega-auto-download-mode (WIP)</a></li>
 <li><a href="#telega-contact-birthdays-mode">telega-contact-birthdays-mode</a></li>
 <li><a href="#telega-play-media-sequence-mode"><span class="todo TODO">TODO</span> telega-play-media-sequence-mode</a></li>
+<li><a href="#telega-network-stats-mode">telega-network-stats-mode</a></li>
+<li><a href="#telega-ton-star-usd-rate-mode">telega-ton-star-usd-rate-mode</a></li>
 <li><a href="#telega-voip-sounds-mode">telega-voip-sounds-mode</a></li>
 </ul>
 </li>
@@ -849,7 +851,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org416cc1c">
+<pre class="example" id="orgd15f365">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -867,7 +869,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org058e82c">
+<pre class="example" id="org36b75b4">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -956,7 +958,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org56b445a">
+<pre class="example" id="orgbd7bb95">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -994,7 +996,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org580a79a">
+<pre class="example" id="orgc859989">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -2440,7 +2442,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orga415ad8">
+<pre class="example" id="orgde7e709">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2644,7 +2646,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org1fe7c88">
+<pre class="example" id="org58b8688">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2676,7 +2678,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org9c977f5">
+<pre class="example" id="orgae96b27">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3589,7 +3591,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org7ea6e8e">
+<pre class="example" id="orgadc8668">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4661,6 +4663,103 @@ Play media content in subsequent manner.
 </p>
 </div>
 </div>
+<div id="outline-container-telega-network-stats-mode" class="outline-3">
+<h3 id="telega-network-stats-mode"><a class="self-link" href="#telega-network-stats-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-network-stats-mode</h3>
+<div class="outline-text-3" id="text-telega-network-stats-mode">
+<p>
+Mode to get network stats of the current session and display it in
+the root buffer's status section or/and in the root buffer's
+modeline.
+</p>
+
+<p>
+Enable it with <code>(telega-network-stats-mode 1)</code> or at <code>telega</code> load time:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook 'telega-network-stats-mode)
+</pre>
+</div>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-network-stats-places</code> 
+</p>
+
+<p>
+Where to display network statistics. 
+</p>
+
+<p>
+Default value: <code>(mode-line)</code>
+</p></li>
+<li><p>
+User Option: <code>telega-network-stats-update-period</code> 
+</p>
+
+<p>
+Update period for network stats. 
+</p>
+
+<p>
+Default value: <code>10</code>
+</p></li>
+<li><p>
+User Option: <code>telega-network-stats-format</code> 
+</p>
+
+<p>
+Format for the stats string.
+%d - for the download stats in a human readable form.
+%u - for the upload stats in a human readable form. 
+</p>
+
+<p>
+Default value: <code>"Network: %d↓/ %u↑"</code>
+</p></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-telega-ton-star-usd-rate-mode" class="outline-3">
+<h3 id="telega-ton-star-usd-rate-mode"><a class="self-link" href="#telega-ton-star-usd-rate-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-ton-star-usd-rate-mode</h3>
+<div class="outline-text-3" id="text-telega-ton-star-usd-rate-mode">
+<p>
+Toggle TON and Telegram Star rate to USD in the rootbuf's mode line.
+</p>
+
+<p>
+Enable it with <code>(telega-ton-star-usd-rate-mode 1)</code> or at <code>telega</code> load time:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook 'telega-ton-star-usd-rate-mode)
+</pre>
+</div>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-ton-star-usd-rate-format</code> 
+</p>
+
+<p>
+Format for TON and stars rate to USD.
+%i - for the <code>ton</code> icon.
+%t - USD price for the one TON.
+%I - for the Telegram star icon.
+%B - USD price for the 100 Telegram stars to buy.
+%S - USD price for the 100 Telegram star to sell. 
+</p>
+
+<p>
+Default value: <code>"%i$%t, 100%I$%B/$%S"</code>
+</p></li>
+</ul>
+</div>
+</div>
 <div id="outline-container-telega-voip-sounds-mode" class="outline-3">
 <h3 id="telega-voip-sounds-mode"><a class="self-link" href="#telega-voip-sounds-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-voip-sounds-mode</h3>
 <div class="outline-text-3" id="text-telega-voip-sounds-mode">
@@ -4771,7 +4870,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org643bf3d">
+<pre class="example" id="org7d8c1e0">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
