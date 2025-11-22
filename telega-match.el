@@ -588,6 +588,13 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
   (telega-chat-match-p chat '(and (type channel) has-linked-chat)))
 
 ;;; ellit-org: chat-temex
+;; - is-discussion-group ::
+;;   {{{temexdoc(chat, is-discussion-group, 2)}}}
+(define-telega-matcher chat is-discussion-group (chat)
+  "Matches if chat is a discussion group for a channel."
+  (telega-chat-match-p chat '(and (type supergroup) has-linked-chat)))
+
+;;; ellit-org: chat-temex
 ;; - has-direct-messages-group ::
 ;;   {{{temexdoc(chat, has-direct-messages-group, 2)}}}
 (define-telega-matcher chat has-direct-messages-group (chat)
@@ -789,9 +796,9 @@ LIST is one of `main' or `archive'."
                :has_pinned_stories)))
 
 ;;; ellit-org: chat-temex
-;; - can-send-stories ::
-;;   {{{temexdoc(chat, can-send-stories, 2)}}}
-(define-telega-matcher chat can-send-stories (chat)
+;; - can-post-stories ::
+;;   {{{temexdoc(chat, can-post-stories, 2)}}}
+(define-telega-matcher chat can-post-stories (chat)
   "Matches if you can post a story into chat."
   (memq chat telega--search-chats))
 
@@ -1055,6 +1062,16 @@ Return number of stars to be paid for a message."
 Return rating."
   (plist-get (telega--full-info user) :rating))
 
+;;; ellit-org: user-temex
+;; - is-bot-with-topics ::
+;;   {{{temexdoc(user, is-bot-with-topics, 2)}}}
+(define-telega-matcher user is-bot-with-topics (user)
+  "Matches if user is a bot having topics."
+  (let ((user-type (plist-get user :type)))
+    (and (eq 'userTypeBot (telega--tl-type user-type))
+         (plist-get user-type :has_topics)
+         )))
+
 
 ;;; Message Temexes
 ;;; ellit-org: msg-temex
@@ -1146,26 +1163,24 @@ Return messageReplyInfo."
        (telega--tl-get msg :interaction_info :reply_info)))
 
 ;;; ellit-org: msg-temex
-;; - is-topic ::
-;;   {{{temexdoc(msg, is-topic, 2)}}}
-(define-telega-matcher msg is-topic (msg)
-  "Matches if message is a forum topic message.
+;; - is-forum-topic ::
+;;   {{{temexdoc(msg, is-forum-topic, 2)}}}
+(define-telega-matcher msg is-forum-topic (msg)
+  "Matches if message belongs to or starts a forum topic.
 Return `MessageTopic' structure."
   (when-let ((msg-topic (plist-get msg :topic_id)))
-    ;; NOTE: all messages in a non-forum supergroup chats belongs to
-    ;; the General topic.  General topic has `telega-msg-id-step' id
-    (unless (and (eq (telega--tl-type msg-topic) 'messageTopicForum)
-                 (eq telega-msg-id-step (plist-get msg-topic :forum_topic_id)))
+    (when (eq (telega--tl-type msg-topic) 'messageTopicForum)
       msg-topic)))
 
 ;;; ellit-org: msg-temex
 ;; - is-thread ::
 ;;   {{{temexdoc(msg, is-thread, 2)}}}
 (define-telega-matcher msg is-thread (msg)
-  "Matches if message belongs to or starts a messages thread."
-  (and (not (telega-msg-match-p msg 'is-topic))
-       (or (telega--tl-get msg :interaction_info :reply_info)
-           (not (telega-zerop (plist-get msg :message_thread_id))))))
+  "Matches if message belongs to or starts a messages thread.
+Return `MessageTopic' structure."
+  (when-let ((msg-topic (plist-get msg :topic_id)))
+    (when (eq (telega--tl-type msg-topic) 'messageTopicThread)
+      msg-topic)))
 
 ;;; ellit-org: msg-temex
 ;; - (link-preview ~LP-TYPES~ ]) ::
@@ -1429,7 +1444,23 @@ for General topic only."
 (define-telega-matcher topic is-current-in-chatbuf (topic)
   "Return non-nil if chatbuf is filtered by topic."
   (with-telega-chatbuf (telega-topic-chat topic)
-    (eq topic (telega-chatbuf--thread-topic))))
+    (eq topic telega-chatbuf--topic)))
+
+;;; ellit-org: topic-temex
+;; - (type ~TOPIC-TYPE-LIST~) ::
+;;   {{{temexdoc(topic, type, 2)}}}
+(define-telega-matcher topic type (topic &rest topic-type-list)
+  "Return non-nil if topic has topic-type.
+TOPIC-TYPE is one of `thread', `forum', `sm' or `dm'.
+Return TOPIC."
+  (when-let ((topic-type (when topic
+                           (cl-ecase (telega--tl-type topic)
+                             (messageThreadInfo       'thread)
+                             (forumTopic              'forum)
+                             (savedMessagesTopic      'sm)
+                             (directMessagesChatTopic 'dm)))))
+    (when (memq topic-type topic-type-list)
+      topic)))
 
 
 ;;; ellit-org: story-temex

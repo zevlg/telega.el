@@ -1,4 +1,4 @@
-;;; telega-msg.el --- Messages for telega  -*- lexical-binding:t -*-
+;; telega-msg.el --- Messages for telega  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2018-2024 by Zajcev Evgeny.
 
@@ -157,7 +157,7 @@
     ["view-topic" telega-msg-open-thread-or-topic
      :label (telega-i18n "lng_replies_view_topic")
      :visible (telega-msg-match-p (telega-msg-for-interactive)
-                '(and is-topic (chat is-forum)))]
+                'is-forum-topic)]
     "---"
     ["mark" telega-msg-mark-toggle
      :label (telega-i18n "lng_context_select_msg")
@@ -287,7 +287,7 @@ PROPS are additional properties to the internal message."
   "Get message by CHAT-ID and MSG-ID pair.
 If CALLBACK is not specified, then do not perform request to
 telega-server, check only in messages cache.  If CALLBACK
-is specified, it should accept two argument s - MESSAGE and
+is specified, it should accept two arguments - MESSAGE and
 optional OFFLINE-P, non-nil OFFLINE-P means no request to the
 telega-server has been made.
 
@@ -368,13 +368,18 @@ Return nil for deleted messages."
     (and last-msg-id last-read-msg-id (not (zerop last-read-msg-id))
          (< last-read-msg-id last-msg-id))))
 
-(defun telega-msg-goto (msg &optional highlight)
+(defun telega-msg-goto (msg &optional highlight-p)
   "Goto message MSG."
-  (telega-chat--goto-msg
-      (telega-msg-chat msg) (plist-get msg :id) highlight))
+  ;; Ensure MSG is in the cache, to show it in the chatbuf as fast as
+  ;; possible
+  (let ((msg-cache-key (cons (plist-get msg :chat_id) (plist-get msg :id))))
+    (unless (gethash msg-cache-key telega--cached-messages)
+      (puthash msg-cache-key msg telega--cached-messages)))
+
+  (telega-chat--goto-msg (telega-msg-chat msg) (plist-get msg :id) highlight-p))
 
 (defun telega-msg-goto-highlight (msg)
-  "Goto message MSG and highlight it."
+  "Goto message MSG, highlight it."
   (telega-msg-goto msg 'highlight))
 
 (defun telega-msg-goto-reply-to-message (msg)
@@ -529,7 +534,8 @@ Return nil for deleted messages."
   (let* ((video (or video (telega--tl-get msg :content :video)))
          ;; NOTE: always actualize info about file, because file state
          ;; might not be updated properly due to various reasons
-         (video-file (telega--getFile (telega--tl-get video :video :id)))
+         ;;   (telega--getFile (telega--tl-get video :video :id)))
+         (video-file (telega-file--renew video :video))
          (video-file-size (telega-file--size video-file))
          (incremental-size
           (and telega-video-play-incrementally
@@ -1173,18 +1179,19 @@ discussion group.
 Or MSG could be in supergroup, then filter messages to the
 corresponding thread or topic."
   (interactive (list (telega-msg-for-interactive)))
-  (cond ((telega-msg-match-p msg 'is-topic)
-         (telega-topic-goto (telega-msg-topic msg))
-         (plist-get msg :id))
+  (cond ((telega-msg-match-p msg 'is-forum-topic)
+         (telega-topic-goto (telega-msg-topic msg)
+                            (plist-get msg :id)))
 
         ((telega-msg-match-p msg 'post-with-comments)
          (telega-chat--goto-thread (telega-msg-chat msg 'offline)
                                    (plist-get msg :id)))
 
         ((telega-msg-match-p msg 'is-thread)
-         (telega-chat--goto-thread (telega-msg-chat msg 'offline)
-                                   (plist-get msg :message_thread_id)
-                                   (plist-get msg :id)))))
+         (telega-chat--goto-thread
+          (telega-msg-chat msg 'offline)
+          (telega--tl-get msg :topic_id :message_thread_id)
+          (plist-get msg :id)))))
 
 (defun telega-msg-can-open-media-timestamp-p (msg)
   "Return non-nil if MSG can be opened with custom media timestamp.
@@ -1754,7 +1761,7 @@ Saved Messages."
   "Copy link to message to kill ring.
 Use \\[yank] command to paste a link."
   (interactive (list (telega-msg-for-interactive)
-                     (when telega-chatbuf--thread t)))
+                     (when telega-chatbuf--topic t)))
   (let* ((chat (telega-msg-chat msg 'offline))
          (media-timestamp
           (when (telega-msg-can-open-media-timestamp-p msg)
@@ -1943,7 +1950,7 @@ Requires administrator rights in the chat."
 (defun telega-describe-message (msg &optional for-thread-p)
   "Show info about message at point."
   (interactive (list (telega-msg-for-interactive)
-                     (when telega-chatbuf--thread t)))
+                     (when telega-chatbuf--topic t)))
   (with-telega-help-win "*Telegram Message Info*"
     (let ((chat-id (plist-get msg :chat_id))
           (msg-id (plist-get msg :id)))
@@ -1951,9 +1958,13 @@ Requires administrator rights in the chat."
       ;; change on async requests
       (setq telega--help-win-param msg-id)
 
+      (when (telega-msg-match-p msg 'is-deleted)
+        (telega-ins--with-face 'error
+          (telega-ins (telega-i18n "lng_deleted_message") "\n")))
       (telega-ins-describe-item (telega-i18n "lng_sent_date" :date "")
         (telega-ins--date (plist-get msg :date) 'date-time))
-      (when (telega-msg-match-p msg '(message-property :can_get_read_date))
+      (when (telega-msg-match-p msg
+              '(and (not is-deleted) (message-property :can_get_read_date)))
         (telega-ins-describe-item "Read Date"
           (telega--getMessageReadDate msg
             (telega--gen-ins-continuation-callback 'loading
@@ -2083,7 +2094,8 @@ Requires administrator rights in the chat."
                            :with-username-p t
                            :with-brackets-p t)))))))))
 
-      (when (telega-msg-match-p msg '(message-property :can_get_viewers))
+      (when (telega-msg-match-p msg
+              '(and (not is-deleted) (message-property :can_get_viewers)))
         (telega-ins-describe-item
             (telega-i18n "lng_stats_overview_message_views")
           ;; Asynchronously fetch message viewers

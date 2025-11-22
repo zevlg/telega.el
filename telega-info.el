@@ -101,7 +101,7 @@ For secret chats return nil."
                     (cons (telega-i18n "lng_self_destruct_months"
                             :count nmonth)
                           (round (* nmonth 30.4))))
-                  '(1 3 6 12)))
+                  '(1 3 6 12 24)))
          (nmonth (telega-completing-read
                   (concat (telega-i18n "lng_settings_destroy_if") " ")
                   (mapcar 'car choices) nil t))
@@ -224,7 +224,7 @@ For secret chats return nil."
 
   (let* ((telega-full-info-offline-p nil)
          (full-info (telega--full-info user))
-         (user-blocked-p (telega-user-match-p user 'is-blocked)))      
+         (user-blocked-p (telega-user-match-p user 'is-blocked)))
     (when (plist-get full-info :can_be_called)
       (telega-ins--box-button (concat (telega-symbol 'phone)
                                       (telega-i18n "lng_call_start"))
@@ -251,6 +251,26 @@ For secret chats return nil."
         (telega-ins "\n")
         (telega-ins--line-wrap-prefix "  "
           (telega-ins--audio nil profile-audio))))
+
+    ;; Note about contact user
+    (when (telega-user-match-p user 'contact)
+      (telega-ins-describe-item (telega-i18n "lng_contact_details_note")
+        (let ((user-note (telega-tl-str full-info :note)))
+          (telega-ins--box-button (telega-i18n "lng_edit_note")
+            'action (lambda (_ignored)
+                      (telega--setUserNote
+                       user (telega-fmt-text
+                             (read-string
+                              (concat (telega-i18n "lng_edit_note") ": ")
+                              user-note)))))
+          (telega-ins "\n")
+          (if user-note
+              (telega-ins--line-wrap-prefix "  "
+                (telega-ins user-note))
+            (telega-ins--help-message
+             (telega-ins-i18n "lng_contact_add_notes_about")
+             ;; No newline at the end
+             nil)))))
 
     ;; Rating
     (when-let ((user-rating (plist-get full-info :rating)))
@@ -827,7 +847,9 @@ and chat permission restrictions"
 
     ;; Ordinary supergroup settings
     (unless (telega-chat-channel-p chat)
-      (when (plist-get my-perms :can_restrict_members)
+      ;; Join by request can be enabled in a public supergroup chats
+      (when (and (plist-get my-perms :can_restrict_members)
+                 (telega-chat-match-p chat 'is-public))
         (telega-ins-describe-item
             (telega-i18n "lng_manage_peer_send_approve_members")
           (telega-ins--text-button (if (plist-get supergroup :join_by_request)
@@ -838,15 +860,15 @@ and chat permission restrictions"
                       (telega--toggleSupergroupJoinByRequest
                        supergroup
                        (not (plist-get supergroup :join_by_request)))))
-          (when-let ((join-requests (plist-get chat :pending_join_requests)))
-            (telega-ins " ")
-            (telega-ins--pending-join-requests join-requests))
           (telega-ins "\n")
+          (when-let ((join-requests (plist-get chat :pending_join_requests)))
+            (telega-ins--line-wrap-prefix "  "
+              (telega-ins--pending-join-requests join-requests))
+            (telega-ins "\n"))
           (telega-ins--help-message
            (telega-ins-i18n "lng_manage_peer_send_approve_members_about")
            ;; NOTE: No trailing newline
-           nil))
-        )
+           nil)))
 
       (let* ((slow-mode-delay (plist-get full-info :slow_mode_delay))
              (smd-str (if (zerop slow-mode-delay)
@@ -1349,6 +1371,36 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
   "Describe current telega state and configuration."
   (user-error "`telega-describe' not yet implemented")
   )
+
+
+;; Quick replies
+(defun telega-describe-quick-replies--maybe-redisplay ()
+  (telega-help-win--maybe-redisplay "*Telega Quick Replies*" nil))
+
+(defun telega-describe-quick-replies--inserter (&rest _ignored)
+  (telega-ins-describe-section
+   (telega-i18n "lng_replies_title"))
+  (telega-ins--help-message
+   (telega-ins-i18n "lng_replies_about"))
+  (telega-ins "\n")
+
+  (seq-doseq (qr telega--quick-replies)
+    (telega-ins--with-face '(bold telega-msg-heading)
+      (telega-ins "/" (telega-tl-str qr :name) "\n"))
+    (telega-ins--line-wrap-prefix "  "
+      (seq-doseq (qr-msg (plist-get qr :messages))
+        (telega-ins--content qr-msg)
+        (telega-ins "\n")))))
+
+(defun telega-describe-quick-replies ()
+  "Describe list of quick replies."
+  (interactive)
+  (with-telega-help-win "*Telega Quick Replies*"
+    (telega-describe-quick-replies--inserter)
+
+    (setq telega--help-win-param nil)
+    (setq telega--help-win-inserter #'telega-describe-quick-replies--inserter)
+    ))
 
 (provide 'telega-info)
 

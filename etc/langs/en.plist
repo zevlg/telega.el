@@ -49,6 +49,8 @@
   :value "View in Topic")
  ("lng_replies_view_thread"
   :value "View Thread")
+ ("lng_replies_no_comments"
+  :value "No comments here yet...")
  ("lng_reply_in_another_chat"
   :value "Reply in Another Chat")
  ("lng_profile_settings_section"
@@ -563,6 +565,13 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_manage_peer_reactions_all"
   :value "All reactions")
 
+ ("lng_manage_peer_group_type"
+  :value "Group type")
+ ("lng_manage_public_peer_title"
+  :value "Public")
+ ("lng_manage_private_peer_title"
+  :value "Private")
+
  ;; Screenshot #5571 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot5571
  ("lng_rights_edit_admin_header"
   :value "What can this admin do?")
@@ -1065,8 +1074,7 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_forum_show_topics_list"
   :value "Show Topics List")
  ("lng_forum_topic_created_body"
-  :value "Send a message
-to start the topic.")
+  :value "Send a message to start the topic.")
  ("lng_action_topic_placeholder"
   :value "topic")
  ("lng_info_topic_title"
@@ -1167,8 +1175,8 @@ to start the topic.")
  ("lng_search_no_results"
   :value "No messages found")
  ("lng_search_found_results"
-  :one_value "Found {count} message"
-  :other_value "Found {count} messages")
+  :one_value "{count} message found"
+  :other_value "{count} messages found")
 
  ("telega_stop_live_location"
   :one_value "Stop"
@@ -2164,4 +2172,32 @@ You can send them an invite link as message instead.")
  ("lng_delete_for_me_chat_hint"
   :one_value "This will delete it just for you, not for other participants of the chat."
   :other_value "This will delete them just for you, not for other participants of the chat.")
+
+ ;; Quick Replies
+ ("lng_replies_title"
+  :value "Quick Replies")
+ ("lng_replies_about"
+  :value "Set up shortcuts with rich text and media to respond to messages faster.")
+ ("lng_forum_messages"
+  :one_value "{count} message"
+  :other_value "{count} messages")
+ ("lng_comments_header"
+  :one_value "{count} comment"
+  :other_value "{count} comments")
+
+ ("lng_contact_details_note"
+  :value "Note")
+ ("lng_contact_add_notes"
+  :value "Note")
+ ("lng_contact_add_notes_about"
+  :value "Notes are only visible to you.")
+ ("lng_edit_note"
+  :value "Edit Note")
+
+ ("lng_settings_suggestion_phone_number_title"
+  :value "Is {phone} still your number?")
+ ("lng_settings_suggestion_phone_number_about"
+  :value "Keep your number up to date to ensure you can always log into Telegram. {link}")
+ ("lng_settings_suggestion_phone_number_about_link"
+  :value "https://telegram.org/faq#q-i-have-a-new-phone-number-what-do-i-do")
  )

@@ -222,7 +222,7 @@ If does not match, then query user to rebuild telega-server."
   "Return non-nil if telega-sever process is alive."
   (process-live-p (telega-server--proc)))
 
-(defsubst telega-server--parse-cmd ()
+(defun telega-server--parse-cmd ()
   "Parse single reply from telega-server.
 Return parsed command."
   (when (re-search-forward "^\\([a-z-]+\\) \\([0-9]+\\)\n" nil t)
@@ -238,14 +238,29 @@ Return parsed command."
         (delete-region (point-min) (match-beginning 0)))
 
       (when (> (- (point-max) (point)) sexpsz)
-        (let ((value (read (current-buffer))))
-          (prog1
-              (list cmd (telega--tl-unpack value))
-            (delete-region (point-min) (point))
+        (if (string= cmd "zlib")
+            (progn
+              ;; NOTE: `zlib-decompress-region' works only on unibyte buffers
+              (set-buffer-multibyte nil)
 
-            ;; remove trailing newline
-            (cl-assert (= (following-char) ?\n))
-            (delete-char 1)))))))
+              ;; Decompress and continue parsing decompressed events
+              (delete-region (point-min) (point))
+              ;; Remove trailing newline
+              (delete-region (+ 1 sexpsz) (+ 2 sexpsz))
+              (let ((decompressed-p
+                     (zlib-decompress-region (point-min) (1+ sexpsz))))
+                (cl-assert decompressed-p))
+              (set-buffer-multibyte t)
+              (telega-server--parse-cmd))
+
+          (let ((value (read (current-buffer))))
+            (prog1
+                (list cmd (telega--tl-unpack value))
+              (delete-region (point-min) (point))
+
+              ;; remove trailing newline
+              (cl-assert (= (following-char) ?\n))
+              (delete-char 1))))))))
 
 (defun telega-tl-error-equal (tl-error code &optional message)
   "Return non-nil if TL-ERROR has CODE and MESSAGE."
@@ -547,6 +562,12 @@ COMMAND is passed directly to `telega-server--send'."
          (telega-docker--cidfile
           (telega-docker--container-id-filename))
          (server-cmd (telega-server--process-command
+                      (when telega-server-use-zlib
+                        "-z")
+                      (when telega-server-optimize
+                        "-O")
+                      (when telega-server-optimize
+                        (int-to-string telega-server-optimize))
                       (when telega-server-logfile
                         "-l")
                       (when telega-server-logfile
@@ -585,7 +606,7 @@ COMMAND is passed directly to `telega-server--send'."
         (set-process-query-on-exit-flag proc nil)
         (set-process-sentinel proc #'telega-server--sentinel)
         (set-process-filter proc #'telega-server--filter)
-        (set-process-coding-system proc 'utf-8 'utf-8)))))
+        (set-process-coding-system proc 'binary 'utf-8)))))
 
 (defun telega-server-kill ()
   "Kill the telega-server process."

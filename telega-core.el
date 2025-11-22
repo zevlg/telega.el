@@ -29,6 +29,7 @@
 (require 'ring)
 (require 'color)
 (require 'cursor-sensor)
+(require 'rx)
 
 (require 'telega-customize)
 
@@ -209,6 +210,10 @@ Updated on `updateDefaultPaidReactionType' event.")
     ("Yiddish" . "yi") ("Yoruba" . "yo") ("Zulu" . "zu"))
   "Language codes used for translations.")
 
+(defconst telega-history-search-separators
+  (rx (one-or-more (or space "=" "-" "_" "." "," ":" ";" "^" "|" "(" ")" "[" "]" "{" "}")))
+  "Punctuation symbols ignored by history search.")
+
 ;;; Runtime variables
 (defvar telega-msg--current nil
   "Bound to currenty inserting message.")
@@ -275,9 +280,9 @@ Such as pinned, replies, etc.")
   "Hash table ((chat-id . story-id) -> story) of cached stories.")
 (defvar telega--actions nil
   "Hash table ((chat-id . msg-thread-id) -> alist-of-user-actions).")
-(defun telega-chat--actions (chat &optional msg-thread-id)
-  "Return actions for the CHAT and optional MSG-THREAD-ID."
-  (gethash (cons (plist-get chat :id) (or msg-thread-id 0)) telega--actions))
+(defun telega-chat--actions (chat &optional tl-message-topic)
+  "Return actions for the CHAT and optional TL-MESSAGE-TOPIC."
+  (gethash (cons (plist-get chat :id) tl-message-topic) telega--actions))
 
 (defvar telega--filtered-chats nil
   "Chats filtered by currently active filters.
@@ -379,6 +384,20 @@ Favorite message is a plist with at least `:chat_id', `:id' properties.
 
 (defvar telega--owned-stars 0
   "Number of owned Telegram Stars.")
+
+(defvar telega--quick-replies nil
+  "List of quick reply shortcuts.")
+
+(defun telega-quick-reply-get (shortcut-id)
+  "Return quick reply by its SHORTCUT-ID."
+  (cl-find shortcut-id telega--quick-replies
+           :key (telega--tl-prop :id)))
+
+(defun telega-quick-reply-by-name (shortcut-name)
+  "Return quick reply by SHORTCUT-NAME."
+  (cl-find shortcut-name telega--quick-replies
+           :key (lambda (qr) (telega-tl-str qr :name))
+           :test #'string=))
 
 ;; Searching
 (defvar telega-search-history nil
@@ -659,43 +678,25 @@ Could contain `:loading', `:older-loaded', `:newer-freezed' or
 `:newer-loaded' elements.")
 (make-variable-buffer-local 'telega-chatbuf--history-state-plist)
 
+(defvar telega-chatbuf--topic nil
+  "Topic or message thread currently active in the chatbuf.")
+(make-variable-buffer-local 'telega-chatbuf--topic)
+
+(defun telega-chatbuf--topic-thread-msg ()
+  "If message thread topic is curretly active, return its starting message."
+  (when-let ((messages (plist-get telega-chatbuf--topic :messages)))
+    (seq-elt messages (1- (length messages)))))
+
 (defvar telega-chatbuf--thread nil
   "Thread currently active in the chatbuf.
-Thread is either TL `forumTopic' or `message' starting a thread.")
+Thread is either TL `forumTopic' or `message' starting a message thread.")
 (make-variable-buffer-local 'telega-chatbuf--thread)
 
-(defun telega-chatbuf--thread-msg ()
-  "Return chatbuf's thread as thread's root message."
-  (when (telega-msg-p telega-chatbuf--thread)
-    telega-chatbuf--thread))
-
-(defun telega-chatbuf--thread-info ()
-  (plist-get (telega-chatbuf--thread-msg) :telega-thread-info))
-
-(defun telega-chatbuf--thread-topic ()
-  "Return chatbuf's thread as topic."
-  (unless (telega-chatbuf--thread-msg)
-    ;; Must be topic or nil at this point
-    telega-chatbuf--thread))
-
-(defun telega-chatbuf--message-thread-id (&optional only-if-topic-p
-                                                    for-msg-send-p)
-  "Return message thread id for the chatbuf.
-To be used in various TDLib methods as `:message_thread_id` argument.
-If ONLY-IF-TOPIC-P is specified, then return thread id only if topic
-is enabled.
-If FOR-MSG-SEND-P is specified, then return message thread id for use
-with `sendMessage' and `sendMessageAlbum' functions.  It differs,
-because for General topic 0 message thread id must be used (according
-to note from TDLib dev)."
-  (or (when-let ((topic (telega-chatbuf--thread-topic)))
-        (if (and for-msg-send-p (telega-topic-match-p topic 'is-general))
-            0
-          (telega-topic-msg-thread-id topic)))
-      (unless only-if-topic-p
-        (when-let ((thread (telega-chatbuf--thread-msg)))
-          (plist-get telega-chatbuf--thread :message_thread_id)))
-      0))
+(defun telega-chatbuf--MessageTopic ()
+  "Return message topic for the chatbuf.
+To be used in various TDLib methods as `:topic_id` argument."
+  (when telega-chatbuf--topic
+    (telega--MessageTopic telega-chatbuf--topic)))
 
 (defvar telega-chatbuf--aux-plist nil
   "Supplimentary plist for aux prompt.")
@@ -812,6 +813,8 @@ Done when telega server is ready to receive queries."
   (setq telega-default-paid-reaction-type nil)
 
   (setq telega-init-time (current-time))
+
+  (setq telega--quick-replies nil)
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -1309,6 +1312,10 @@ MSG-SENDER could be a user or a chat."
   (cl-assert telega-chatbuf--chat)
   (telega-chat-match-p telega-chatbuf--chat chat-temex))
 
+(defun telega-chatbuf-topic-match-p (topic-temex)
+  (cl-assert telega-chatbuf--chat)
+  (telega-topic-match-p telega-chatbuf--topic topic-temex))
+
 (defun telega-user-match-p (user temex)
   "Return non-nil if USER matches TEMEX."
   (declare (indent 1))
@@ -1805,7 +1812,7 @@ Draft input is the input that have `:draft-input-p' property on both sides."
 
 ;; Msg part
 (defun telega-msg-id= (msg1 msg2)
-  (= (plist-get msg1 :id) (plist-get msg2 :id)))
+  (eq (plist-get msg1 :id) (plist-get msg2 :id)))
 
 (defsubst telega-msg-cache (msg)
   "Put message MSG into messages cache `telega--cached-messages'."
@@ -2052,7 +2059,7 @@ If help message has been inserted, insert newline at the end."
             (,brackets-sym
              (or (telega-box-button--style-get ,style-sym :brackets)
                  telega-box-button-brackets)))
-       (telega-ins--raw-button 
+       (telega-ins--raw-button
            (nconc (when-let ((,aface-sym (telega-box-button--style-get
                                           ,style-sym :active-face)))
                     (list 'cursor-face ,aface-sym))

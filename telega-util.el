@@ -65,7 +65,7 @@ Also return `nil' if FILENAME is `nil'."
        (file-exists-p filename)))
 
 (defun telega-plist-del (plist prop)
-  "From PLIST remove property PROP."
+  "From PLIST destructively remove property PROP."
   ;; NOTE: `cl--plist-remove' has been removed in Emacs master
   ;; See https://t.me/emacs_telega/27687
   ;; Code taken from `org-plist-delete'
@@ -1015,7 +1015,7 @@ buffer) or a string."
            ;; differ, because consecutive chars has `eq' `display'
            ;; property it is displayed as single unit (ref: 40.16.1
            ;; Display Specs That Replace The Text)
-           ;; 
+           ;;
            ;; However, copying image will breake
            ;; `telega-sticker--animate' functionality, because
            ;; `telega-media--image-update' updates image inplace
@@ -1709,6 +1709,7 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
         (setq pos prev))
       (telega--region-by-text-prop pos 'cursor-sensor-functions))))
 
+(defvar telega-chat-read-history nil)
 (defun telega-completing-read-chat (prompt &optional chats sort-criteria)
   "Read chat by title.
 CHATS - list of the chats to select from.  By default all chats are used.
@@ -1718,7 +1719,8 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
    (telega-sort-chats
     (or sort-criteria telega-chat-completing-sort-criteria)
     (telega-filter-chats (or chats (telega-chats-list))
-      '(or is-known has-chatbuf)))))
+      '(or is-known has-chatbuf)))
+   'telega-chat-read-history))
 
 (defmacro telega-gen-completing-read-list (prompt items-list item-fmt-fun
                                                   item-read-fun &rest args)
@@ -1759,6 +1761,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (telega-gen-completing-read-list prompt chats-list #'telega-chatbuf--name
                                    #'telega-completing-read-chat sort-criteria))
 
+(defvar telega-user-read-history nil)
 (defun telega-completing-read-user (prompt &optional users)
   "Read user by his name from USERS list."
   (declare (indent 1))
@@ -1766,7 +1769,8 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
    prompt
    (or users
        (sort (telega-user-list telega-user-completing-temex)
-             #'telega-user>))))
+             #'telega-user>))
+   'telega-user-read-history))
 
 (defun telega-completing-read-user-list (prompt &optional users)
   "Read multiple users from USERS."
@@ -1830,6 +1834,7 @@ To be used `telega-completing-read-chat-member' to get user.")
           (local-set-key (kbd "C-c C-e") #'telega-custom-emoji-choose))
       (apply #'read-string prompt args))))
 
+(defvar telega-chat-member-read-history nil)
 (defun telega-completing-read-chat-member (prompt chat &optional default-member)
   "Interactively read member of CHAT.
 DEFAULT-MEMBER specifies default member to complete.
@@ -1847,19 +1852,21 @@ Return a user."
                    :default-member (when (or (not prefix)
                                              (string-empty-p prefix))
                                      default-member)))
-               nil 'require-match)
+               nil 'require-match nil 'telega-chat-member-read-history)
 
             ;; Static completion, can complete only 50 chat members
             (telega-completing-read
              prompt
              (telega-completing--chat-member-choices chat
                :default-member default-member)
-             nil t))))
+             nil t nil 'telega-chat-member-read-history))))
     (cdr (assoc name telega-completing--chat-member-alist))))
 
+(defvar telega-folder-read-history nil)
 (defun telega-completing-read-folder (prompt &optional folder-names)
   "Read TDLib folder name completing."
-  (telega-completing-read prompt (or folder-names (telega-folder-names)) nil t))
+  (telega-completing-read prompt (or folder-names (telega-folder-names)) nil t
+                          nil 'telega-folder-read-history))
 
 (defun telega-completing-read-folder-list (prompt &optional folder-names)
   "Read list of the Telegram folders prompting with PROMPT."
@@ -1868,6 +1875,7 @@ Return a user."
   (telega-gen-completing-read-list prompt folder-names #'identity
                                    #'telega-completing-read-folder))
 
+(defvar telega-folder-icon-name-read-history nil)
 (defun telega-completing-read-folder-icon-name (prompt &optional initial-input)
   "Read folder's icon name."
   (telega-completing-read
@@ -1878,7 +1886,7 @@ Return a user."
                                              telega-folder-icons-alist))
                                  icon-name)))
            telega-folder-icon-names)
-   nil t initial-input))
+   nil t initial-input 'telega-folder-icon-name-read-history))
 
 (defun telega-location-distance (loc1 loc2 &optional components-p)
   "Return distance in meters between locations LOC1 and LOC2.
@@ -1914,7 +1922,8 @@ latitude and longitude."
                           (dired-dwim-target-directory))))
                   default-filename mustmatch initial predicate))
 
-(defun telega-read-location (prompt &optional initial-loc default-loc history)
+(defvar telega-location-read-history nil)
+(defun telega-read-location (prompt &optional initial-loc default-loc)
   "Read location with PROMPT.
 INITIAL-LOC - location converted to INITIAL-INPUT argument to `read-string'.
 DEFAULT-LOC - location converted to DEFAULT-VALUE argument to `read-string'.
@@ -1930,7 +1939,8 @@ Return location as plist."
                           (concat prompt
                                   (when default-value
                                     (concat " [" default-value "]")) ": ")
-                          initial-input history default-value)))
+                          initial-input 'telega-location-read-history
+                          default-value)))
              (setq loc (mapcar #'string-to-number (split-string locstr ",")))
              (unless (and (numberp (car loc)) (numberp (cadr loc)))
                (message "Invalid location `%s', use: <LAT>,<LONG> format" locstr)
@@ -2048,6 +2058,7 @@ Return a chat."
                       invite-title
                       "? "))))
 
+(defvar telega-permission-read-history nil)
 (defun telega-completing-read-permission (prompt &optional permissions)
   "Read a permission from PERMISSIONS list completing user input.
 If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
@@ -2059,7 +2070,8 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
                                               (car perm-spec))))
                                     raw-perms)))
          (perm-choice (telega-completing-read
-                       prompt (mapcar #'car i18n-choices) nil t)))
+                       prompt (mapcar #'car i18n-choices) nil t nil
+                       'telega-permission-read-history)))
     (cdr (assoc perm-choice i18n-choices))))
 
 (defun telega-msg-sender-title-for-completion (msg-sender)
@@ -2076,9 +2088,10 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
             telega-chat-format-plist-for-completion))
        (telega-ins--chat msg-sender)))))
 
+(defvar telega-msg-sender-read-history nil)
 ;; NOTE: ivy returns copy of the string given in choices, thats why we
 ;; need to use `assoc'
-(defun telega-completing-read-msg-sender (prompt &optional msg-senders)
+(defun telega-completing-read-msg-sender (prompt &optional msg-senders history)
   "Read a message sender from list of MSG-SENDERS."
   (let* ((completion-ignore-case t)
          ;; NOTE: use temporary buffer to format titles, to not
@@ -2093,8 +2106,9 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
                      (eval-when-compile
                        (lambda ()
                          (setq-local nobreak-char-display nil)))
-                   (telega-completing-read prompt (mapcar #'car choices)
-                                           nil t))))
+                   (telega-completing-read
+                    prompt (mapcar #'car choices) nil t nil
+                    (or history 'telega-msg-sender-read-history)))))
     (cdr (assoc choice choices))))
 
 (defun telega-completing-read-topic (chat &optional prompt)
@@ -3098,6 +3112,7 @@ not signal an error and just return nil."
            (telega-time-seconds))
       duration)))
 
+(defvar telega-language-code-read-history nil)
 (defun telega-completing-read-language-code (prompt)
   "A two-letter ISO 639-1 language code."
   (let* ((candidates-alist
@@ -3106,7 +3121,8 @@ not signal an error and just return nil."
                           (cdr spec)))
                   telega-translate-languages-alist))
          (lang (telega-completing-read
-                prompt (mapcar #'car candidates-alist) nil t)))
+                prompt (mapcar #'car candidates-alist) nil t nil
+                'telega-language-code-read-history)))
     (cdr (assoc lang candidates-alist))))
 
 (defun telega--gen-ins-continuation-callback (show-loading-p
@@ -3198,6 +3214,7 @@ COLUMN is the column to aligned to."
                                              (right 1)))))
      with-string)))
 
+(defvar telega-text-formatting-entity-read-history nil)
 (defun telega-completing-read-text-formatting-entity (prompt)
   "Interactively read text formatting entity type."
   (let* ((completion-ignore-case t)
@@ -3213,7 +3230,8 @@ COLUMN is the column to aligned to."
                               "lng_menu_formatting_link_create"
                               "lng_menu_formatting_clear")))
          (i18n-fmt-name (telega-completing-read
-                         prompt (mapcar #'car fmt-alist) nil t))
+                         prompt (mapcar #'car fmt-alist) nil t nil
+                         'telega-text-formatting-entity-read-history))
          (fmt-name (cdr (assoc i18n-fmt-name fmt-alist))))
     (pcase fmt-name
       ("lng_menu_formatting_bold"
@@ -3264,6 +3282,7 @@ COLUMN is the column to aligned to."
     (reactionTypePaid
      (telega-symbol 'telegram-star))))
 
+(defvar telega-msg-reaction-read-history nil)
 (defun telega-completing-read-msg-reaction (msg prompt &optional
                                                 msg-available-reactions
                                                 custom-label)
@@ -3307,10 +3326,12 @@ Return nil if no reaction is available for the MSG."
                    (list (cons custom-label 'custom)))))
          (choice (when all-choices
                    (telega-completing-read
-                    prompt (mapcar #'car all-choices) nil t))))
+                    prompt (mapcar #'car all-choices) nil t nil
+                    'telega-msg-reaction-read-history))))
     (when choice
       (cdr (assoc choice all-choices)))))
 
+(defvar telega-saved-messages-tag-read-history nil)
 (defun telega-completing-read-saved-messages-tag (prompt &optional sm-topic-id
                                                          new-tag-label)
   "Read a Saved Messages tag.
@@ -3329,7 +3350,9 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
                                                       new-tag-label
                                                     "Create New Tag")
                                                   'face 'bold)))))
-              (choice (telega-completing-read prompt choices nil t)))
+              (choice (telega-completing-read
+                       prompt choices nil t nil
+                       'telega-saved-messages-tag-read-history)))
     (cdr (assoc choice tag-choices))))
 
 (defun telega-float-clamp (number digits)

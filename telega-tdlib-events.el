@@ -149,8 +149,8 @@ DIRTINESS specifies additional CHAT dirtiness."
 (defun telega--on-updateChatAction (event)
   "Some message sender has actions on chat."
   (let* ((chat-id (plist-get event :chat_id))
-         (msg-thread-id (plist-get event :message_thread_id))
-         (action-id (cons chat-id msg-thread-id))
+         (topic-id (plist-get event :topic_id))
+         (action-id (cons chat-id topic-id))
          (chat-actions (gethash action-id telega--actions))
          (sender (plist-get event :sender_id))
          (user-action (assoc sender chat-actions))
@@ -518,6 +518,8 @@ NOTE: we store the number as custom chat property, to use it later."
     ;; All chats has been fetched
     (telega-status--set nil "")
 
+    (telega-debug "Loaded all chats in %s"
+                  (telega-ins--as-string (telega-uptime t)))
     ;; Check `:last_message' of initially fetched chats for client
     ;; side messages ignoring.  Also trigger reordering, since
     ;; ignoring last message might affect chat order, see
@@ -825,9 +827,20 @@ Message id could be updated on this update."
         ;; be downloaded.
         (telega-msg--custom-emojis-fetch msg))
 
-      (when-let ((thread-msg (telega-chatbuf--thread-msg)))
-        (when (= (plist-get event :message_id) (plist-get thread-msg :id))
-          (telega-chatbuf--chat-update "thread")))
+      ;; Probably update thread's info, because
+      ;; `messageThreadInfo.reply_info' is the same as
+      ;; `message.interaction_info.reply_info' for message starting
+      ;; this thread
+      (when (and (telega-topic-match-p telega-chatbuf--topic '(type thread))
+                 (eq (plist-get event :message_id)
+                     (plist-get telega-chatbuf--topic :message_thread_id)))
+        (plist-put telega-chatbuf--topic :reply_info
+                   (telega--tl-get event :interaction_info :reply_info))
+        (cl-assert (= (plist-get event :message_id)
+                      (plist-get (telega-chatbuf--topic-thread-msg) :id)))
+        (plist-put (telega-chatbuf--topic-thread-msg) :interaction_info
+                   (plist-get event :interaction_info))
+        (telega-chatbuf--chat-update "topic"))
       )))
 
 (defun telega--on-updateMessageContentOpened (event)
@@ -1641,12 +1654,16 @@ Please downgrade TDLib and recompile `telega-server'"
 
 (defun telega--on-updateForumTopic (event)
   (let* ((forum-chat (telega-chat-get (plist-get event :chat_id) 'offline))
-         (forum-topic (telega-topic-by-thread-id
-                       forum-chat (plist-get event :message_thread_id))))
+         (forum-topic (telega-topic-get
+                       forum-chat (plist-get event :forum_topic_id)))
+         (old-last-read-msg-id
+          (plist-get forum-topic :last_read_inbox_message_id))
+         (new-last-read-msg-id
+          (plist-get event :last_read_inbox_message_id)))
     (plist-put forum-topic :is_pinned
                (plist-get event :is_pinned))
     (plist-put forum-topic :last_read_inbox_message_id
-               (plist-get event :last_read_inbox_message_id))
+               new-last-read-msg-id)
     (plist-put forum-topic :last_read_outbox_message_id
                (plist-get event :last_read_outbox_message_id))
     (plist-put forum-topic :unread_mention_count
@@ -1655,6 +1672,47 @@ Please downgrade TDLib and recompile `telega-server'"
                (plist-get event :unread_reaction_count))
     (plist-put forum-topic :notification_settings
                (plist-get event :notification_settings))
+
+    ;; TODO: delete this, display total number of messages for the
+    ;; topic instead
+    (when nil
+    ;; NOTE: Apply heuristics to update `:unread_count' untill TDLib
+    ;; gets support for it.  If chatbuf has this topic active and
+    ;; `was-last-read-message-id' is currently visible in the chatbuf,
+    ;; then number of viewed messages can be calculated as difference
+    ;; between updated `:last_read_inbox_message_id' and
+    ;; `was-last-read-message-id'
+    (unless (eq old-last-read-msg-id new-last-read-msg-id)
+      (with-telega-chatbuf forum-chat
+        (when (and (eq forum-topic telega-chatbuf--topic)
+                   ;; No filtering for this heuristics
+                   (not telega-chatbuf--msg-filter))
+          (let ((msg-node (telega-chatbuf--node-by-msg-id old-last-read-msg-id))
+                (last-read-diff 0))
+            (while msg-node
+              (setq msg-node (ewoc-next telega-chatbuf--ewoc msg-node))
+              (if msg-node
+                  (let ((msg (ewoc-data msg-node)))
+                    (when (and (not (telega-msg-internal-p msg))
+                               (not (telega-msg-match-p msg 'is-deleted)))
+                      (cl-incf last-read-diff))
+                    (when (eq new-last-read-msg-id (plist-get msg :id))
+                      ;; Found!
+                      (setq msg-node nil)))
+
+                ;; Not found, don't update `:unread_count'
+                (setq last-read-diff 0)))
+
+            (message "here, updateForumTopic: last-read-diff=%d" last-read-diff)
+            (when (and (not (zerop last-read-diff))
+                       (>= (plist-get forum-topic :unread_count)
+                           last-read-diff))
+              (cl-decf (plist-get forum-topic :unread_count) last-read-diff)
+
+              ;; To update `telega-chatbuf-header-unread-messages'
+              (telega-chat--mark-dirty forum-chat
+                                       (list :@type "updateChatReadInbox"))
+              ))))))
 
     (telega-chat--mark-dirty forum-chat event)
     ))
@@ -1687,20 +1745,36 @@ For Saved Messages and channel direct messages chat topics only."
 
 ;; Quick Replies
 (defun telega--on-updateQuickReplyShortcut (event)
-  (let ((shortcut (plist-get event :shortcut)))
-    ))
+  "Quick reply has been updated or added."
+  (let* ((new-qr (plist-get event :shortcut))
+         (old-qr (telega-quick-reply-get (plist-get new-qr :id))))
+    (if old-qr
+        (setcdr old-qr (cdr new-qr))
+      (setq telega--quick-replies (nconc telega--quick-replies (list new-qr)))))
+  (telega-describe-quick-replies--maybe-redisplay))
 
 (defun telega--on-updateQuickReplyShortcutDeleted (event)
-  )
+  "Qick reply has been deleted."
+  (setq telega--quick-replies
+        (cl-remove (plist-get event :shortcut_id) telega--quick-replies
+                   :key (telega--tl-prop :id)))
+  (telega-describe-quick-replies--maybe-redisplay))
 
-(defun teleg--on-updateQuickReplyShortcuts (event)
-  )
+(defun telega--on-updateQuickReplyShortcuts (event)
+  "Order of quick replies has changed."
+  (let ((ids-order (append (plist-get event :shortcut_ids) nil)))
+    (setq telega--quick-replies
+          (sort telega--quick-replies
+                (lambda (qr1 qr2)
+                  (> (length (memq (plist-get qr1 :id) ids-order))
+                     (length (memq (plist-get qr2 :id) ids-order)))))))
+  (telega-describe-quick-replies--maybe-redisplay))
 
 (defun telega--on-updateQuickReplyShortcutMessages (event)
-  (let ((sc-id (plist-get event :shortcut_id))
-        (messages (plist-get event :messages)))
-    ;; TODO
-    ))
+  (let* ((qr (telega-quick-reply-get (plist-get event :shortcut_id)))
+         (messages (plist-get event :messages)))
+    (plist-put qr :messages messages))
+  (telega-describe-quick-replies--maybe-redisplay))
 
 (provide 'telega-tdlib-events)
 

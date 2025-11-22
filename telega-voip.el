@@ -383,7 +383,7 @@ If TITLE is not specified, ask user interactively for the new title."
                  (concat (telega-i18n "lng_group_call_edit_title_header")
                          ": ")
                  (telega-tl-str group-call :title))))
-  (telega--setGroupCallTitle group-call title))
+  (telega--setVideoChatTitle group-call title))
 
 (defun telega-describe-group-call--inserter (group-call-id)
   "Inserter for the voice chat."

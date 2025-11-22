@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2025-10-01 Ср 00:04 -->
+<!-- 2025-11-22 Сб 11:28 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.552)</title>
+<title>Telega Manual (v0.8.560)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -68,7 +68,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.552)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.560)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -174,7 +174,6 @@
 <li><a href="#telega-auto-download-mode-wip">telega-auto-download-mode (WIP)</a></li>
 <li><a href="#telega-contact-birthdays-mode">telega-contact-birthdays-mode</a></li>
 <li><a href="#telega-play-media-sequence-mode"><span class="todo TODO">TODO</span> telega-play-media-sequence-mode</a></li>
-<li><a href="#telega-network-stats-mode">telega-network-stats-mode</a></li>
 <li><a href="#telega-voip-sounds-mode">telega-voip-sounds-mode</a></li>
 </ul>
 </li>
@@ -365,7 +364,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.55-369ee922b.
+version equal to v1.8.56-dd1b761fd.
 </p>
 
 <p>
@@ -850,7 +849,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgc3710d8">
+<pre class="example" id="org416cc1c">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -868,7 +867,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org241d4f5">
+<pre class="example" id="org058e82c">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -957,7 +956,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgc478f7a">
+<pre class="example" id="org56b445a">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -995,7 +994,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org421a014">
+<pre class="example" id="org580a79a">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1644,6 +1643,8 @@ Matches if chat has last message and last message matches <code>MSG-TEMEX</code>
 
 <dt>has-discussion-group</dt><dd>Matches if chat is a channel with a linked discussion group.</dd>
 
+<dt>is-discussion-group</dt><dd>Matches if chat is a discussion group for a channel.</dd>
+
 <dt>has-direct-messages-group</dt><dd>Matches if chat is a channel having a direct messages group.</dd>
 
 <dt>is-direct-messages-group</dt><dd>Matches if chat is a direct messages group.
@@ -1699,7 +1700,7 @@ non-expired story.</dd>
 
 <dt>has-pinned-stories</dt><dd>Matches if channel chat has pinned stories.</dd>
 
-<dt>can-send-stories</dt><dd>Matches if you can post a story into chat.</dd>
+<dt>can-post-stories</dt><dd>Matches if you can post a story into chat.</dd>
 
 <dt>(my-boost [ <code>N</code> ])</dt><dd>Matches if supergroup or channel has least <code>N</code> my boosts.
 By default <code>N</code> is 1.</dd>
@@ -1766,10 +1767,11 @@ By default <code>N</code> is 1.</dd>
 <dt>post-with-comments</dt><dd>Matches if message is a channel post that can be commented.
 Return messageReplyInfo.</dd>
 
-<dt>is-topic</dt><dd>Matches if message is a forum topic message.
+<dt>is-forum-topic</dt><dd>Matches if message belongs to or starts a forum topic.
 Return <code>MessageTopic</code> structure.</dd>
 
-<dt>is-thread</dt><dd>Matches if message belongs to or starts a messages thread.</dd>
+<dt>is-thread</dt><dd>Matches if message belongs to or starts a messages thread.
+Return <code>MessageTopic</code> structure.</dd>
 
 <dt>(link-preview <code>LP-TYPES</code> ])</dt><dd>Matches messages with a webpage preview.
 If PROPNAME is specified, then match only message with a webpage
@@ -1867,6 +1869,8 @@ By default <code>blockListMain</code> is used.</dd>
 
 <dt>has-rating</dt><dd>Matches if user has rating.
 Return rating.</dd>
+
+<dt>is-bot-with-topics</dt><dd>Matches if user is a bot having topics.</dd>
 </dl>
 </div>
 </div>
@@ -1926,6 +1930,10 @@ for General topic only.</dd>
 <dt>is-most-recent</dt><dd>Matches if last message in the chat is made to topic.</dd>
 
 <dt>is-current-in-chatbuf</dt><dd>Return non-nil if chatbuf is filtered by topic.</dd>
+
+<dt>(type <code>TOPIC-TYPE-LIST</code>)</dt><dd>Return non-nil if topic has topic-type.
+<code>TOPIC</code>-TYPE is one of <code>thread</code>, <code>forum</code>, <code>sm</code> or <code>dm</code>.
+Return <code>TOPIC</code>.</dd>
 </dl>
 </div>
 </div>
@@ -2339,6 +2347,8 @@ For private chats user's last seen date is taken.
 For other chats date of the last message is taken.</dd>
 
 <dt><code>important</code></dt><dd>Makes chats matching <code>telega-important-chat-temex</code> on top.</dd>
+
+<dt><code>unread-mention</code></dt><dd>Makes chats having unread mentions on top.</dd>
 </dl>
 </div>
 </div>
@@ -2366,7 +2376,7 @@ Criteria to sort open chats when switching with <code>telega-switch-buffer</code
 </p>
 
 <p>
-Default value: <code>chatbuf-recency</code>
+Default value: <code>(important chatbuf-recency)</code>
 </p></li>
 </ul>
 </div>
@@ -2430,7 +2440,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgeddb847">
+<pre class="example" id="orga415ad8">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2634,7 +2644,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org66412c8">
+<pre class="example" id="org1fe7c88">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2666,7 +2676,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orgc931688">
+<pre class="example" id="org9c977f5">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3165,6 +3175,12 @@ starts chatbuf input.</dd>
 
 
 <dl class="org-dl">
+<dt>telega-company-quick-reply</dt><dd>Complete quick replies via
+<code>/&lt;shortcut&gt;</code> syntax in private chats.</dd>
+</dl>
+
+
+<dl class="org-dl">
 <dt>telega-company-markdown-precode</dt><dd>Complete language name for
 code blocks via <code>```</code> syntax.</dd>
 </dl>
@@ -3190,7 +3206,7 @@ Default value:
 <pre class="src src-emacs-lisp">(telega-company-emoji telega-company-telegram-emoji
                       telega-company-username telega-company-hashtag
                       telega-company-markdown-precode
-                      telega-company-botcmd)
+                      telega-company-botcmd telega-company-quick-reply)
 </pre>
 </div></li>
 </ul>
@@ -3343,7 +3359,7 @@ Chatbuf uses next bindings for message filtering:
 
 <dt><kbd>C-c C-c</kbd> (<code>telega-chatbuf-filter-cancel</code>)</dt><dd>Cancel current messages filtering.
 If point is at some message, then keep point on this message after reseting.
-If <kbd>C-u</kbd> is given, then cancel thread filtering as well.</dd>
+If <kbd>C-u</kbd> is given, then cancel topic filtering as well.</dd>
 
 <dt><kbd>C-c C-r</kbd> (<code>telega-chatbuf-inplace-search-query</code>)</dt><dd>Inplace search backward for the <code>QUERY</code>.
 If <kbd>C-u</kbd> is given, search for the messages
@@ -3573,7 +3589,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org1a55aaf">
+<pre class="example" id="org7ea6e8e">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4645,19 +4661,6 @@ Play media content in subsequent manner.
 </p>
 </div>
 </div>
-<div id="outline-container-telega-network-stats-mode" class="outline-3">
-<h3 id="telega-network-stats-mode"><a class="self-link" href="#telega-network-stats-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-network-stats-mode</h3>
-<div class="outline-text-3" id="text-telega-network-stats-mode">
-<p>
-Mode to display network stats of the current session in the root
-buffer's status section.
-</p>
-
-<p>
-<code>telega-network-stats-mode</code> is enabled by default.
-</p>
-</div>
-</div>
 <div id="outline-container-telega-voip-sounds-mode" class="outline-3">
 <h3 id="telega-voip-sounds-mode"><a class="self-link" href="#telega-voip-sounds-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-voip-sounds-mode</h3>
 <div class="outline-text-3" id="text-telega-voip-sounds-mode">
@@ -4768,7 +4771,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orga870a53">
+<pre class="example" id="org643bf3d">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

@@ -208,7 +208,7 @@ Matches only if CHAR does not apper in the middle of the word."
                ;; However, using "chatMembersFilterMention" is essential
                ;; because of Topics feature.
                (list :@type "chatMembersFilterMention"
-                     :message_thread_id (telega-chatbuf--message-thread-id)))
+                     :topic_id (telega-chatbuf--MessageTopic)))
              )))
        (or (nconc (mapcar (lambda (member)
                             (propertize
@@ -383,6 +383,54 @@ Matches only if CHAR does not apper in the middle of the word."
      (all-completions arg (telega-company--bot-commands)))
     (annotation
      (get-text-property 0 'telega-annotation arg))
+    ))
+
+
+;;; ellit-org: company-backends
+;;
+;; - telega-company-quick-reply :: Complete quick replies via
+;;   ~/<shortcut>~ syntax in private chats.
+(defun telega-company-grab-quick-reply ()
+  "Return non-nil if chatbuf input starts a quick reply shortcut."
+  (telega-company-grab-single-char ?/))
+
+(defun telega-company--quick-reply-shorcuts ()
+  "Return list of quick reply shortcut names."
+  (mapcar (lambda (qr)
+            (propertize
+             (concat "/" (telega-tl-str qr :name))
+             'telega-annotation
+             (telega-ins--as-string
+              (telega-ins--content-one-line (plist-get qr :first_message)))))
+          telega--quick-replies))
+
+(defun telega-company--quick-reply-annotation (qr-name)
+  (when-let ((qr (telega-quick-reply-by-name (string-trim qr-name "/"))))
+    (telega-ins--as-string
+     (telega-ins--content-one-line (plist-get qr :first_message))
+     (let ((nmessages (length (plist-get qr :messages))))
+       (when (> nmessages 1)
+         (telega-ins--with-face 'telega-shadow
+           (telega-ins " +" (telega-i18n "lng_forum_messages"
+                              :count (1- nmessages)))))))))
+
+;;;###autoload
+(defun telega-company-quick-reply (command &optional arg &rest _ignored)
+  (interactive (list 'interactive))
+  (cl-case command
+    (interactive (company-begin-backend 'telega-company-quick-reply))
+    ;; Complete only if chatbuf is a private non-bot chat
+    (prefix
+     (when (telega-chatbuf-match-p '(type private))
+       (telega-company-grab-quick-reply)))
+    (candidates
+     (all-completions arg (telega-company--quick-reply-shorcuts)))
+    (annotation
+     (telega-company--quick-reply-annotation arg))
+    (post-completion
+     ;; TODO: prepare messages and attach them into chatbuf
+     (user-error "TODO: post-completion for Quick Replies")
+     )
     ))
 
 

@@ -40,7 +40,7 @@
 #include <libappindicator/app-indicator.h>
 #endif
 
-extern void telega_output_json(const char* otype, const char* json);
+extern void telega_output(const char* otype, const char* str);
 
 static GMainLoop* loop = NULL;
 static GtkWidget* menu = NULL;
@@ -51,7 +51,7 @@ appindicator_click_cb(GtkWidget *widget, gpointer data)
 {
         const gchar* text = (const gchar*)data;
         if (text)
-                telega_output_json("appindicator-event", text);
+                telega_output("appindicator-event", text);
 }
 
 static void

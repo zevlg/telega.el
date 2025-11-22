@@ -779,6 +779,25 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
   :type 'integer
   :group 'telega-server)
 
+(defcustom telega-server-optimize 15
+  "Optimizations to use in `telega-server'.
+Requires telega-server 1.0.0.
+Optimization flags:
+1 - Do not send updateHavePendingNotifications events.
+2 - Remove nil values from resulting values.
+4 - Remove [] values from resulting values.
+8 - Remove empty strings from resulting values.
+
+Flags are combined with logical or."
+  :type 'integer
+  :group 'telega-server)
+
+(defcustom telega-server-use-zlib nil
+  "Use zlib to compress telega-server output.
+Use only if you know what you are doing and `(zlib-available-p)'."
+  :type 'boolean
+  :group 'telega-server)
+
 (defcustom telega-server-call-timeout 1.0
   "*Timeout for `telega-server--call'."
   :type 'number
@@ -877,6 +896,27 @@ to make `telega-root-keep-cursor' always work as expected."
   "*Buffer name for telega root buffer."
   :type 'string
   :group 'telega-root)
+
+(defcustom telega-root-header-line-format nil
+  "Mode line format for the root buffer header line."
+  :package-version '(telega . "0.8.555")
+  :type 'sexp
+  :group 'telega-root)
+
+(defcustom telega-root-mode-line-format
+  '((telega-network-stats-mode
+     (:eval (telega-chatbuf-header-concat
+             " [" (telega-network-stats-mode-line) "]")))
+    (telega-ton-star-usd-rate-mode
+     (:eval (telega-chatbuf-header-concat
+             " [" (telega-ton-star-usd-rate-mode-line) "]")))
+    )
+  "Mode line format for root buffer identification.
+See `mode-line-buffer-identification'."
+  :package-version '(telega . "0.8.555")
+  :type 'sexp
+  :group 'telega-root)
+(put 'telega-root-mode-line-format 'risky-local-variable t)
 
 (defcustom telega-root-fill-column fill-column
   "*Maximum width to use in root buffer to display active filters and chats."
@@ -1356,7 +1396,9 @@ Might be a `relative' to show time relative to now."
                                      telega-company-username
                                      telega-company-hashtag
                                      telega-company-markdown-precode
-                                     telega-company-botcmd)
+                                     telega-company-botcmd
+                                     telega-company-quick-reply
+                                     )
   "Company backends to use in chat buffers.
 Set to nil to disable company completions in chat buffers."
   :package-version '(telega . "0.8.170")
@@ -1688,8 +1730,17 @@ timespan, then do not group messages."
   :type '(choice symbol (list symbol))
   :group 'telega-chat)
 
-(defcustom telega-chat-switch-buffer-sort-criteria 'chatbuf-recency
+(defcustom telega-chat-switch-buffer-sort-criteria
+  '(important chatbuf-recency)
   "Criteria to sort open chats when switching with `telega-switch-buffer'."
+  :package-version '(telega . "0.8.555")
+  :type '(choice symbol (list symbol))
+  :group 'telega-chat)
+
+(defcustom telega-chat-switch-important-sort-criteria
+  '(unread-mention chatbuf-recency)
+  "Criteria to sort chats in when switching with `telega-switch-important-chat'."
+  :package-version '(telega . "0.8.560")
   :type '(choice symbol (list symbol))
   :group 'telega-chat)
 
@@ -1752,12 +1803,12 @@ See `mode-line-buffer-identification'."
     (:eval (telega-mode-line-align
             'center
             (telega-chatbuf-header-concat
-             " " (telega-chatbuf-header-unread-messages))
+             " " (telega-chatbuf-header-messages-count))
             telega-chat-fill-column))
     (:eval (telega-mode-line-align
             'right
             (telega-chatbuf-header-concat
-             " " (telega-chatbuf-header-thread 30))
+             " " (telega-chatbuf-header-topic 30))
             telega-chat-fill-column)))
   "*Modeline compatible format for the chatbuf's header line."
   :package-version '(telega . "0.8.291")
@@ -2713,6 +2764,12 @@ Used in one line message inserter."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-ton "Ⓣ"
+  "Symbol used to mean TON."
+  :package-version '(telega . "0.8.555")
+  :type 'string
+  :group 'telega-symbol)
+
 (when (fboundp 'define-fringe-bitmap)
   (define-fringe-bitmap 'telega-mention
     (vector #b01111110
@@ -2914,6 +2971,9 @@ Used in one line message inserter."
     (telegram-star (when (and telega-use-images (image-type-available-p 'svg))
                      (telega-etc-file-create-image "symbols/premium.svg" 2)))
     timer-clock
+    (ton 
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "symbols/ton_symbol.svg" 2)))
     (typing
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "symbols/typing.svg" 2)))

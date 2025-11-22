@@ -429,6 +429,13 @@ to make use of `telega-use-tracking-for'"))
   (when telega-root-auto-fill-mode
     (telega-root-auto-fill-mode 1))
 
+  ;; Mode-line/header-line for the root buffer
+  (setq header-line-format telega-root-header-line-format)
+  ;;mode-line-buffer-identification
+  (setq mode-line-buffer-identification
+        (list (propertized-buffer-identification "%12b")
+              'telega-root-mode-line-format))
+
   (telega-runtime-setup))
 
 (defun telega-root-aux--pp (inserter)
@@ -615,7 +622,7 @@ Keep cursor position only if CHAT is visible."
                             (telega-topic-chat root-topic)
                           (telega-chat-at point-was)))
              (chat-topic (with-telega-chatbuf chat
-                           (telega-chatbuf--thread-topic))))
+                           telega-chatbuf--topic)))
         ;; NOTE: if point is already on corresponding chat or topic,
         ;; then do not move it at all
         (unless (eq chat root-chat)
@@ -730,7 +737,8 @@ If `\\[universal-argument]' is specified, then open chat in a preview mode."
 (defun telega-topic-button-action (topic)
   "Action to take when TOPIC button is pushed in the rootbuf.
 If `\\[universal-argument]' is specified, then open topic in a preview mode."
-  (telega-topic-goto topic))
+  (telega-topic-goto topic)
+  (telega-chat-button-action (telega-topic-chat topic)))
 
 (defun telega-root--chat-topic-pp (topic &optional custom-topic-inserter)
   "Pretty printer for TOPIC button."

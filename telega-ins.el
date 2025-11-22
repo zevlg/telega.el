@@ -3479,7 +3479,7 @@ If SENDER is specified, use it instead of messageOrigin from FWD-INFO."
       (messageReplyToMessage
        ;; NOTE: Do not show reply header in case message replied to the
        ;; thread's root message
-       (unless (when-let ((thread-msg (telega-chatbuf--thread-msg)))
+       (unless (when-let ((thread-msg (telega-chatbuf--topic-thread-msg)))
                  (and (eq (plist-get thread-msg :chat_id)
                           (plist-get reply-to :chat_id))
                       (eq (plist-get thread-msg :id)
@@ -4388,7 +4388,7 @@ Return t."
   "Insert CHAT status, limiting it to MAX-WIDTH.
 If TOPIC is given, insert chat status for the TOPIC."
   (let ((actions (telega-chat--actions
-                  chat (when topic (telega-topic-msg-thread-id topic))))
+                  chat (when topic (telega--MessageTopic topic))))
         (call (unless topic
                 (telega-voip--by-user-id (plist-get chat :id))))
         (draft-msg (plist-get (or topic chat) :draft_message))

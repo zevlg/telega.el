@@ -1,7 +1,7 @@
 /*
  * telega-dat.c --- Bridge between Emacs and TDLib.
  *
- * Copyright (C) 2016-2020 by Zajcev Evgeny
+ * Copyright (C) 2016-2025 by Zajcev Evgeny
  *
  * Author: Zajcev Evgeny <zevlg@yandex.ru>
  *
@@ -153,6 +153,47 @@ tdat_rebase(struct telega_dat* tdat)
         tdat->end = clen;
 }
 
+#ifdef WITH_ZLIB
+#include <zlib.h>
+
+size_t
+tdat_zlib_deflate(struct telega_dat* src, struct telega_dat* dst)
+{
+        z_stream zstr = {
+                .zalloc = Z_NULL,
+                .zfree  = Z_NULL,
+                .opaque = Z_NULL,
+                .avail_in = tdat_len(src),
+                .next_in = (Bytef*)tdat_start(src),
+        };
+
+        int ret = deflateInit(&zstr, Z_BEST_SPEED);
+        if (ret != Z_OK) {
+                fprintf(stderr, "deflateInit() error: %d\n", ret);
+                assert(false);
+                /* NOT REACHED */
+                return -1;
+        }
+
+        size_t out_len = tdat_len(src) + tdat_len(src)/1000 + 12;
+        tdat_ensure(dst, out_len);
+        zstr.avail_out = dst->cap;
+        zstr.next_out = (Bytef*)tdat_end(dst);
+
+        ret = deflate(&zstr, Z_FINISH);
+        deflateEnd(&zstr);
+        if (ret != Z_STREAM_END) {
+                fprintf(stderr, "deflate() error: %d\n", ret);
+                /* NOT REACHED */
+                assert(false);
+                return -1;
+        }
+
+        dst->end += zstr.total_out;
+        return zstr.total_out;
+}
+#endif /* WITH_ZLIB */
+
 
 /* JSON */
 static void
@@ -196,6 +237,7 @@ tdat_json_string0(struct telega_dat* src, struct telega_dat* dst, bool no_spaces
 static void
 tdat_json_object(struct telega_dat* json, struct telega_dat* plist)
 {
+        size_t opt_prop_start = 0;
         tdat_append1(plist, "(");
 
         assert(tdat_at(json, 0) == '{');
@@ -210,7 +252,23 @@ tdat_json_object(struct telega_dat* json, struct telega_dat* plist)
                 case ':':
                         tdat_drain(json, 1); /* : */
                         tdat_append1(plist, " ");
+
+                        size_t val_pos = plist->end;
                         tdat_json_value(json, plist);
+                        if (((optimize & OPTIMIZE_NIL_VALUES)
+                             && ((plist->end - val_pos) == 3)
+                             && !strncmp("nil", &plist->data[val_pos], 3))
+                            ||
+                            ((optimize & OPTIMIZE_EMPTY_LISTS)
+                             && ((plist->end - val_pos) == 2)
+                             && !strncmp("[]", &plist->data[val_pos], 2))
+                            ||
+                            ((optimize & OPTIMIZE_EMPTY_STRINGS)
+                             && ((plist->end - val_pos) == 2)
+                             && !strncmp("\"\"", &plist->data[val_pos], 2)))
+                        {
+                                plist->end = opt_prop_start;
+                        }
                         break;
                 case ',':
                         tdat_append1(plist, " ");
@@ -218,6 +276,7 @@ tdat_json_object(struct telega_dat* json, struct telega_dat* plist)
                         tdat_json_whitespaces(json);
                         /* FALLTHROUGH */
                 case '"':
+                        opt_prop_start = plist->end;
                         tdat_append1(plist, ":");
                         tdat_json_string0(json, plist, true);
                         break;
@@ -752,7 +811,8 @@ tdat_emojify_string(struct telega_dat* src_str, struct telega_dat* props)
                          * \xfe0f won't be displayed on its own.
                          */
                         struct telega_dat fe0f_view = TDAT_INIT_VIEW(&src_view);
-                        if (0xfe0f == tdat_move_utf16char(&fe0f_view, NULL)) {
+                        while ((0xfe0f == tdat_move_utf16char(&fe0f_view, NULL)))
+                        {
                                 tdat_move_utf16char(&src_view, NULL);
                                 assert(utf16_clen(0xfe0f) == 1);
                                 offset += 1;

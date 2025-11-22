@@ -13,6 +13,12 @@ CFLAGS+=-Wall -g -pthread
 PROG=telega-server
 SOURCES=telega-server.c telega-dat.c telega-pngext.c
 
+ifeq ($(shell pkg-config --exists zlib && echo yes), yes)
+CFLAGS+=-DWITH_ZLIB
+CFLAGS+=`pkg-config --cflags zlib`
+LDFLAGS+=`pkg-config --libs zlib`
+endif
+
 ifeq ($(shell pkg-config --exists appindicator3-0.1 && echo yes), yes)
 CFLAGS+=-DWITH_APPINDICATOR
 CFLAGS+=`pkg-config --cflags appindicator3-0.1`

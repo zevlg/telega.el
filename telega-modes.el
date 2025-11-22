@@ -73,7 +73,7 @@
 (defcustom telega-mode-line-format
   (list '(:eval (when (telega-server-live-p)
                   telega-mode-line-string)))
-  "Format in mode-line-format to be used as part of `global-mode-string'."
+  "Format in mode-line-format to be used as part of `mode-line-misc-info'."
   :type 'sexp
   :group 'telega-modes
   :risky t)
@@ -155,9 +155,10 @@
 (defun telega-mode-line-unread-unmuted (&optional messages-p)
   "Format unread-unmuted chats/messages.
 If MESSAGES-P is non-nil then use number of unread unmuted messages."
-  (let ((uu-count (if messages-p
-                      (plist-get telega--unread-message-count :unread_unmuted_count)
-                    (plist-get telega--unread-chat-count :unread_unmuted_count))))
+  (let ((uu-count
+         (if messages-p
+             (plist-get telega--unread-message-count :unread_unmuted_count)
+           (plist-get telega--unread-chat-count :unread_unmuted_count))))
     ;; NOTE: `telega--unread-chat-count' or
     ;; `telega--unread-message-count' might not be yet updated, so
     ;; `uu-count' can be nil
@@ -171,7 +172,7 @@ If MESSAGES-P is non-nil then use number of unread unmuted messages."
                      (make-mode-line-mouse-map
                       'mouse-1 (telega-mode-line-filter-gen '(unread unmuted))))
                    'mouse-face 'mode-line-highlight
-                   'help-echo "Click to filter chats with unread/unmuted messages")))))
+                   'help-echo "Show chats with unread/unmuted messages")))))
 
 (defun telega-mode-line-mentions (&optional messages-p)
   "Format number of chats/messages with mentions.
@@ -192,21 +193,19 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
                      (make-mode-line-mouse-map
                       'mouse-1 (telega-mode-line-filter-gen '(mention))))
                    'mouse-face 'mode-line-highlight
-                   'help-echo "Click to filter chats with mentions")))))
+                   'help-echo "Show chats with mentions")))))
 
 ;;;###autoload
 (define-minor-mode telega-mode-line-mode
   "Toggle display of the unread chats/mentions in the modeline."
   :init-value nil :global t :group 'telega-modes
   (setq telega-mode-line-string "")
-  (unless global-mode-string
-    (setq global-mode-string '("")))
 
   (if telega-mode-line-mode
       (progn
-        (unless (memq 'telega-mode-line-format global-mode-string)
-          (setq global-mode-string
-                (append global-mode-string '(telega-mode-line-format))))
+        (unless (memq 'telega-mode-line-format mode-line-misc-info)
+          (setq mode-line-misc-info
+                (nconc mode-line-misc-info '(telega-mode-line-format))))
         (advice-add 'telega--on-updateUnreadMessageCount
                     :after 'telega-mode-line-update)
         (advice-add 'telega--on-updateUnreadChatCount
@@ -225,8 +224,8 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
         (advice-add 'tracking-remove-buffer :after 'telega-mode-line-update)
         (telega-mode-line-update))
 
-    (setq global-mode-string
-          (delq 'telega-mode-line-format global-mode-string))
+    (setq mode-line-misc-info
+          (delq 'telega-mode-line-format mode-line-misc-info))
     (advice-remove 'telega--on-updateUnreadMessageCount
                    'telega-mode-line-update)
     (advice-remove 'telega--on-updateUnreadChatCount
@@ -248,7 +247,7 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
     (setq telega-mode-line-string
           (when (telega-server-live-p)
             (telega-format-mode-line telega-mode-line-string-format)))
-    (force-mode-line-update 'all)))
+    (force-mode-line-update)))
 
 ;;; ellit-org: minor-modes
 ;; ** telega-appindicator-mode
@@ -766,7 +765,8 @@ To be displayed in the modeline.")
 (defun telega-image-mode--chat-title (chat)
   "Return CHAT's title for use in the `telega-image-mode'."
   (if-let ((topic (with-telega-chatbuf chat
-                    (telega-chatbuf--thread-topic))))
+                    (telega-topic-match-p telega-chatbuf--topic
+                      '(type forum sm dm)))))
       (telega-ins--as-string
        (telega-ins--msg-sender chat
          :with-avatar-p t
@@ -804,7 +804,7 @@ To be displayed in the modeline.")
   "Asynchronously fetch message's position in the chat's history."
   (let* ((chat (telega-msg-chat telega-image--message))
          (topic (with-telega-chatbuf chat
-                  (telega-chatbuf--thread-topic))))
+                  telega-chatbuf--topic)))
     (telega--getChatMessageCount chat
         '(:@type "searchMessagesFilterPhoto")
       :topic topic
@@ -913,7 +913,7 @@ Could be used as condition function in `display-buffer-alist'."
           (if backward 0 -2)
         :limit 3
         :topic (with-telega-chatbuf chat
-                 (telega-chatbuf--thread-topic))
+                 telega-chatbuf--topic)
         :callback
         (lambda (reply)
           (let ((found-messages (append (plist-get reply :messages) nil)))
@@ -1641,7 +1641,11 @@ Set to nil to disable active video chats in the modeline."
     (seq-doseq (chat telega-active-video-chats--chats)
       (telega-ins "\n")
       (telega-ins "    ")
-      (telega-ins--active-video-chat chat))
+      (telega-ins--raw-button (list 'action
+                                    ;; TODO: open video chat
+                                    'todo
+                                    )
+        (telega-ins--active-video-chat chat)))
     t))
 
 (defun telega-active-video-chats--on-update-chat (event)
@@ -1857,7 +1861,7 @@ Chat description is used to detect the language."
                             (setq telega-chatbuf-language-code lang-code)
                             (telega-chatbuf--prompt-update)
                             (telega-auto-translate--chatbuf-translate-visible-messages))
-                        ;; Otherwise continue detecing language
+                        ;; Otherwise continue detecting language
                         (telega-auto-translate--chatbuf-detect-language
                          (cdr language-codes)))))))
 
@@ -2220,20 +2224,36 @@ TDLib's autoDownloadSettings structure."
 
 ;; Advice for the `telega-msg-video-note--ffplay-callback'
 
-
-;;; ellit-org: minor-modes
+;
+;; ellit-org: minor-modes
 ;; ** telega-network-stats-mode
 ;;
-;; Mode to display network stats of the current session in the root
-;; buffer's status section.
+;; Mode to get network stats of the current session and display it in
+;; the root buffer's status section or/and in the root buffer's
+;; modeline.
 ;;
-;; ~telega-network-stats-mode~ is enabled by default.
+;; Enable it with ~(telega-network-stats-mode 1)~ or at =telega= load time:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'telega-network-stats-mode)
+;; #+end_src
+;;
+;; Customizable options:
+;; - {{{user-option(telega-network-stats-places, 2)}}}
+;; - {{{user-option(telega-network-stats-update-period, 2)}}}
+;; - {{{user-option(telega-network-stats-format, 2)}}}
+(defcustom telega-network-stats-places '(mode-line)
+  "Where to display network statistics."
+  :type '(repeat (choice (const :tag "Display in the status" status)
+                         (const :tag "Display in the rootbuf's mode-line"
+                                mode-line)))
+  :group 'telega-modes)
+
 (defcustom telega-network-stats-update-period 10
   "Update period for network stats."
   :type 'integer
   :group 'telega-modes)
 
-(defcustom telega-network-stats-format "Network: %d⭣/%u⭡"
+(defcustom telega-network-stats-format "Network: %d↓/ %u↑"
   "Format for the stats string.
 %d - for the download stats in a human readable form.
 %u - for the upload stats in a human readable form."
@@ -2266,7 +2286,11 @@ TDLib's autoDownloadSettings structure."
                                ?u (file-size-human-readable total-sent)))))
             (unless (string= new-stats telega-network-stats-string)
               (setq telega-network-stats-string new-stats)
-              (telega-root-aux-redisplay 'telega-ins--status))))
+              (when (memq 'status telega-network-stats-places)
+                (telega-root-aux-redisplay 'telega-ins--status))
+              (when (memq 'mode-line telega-network-stats-places)
+                (telega-mode-line-update))
+              )))
 
         (setq telega-network-stats--timer
               (run-with-timer telega-network-stats-update-period nil
@@ -2281,13 +2305,21 @@ TDLib's autoDownloadSettings structure."
 
 (defun telega-network-stats--insert ()
   "Inserter for the network stats."
-  (unless (string-empty-p telega-network-stats-string)
+  (when (and (memq 'status telega-network-stats-places)
+             (not (string-empty-p telega-network-stats-string)))
     (let ((scolumn (- telega-root-fill-column
                       (string-width telega-network-stats-string))))
       (when (> scolumn 0)
         (telega-ins--move-to-column scolumn)
         (telega-ins telega-network-stats-string))))
   t)
+
+(defun telega-network-stats-mode-line ()
+  "Formatter for network stats in the rootbuf's mode-line."
+  (when (and telega-network-stats-mode
+             (memq 'mode-line telega-network-stats-places)
+             (not (string-empty-p telega-network-stats-string)))
+    telega-network-stats-string))
 
 (define-minor-mode telega-network-stats-mode
   "Global mode to display network stats in the rootbuf."
@@ -2306,6 +2338,97 @@ TDLib's autoDownloadSettings structure."
     (remove-hook 'telega-ready-hook 'telega-network-stats--update)
     (telega-network-stats--kill)
     (telega-root-aux-redisplay 'telega-ins--status)
+    ))
+
+
+;; ellit-org: minor-modes
+;; ** telega-ton-star-usd-rate-mode
+;;
+;; Toggle TON and Telegram Star rate to USD in the rootbuf's mode line.
+;;
+;; Enable it with ~(telega-ton-star-usd-rate-mode 1)~ or at =telega= load time:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'telega-ton-star-usd-rate-mode)
+;; #+end_src
+;;
+;; Customizable options:
+;; - {{{user-option(telega-ton-star-usd-rate-format, 2)}}}
+(defcustom telega-ton-star-usd-rate-format "%i$%t, 100%I$%B/$%S"
+  "Format for TON and stars rate to USD.
+%i - for the `ton' icon.
+%t - USD price for the one TON.
+%I - for the Telegram star icon.
+%B - USD price for the 100 Telegram stars to buy.
+%S - USD price for the 100 Telegram star to sell."
+  :type 'string
+  :group 'telega-modes)
+
+(defun telega-ton-star-usd-rate-mode-line (&optional fmt-string)
+  "Format TON and stars rate to USD to a string.
+FMT-STRING is format string to be used instead of
+ `telega-ton-star-usd-rate-format'."
+  (when-let ((1m-ton-rate
+              (plist-get telega--options :million_toncoin_to_usd_rate))
+             (1k-star-b (plist-get telega--options :usd_to_thousand_star_rate))
+             (1k-star-s (plist-get telega--options :thousand_star_to_usd_rate)))
+    (format-spec (or fmt-string telega-ton-star-usd-rate-format)
+                 `((?i . ,(telega-symbol 'ton))
+                   (?t . ,(format "%.2f" (/ 1m-ton-rate 1000000.0)))
+                   (?I . ,(telega-symbol 'telegram-star))
+                   (?B . ,(format "%.2f" (/ 1k-star-b 1000.0)))
+                   (?S . ,(format "%.2f" (/ 1k-star-s 1000.0)))))))
+
+(define-minor-mode telega-ton-star-usd-rate-mode
+  "Global mode to display TON and star rate to USD in the rootbuf's mode line."
+  :init-value nil :global t :group 'telega-modes)
+
+
+(defun telega-ins--suggested-action (sact)
+  "Inserter for the suggested action."
+  (telega-ins--text-button (telega-symbol 'button-close)
+    'face 'telega-link
+    'action (lambda (_button)
+              (setq telega--suggested-actions
+                    (delq sact telega--suggested-actions))
+              (telega-root-aux-redisplay #'telega-ins--suggested-actions)))
+  (telega-ins " ")
+
+  (cl-case (telega--tl-type sact)
+    (suggestedActionCustom
+     (telega-ins--raw-button (telega-link-props 'url (plist-get sact :url))
+       (telega-ins--with-face 'bold
+         (telega-ins (telega-tl-str sact :title) "\n"))
+       (telega-ins (telega-tl-str sact :description))))
+     (t
+      (telega-ins-fmt "TODO: %S" (telega--tl-type sact))))
+  t)
+
+(defun telega-ins--suggested-actions ()
+  "Inserter for suggested actions."
+  (when t;telega-suggested-actions-mode
+    (telega-ins "Suggested Actions: ")
+    (seq-doseq (sact telega--suggested-actions)
+      (telega-ins "\n")
+      (telega-ins--line-wrap-prefix "  "
+        (telega-ins--suggested-action sact))
+      )))
+
+(defun telega-suggested-actions--on-update (_event)
+  "List of actions to take suggested by Telegram has been changed."
+  (telega-root-aux-redisplay #'telega-ins--suggested-actions))
+
+(define-minor-mode telega-suggested-actions-mode
+  "Global mode to display actions to take suggested by Telegram."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-suggested-actions-mode
+      (progn
+        (advice-add 'telega--on-updateSuggestedActions
+                    :after #'telega-suggested-actions--on-update)
+        (telega-root-aux-append #'telega-ins--suggested-actions))
+
+    (telega-root-aux-remove #'telega-ins--suggested-actions)
+    (advice-remove 'telega--on-updateSuggestedActions
+                   #'telega-suggested-actions--on-update)
     ))
 
 (provide 'telega-modes)

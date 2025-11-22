@@ -95,9 +95,6 @@
         :ascent 'center
         :mask 'heuristic))))
 
-(defun telega-topic-msg-thread-id (topic)
-  (telega--tl-get topic :info :message_thread_id))
-
 (defun telega-topic-notification-setting (topic setting)
   (telega-chat-notification-setting (telega-topic-chat topic) setting topic))
 
@@ -108,6 +105,8 @@
 (defun telega--MessageTopic-id (msg-topic)
   "Return id of the MessageTopic MSG-TOPIC."
   (cl-ecase (telega--tl-type msg-topic)
+    (messageTopicThread
+     (plist-get msg-topic :message_thread_id))
     (messageTopicForum
      (plist-get msg-topic :forum_topic_id))
     (messageTopicDirectMessages
@@ -118,6 +117,8 @@
 (defun telega-topic-id (topic)
   "Return TOPIC's id."
   (cl-ecase (telega--tl-type topic)
+    (messageThreadInfo
+     (plist-get topic :message_thread_id))
     ((savedMessagesTopic directMessagesChatTopic)
      (plist-get topic :id))
     (forumTopic
@@ -128,7 +129,7 @@
   (cl-ecase (telega--tl-type topic)
     (savedMessagesTopic
      telega--me-id)
-    (directMessagesChatTopic
+    ((messageThreadInfo directMessagesChatTopic)
      (plist-get topic :chat_id))
     (forumTopic
      (telega--tl-get topic :info :chat_id))))
@@ -136,6 +137,8 @@
 (defun telega-topic--MessageSource (topic)
   "Return MessageSource structure for the TOPIC."
   (cl-ecase (telega--tl-type topic)
+    (messageThreadInfo
+     '(:@type "messageSourceMessageThreadHistory"))
     (savedMessagesTopic
      '(:@type "messageSourceOther"))
     (directMessagesChatTopic
@@ -151,12 +154,6 @@
 (defun telega-topic-get (chat topic-id)
   "Return topic by TOPIC-ID in the CHAT."
   (alist-get topic-id (telega-chat-topics-alist chat)))
-
-(defun telega-topic-by-thread-id (chat msg-thread-id)
-  "Get CHAT's topic by THREAD-ID."
-  (cdr (cl-find msg-thread-id (telega-chat-topics-alist chat)
-                :key (lambda (tv)
-                       (telega-topic-msg-thread-id (cdr tv))))))
 
 (defun telega-topic-brackets (topic)
   "Return pair of brackets to use for TOPIC."
@@ -277,6 +274,12 @@ If START-MSG-ID is specified, jump to the this message in the topic."
         (telega-button--insert 'telega-chat chat
           :inserter #'telega-ins--chat
           :action #'telega-chat-button-action))
+      (telega-ins-describe-item (telega-i18n "lng_link_header_short")
+        (let* ((msg-link (telega--getForumTopicLink chat topic))
+               (link-url (telega-tl-str msg-link :link)))
+          (telega-ins--raw-button
+              (telega-link-props 'url link-url 'face 'telega-link)
+            (telega-ins link-url))))
       (telega-ins-describe-item "Created"
         (telega-ins--date (plist-get topic-info :creation_date) 'date-time))
       (telega-ins-describe-item (telega-i18n "lng_topic_author_badge")
@@ -287,8 +290,6 @@ If START-MSG-ID is specified, jump to the this message in the topic."
           :with-brackets-p t))
       (telega-ins-describe-item "Last-Read-Outbox"
         (telega-ins-fmt "%S" (plist-get topic :last_read_outbox_message_id)))
-      (telega-ins-describe-item "Message-Thread-Id"
-        (telega-ins-fmt "%S" (plist-get topic-info :message_thread_id)))
       
       ;; TODO: more fields
 
@@ -296,7 +297,7 @@ If START-MSG-ID is specified, jump to the this message in the topic."
         (let ((print-length nil))
           (telega-ins "\n---DEBUG---\n")
           (telega-ins-fmt "TopicSexp: (telega-topic-get (telega-chat-get %d) %d)\n"
-            (plist-get chat :id) (plist-get topic-info :message_thread_id))
+            (plist-get chat :id) (telega-topic-id topic))
           ))
       )))
 

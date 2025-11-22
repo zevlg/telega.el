@@ -64,7 +64,11 @@ JSON_TO_PLIST_TESTS = TESTS + [
 
     # \ufe0f inbetween emojis
     (True, b'"need \ud83c\udd98\ufe0f\ud83d\ude4f friends"',
-     '#("need \\ud83c\\udd98\\ufe0f\\ud83d\\ude4f friends" 5 8 (telega-emoji-p t telega-display "\\U0001f198") 8 10 (telega-emoji-p t telega-display "\\U0001f64f"))')
+     '#("need \\ud83c\\udd98\\ufe0f\\ud83d\\ude4f friends" 5 8 (telega-emoji-p t telega-display "\\U0001f198") 8 10 (telega-emoji-p t telega-display "\\U0001f64f"))'),
+
+    # multiple \ufe0f after emoji
+    (True, b'"\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043e\u0442\u0432\u0435\u0442 \u2705\ufe0f\ufe0f\ufe0f\ufe0f\ufe0f\ufe0f\ufe0f"',
+     '#("\\u0411\\u044b\\u0441\\u0442\\u0440\\u044b\\u0439 \\u043e\\u0442\\u0432\\u0435\\u0442 \\u2705\\ufe0f\\ufe0f\\ufe0f\\ufe0f\\ufe0f\\ufe0f\\ufe0f" 14 22 (telega-emoji-p t telega-display "\\u2705"))')
 
     # TODO: [wo]man shrug without trailing \ufe0f should be an emoji, as in
     # official client

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.552)
+#+title: Telega Manual (v0.8.560)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -106,7 +106,6 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-auto-download-mode-wip][telega-auto-download-mode (WIP)]]
     - [[#telega-contact-birthdays-mode][telega-contact-birthdays-mode]]
     - [[#telega-play-media-sequence-mode][telega-play-media-sequence-mode]]
-    - [[#telega-network-stats-mode][telega-network-stats-mode]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
     - [[#ol-telegael--org-mode-links-to-telegram-chats-and-messages][/ol-telega.el/ -- Org mode links to telegram chats and messages]]
@@ -236,7 +235,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.55-369ee922b.
+version equal to v1.8.56-dd1b761fd.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -1208,6 +1207,9 @@ Use ~telega-chat-match-p~ to match a chat.
 - has-discussion-group :: 
      Matches if chat is a channel with a linked discussion group.
 
+- is-discussion-group :: 
+     Matches if chat is a discussion group for a channel.
+
 - has-direct-messages-group :: 
      Matches if chat is a channel having a direct messages group.
 
@@ -1284,7 +1286,7 @@ Use ~telega-chat-match-p~ to match a chat.
 - has-pinned-stories :: 
      Matches if channel chat has pinned stories.
 
-- can-send-stories :: 
+- can-post-stories :: 
      Matches if you can post a story into chat.
 
 - (my-boost [ ~N~ ]) :: 
@@ -1362,12 +1364,13 @@ Use ~telega-msg-match-p~ to match a message.
      Matches if message is a channel post that can be commented.
      Return messageReplyInfo.
 
-- is-topic :: 
-     Matches if message is a forum topic message.
+- is-forum-topic :: 
+     Matches if message belongs to or starts a forum topic.
      Return ~MessageTopic~ structure.
 
 - is-thread :: 
      Matches if message belongs to or starts a messages thread.
+     Return ~MessageTopic~ structure.
 
 - (link-preview ~LP-TYPES~ ]) :: 
      Matches messages with a webpage preview.
@@ -1483,6 +1486,9 @@ Use ~telega-user-match-p~ to match a user.
 - has-rating :: 
      Matches if user has rating.
      Return rating.
+
+- is-bot-with-topics :: 
+     Matches if user is a bot having topics.
 ** List of Message Sender Temexes
 :PROPERTIES:
 :CUSTOM_ID: list-of-message-sender-temexes
@@ -1551,6 +1557,11 @@ Use ~telega-topic-match-p~ to match a forum's topic.
 
 - is-current-in-chatbuf :: 
      Return non-nil if chatbuf is filtered by topic.
+
+- (type ~TOPIC-TYPE-LIST~) :: 
+     Return non-nil if topic has topic-type.
+     ~TOPIC~-TYPE is one of ~thread~, ~forum~, ~sm~ or ~dm~.
+     Return ~TOPIC~.
 ** List of Story Temexes
 :PROPERTIES:
 :CUSTOM_ID: list-of-story-temexes
@@ -1846,6 +1857,9 @@ For other sorting keybindings see below.
 
 - ~important~ :: 
      Makes chats matching ~telega-important-chat-temex~ on top.
+
+- ~unread-mention~ :: 
+     Makes chats having unread mentions on top.
 ** Customizable options making use of sorting criteria
 :PROPERTIES:
 :CUSTOM_ID: customizable-options-making-use-of-sorting-criteria
@@ -1860,7 +1874,7 @@ For other sorting keybindings see below.
 
   Criteria to sort open chats when switching with ~telega-switch-buffer~. 
 
-  Default value: ~chatbuf-recency~
+  Default value: ~(important chatbuf-recency)~
 * Chat buffer
 :PROPERTIES:
 :CUSTOM_ID: chat-buffer
@@ -2378,6 +2392,10 @@ Customizable options:
      starts chatbuf input.
 
 
+- telega-company-quick-reply :: Complete quick replies via
+     ~/<shortcut>~ syntax in private chats.
+
+
 - telega-company-markdown-precode :: Complete language name for
      code blocks via ~```~ syntax.
 
@@ -2393,7 +2411,7 @@ controlled by:
     (telega-company-emoji telega-company-telegram-emoji
                           telega-company-username telega-company-hashtag
                           telega-company-markdown-precode
-                          telega-company-botcmd)
+                          telega-company-botcmd telega-company-quick-reply)
   #+end_src
 
 
@@ -2495,7 +2513,7 @@ Chatbuf uses next bindings for message filtering:
 - @@html:<kbd>@@C-c C-c@@html:</kbd>@@ (~telega-chatbuf-filter-cancel~) :: 
      Cancel current messages filtering.
      If point is at some message, then keep point on this message after reseting.
-     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then cancel thread filtering as well.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then cancel topic filtering as well.
 
 - @@html:<kbd>@@C-c C-r@@html:</kbd>@@ (~telega-chatbuf-inplace-search-query~) :: 
      Inplace search backward for the ~QUERY~.
@@ -3324,15 +3342,6 @@ Mode to display close birthdays of the contacts.
 :END:
 
 Play media content in subsequent manner.
-** telega-network-stats-mode
-:PROPERTIES:
-:CUSTOM_ID: telega-network-stats-mode
-:END:
-
-Mode to display network stats of the current session in the root
-buffer's status section.
-
-~telega-network-stats-mode~ is enabled by default.
 ** telega-voip-sounds-mode
 :PROPERTIES:
 :CUSTOM_ID: telega-voip-sounds-mode

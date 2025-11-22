@@ -6,6 +6,16 @@
 #include <stdint.h>
 #include <stdlib.h>             /* free */
 
+extern int optimize;
+/* Do not send updateHavePendingNotifications events */
+#define OPTIMIZE_NOTIFICATIONS 0x1
+/* Remove nil values from resulting values */
+#define OPTIMIZE_NIL_VALUES    0x2
+/* Remove [] values from resulting values */
+#define OPTIMIZE_EMPTY_LISTS   0x4
+/* Remove empty strings from resulting values */
+#define OPTIMIZE_EMPTY_STRINGS 0x8
+
 struct telega_dat {
         size_t cap;             /* data capacity */
 
@@ -40,6 +50,11 @@ void tdat_append(struct telega_dat* dst, const char* data, size_t len);
 
 /* Rebase data to the beginning of the allocation */
 void tdat_rebase(struct telega_dat* tdat);
+
+#ifdef WITH_ZLIB
+/* deflate SRC into DST, return number of bytes written into DST */
+size_t tdat_zlib_deflate(struct telega_dat* src, struct telega_dat* dst);
+#endif /* WITH_ZLIB */
 
 /* Parsers */
 void tdat_json_value(struct telega_dat* json_src, struct telega_dat* plist_dst);

@@ -1,7 +1,7 @@
 /*
  * telega-server.c --- Bridge between Emacs and TDLib.
  *
- * Copyright (C) 2016-2021 by Zajcev Evgeny
+ * Copyright (C) 2016-2025 by Zajcev Evgeny
  *
  * Author: Zajcev Evgeny <zevlg@yandex.ru>
  *
@@ -73,7 +73,7 @@ void pngext_main(int ac, char** av);
 char* logfile = NULL;
 size_t logfile_size = 4 * 1024 * 1024;
 int verbosity = 5;
-const char* version = "0.8.5";
+const char* version = "1.0.0";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -81,6 +81,13 @@ volatile bool server_running;
 int parse_mode = 0;
 #define PARSE_MODE_JSON 1
 #define PARSE_MODE_PLIST 2
+
+int optimize = 0;
+
+#ifdef WITH_ZLIB
+#include <zlib.h>
+bool zlib_enabled = false;
+#endif /* WITH_ZLIB */
 
 void
 usage(char* prog)
@@ -90,14 +97,27 @@ usage(char* prog)
         printf(", with VOIP tgvoip v%s", telega_voip_version());
 #endif /* WITH_VOIP */
 #ifdef WITH_APPINDICATOR
-        printf(", with appindicator");
+        printf(", with appindicator"
 #endif /* WITH_APPINDICATOR */
+#ifdef WITH_ZLIB
+               ", with zlib"
+#endif /* WITH_ZLIB */
+                );
         printf("\n");
-        printf("usage: %s [-jp] [-L SIZE] [-l FILE] [-v LVL] [-h]\n", prog);
+        printf("usage: %s"
+#ifdef WITH_ZLIB
+               " [-z]"
+#endif /* WITH_ZLIB */
+               " [-jp] [-L SIZE] [-l FILE] [-v LVL] [-O OPT] [-h]\n",
+               prog);
         printf("\t-L SIZE    Log file size in bytes (default=%zu)\n",
                logfile_size);
         printf("\t-l FILE    Log to FILE (default=stderr)\n");
         printf("\t-v LVL     Verbosity level (default=5)\n");
+        printf("\t-O OPT     Optimizations to use (default=0)\n");
+#ifdef WITH_ZLIB
+        printf("\t-z         Compress output with zlib\n");
+#endif /* WITH_ZLIB */
         printf("\t-j         Parse json from stdin and exit\n");
         printf("\t-p         Parse plist from stdin and exit\n");
 
@@ -118,39 +138,105 @@ telega_output(const char* otype, const char* str)
         fflush(stdout);
 }
 
-void
-telega_output_json(const char* otype, const char* json)
+static void
+output_json_prepare(const char* otype, const char* json,
+                    struct telega_dat* output)
 {
-        struct telega_dat json_src = TDAT_INIT;
-        struct telega_dat plist_dst = TDAT_INIT;
-
         if (verbosity > 4) {
-                fprintf(stderr, "[telega-server] "
-                        "OUTPUT %s: %s\n", otype, json);
+                fprintf(stderr, "[telega-server] OUTPUT %s: %s\n", otype, json);
         }
 
-        tdat_append(&json_src, json, strlen(json));
-        tdat_json_value(&json_src, &plist_dst);
-        tdat_append1(&plist_dst, "\0");
+        if ((optimize & OPTIMIZE_NOTIFICATIONS)
+            && !strncmp("{\"@type\":\"updateHavePendingNotifications\"",
+                        json, 41))
+        {
+                fprintf(stderr, "[telega-server] OPTIMIZE_NOTIFICATIONS\n");
+                return;
+                /* NOT REACHED */
+        }
 
-        assert(tdat_len(&plist_dst) > 0);
-        printf("%s %zu\n%s\n", otype, tdat_len(&plist_dst)-1, plist_dst.data);
-        fflush(stdout);
+        size_t json_len = strlen(json);
+        struct telega_dat json_src = {
+                .cap = json_len,
+                .start = 0,
+                .end = json_len,
+                .data = (char*)json,
+                .free_data = NULL
+        };
 
-        tdat_drop(&json_src);
-        tdat_drop(&plist_dst);
+        assert(output->end == 0);
+
+        /* Reserve 64 bytes for output header */
+        tdat_ensure(output, 64);
+        output->start = output->end = 64;
+
+        tdat_json_value(&json_src, output);
+
+        char hdr_buf[64+1];
+        int hdr_len = snprintf(hdr_buf, 64+1, "%s %zu\n",
+                               otype, tdat_len(output));
+        assert(hdr_len > 0 && hdr_len < output->start);
+        output->start -= hdr_len;
+
+        /* copy header not including trailing '\0' */
+        memcpy(tdat_start(output), hdr_buf, hdr_len);
+
+        tdat_append1(output, "\n");
 }
 
 static void*
 tdlib_loop(void* cln)
 {
+        struct telega_dat output = TDAT_INIT;
+
         while (server_running) {
                 const char *res = td_json_client_receive(cln, 10.0);
-                if (res)
-                        telega_output_json("event", res);
+                if (res) {
+                        tdat_reset(&output);
+                        output_json_prepare("event", res, &output);
+                        fwrite(tdat_start(&output),
+                               1, tdat_len(&output), stdout);
+                        fflush(stdout);
+                }
         }
+
+        tdat_drop(&output);
         return NULL;
 }
+
+#ifdef WITH_ZLIB
+static void*
+tdlib_zlib_loop(void* cln)
+{
+        struct telega_dat output = TDAT_INIT;
+        struct telega_dat zlib_dst = TDAT_INIT;
+
+        while (server_running) {
+                const char *res = td_json_client_receive(cln, 10.0);
+                if (res == NULL)
+                        continue;
+
+                /* Fetch all pending events at once */
+                tdat_reset(&output);
+                do {
+                        output_json_prepare("event", res, &output);
+                } while ((res = td_json_client_receive(cln, 0)));
+
+                tdat_reset(&zlib_dst);
+                size_t zlen = tdat_zlib_deflate(&output, &zlib_dst);
+                printf("zlib %zu\n", zlen);
+                size_t wsize = fwrite(tdat_start(&zlib_dst),
+                                      1, tdat_len(&zlib_dst), stdout);
+                assert(wsize == zlen);
+                printf("\n");
+                fflush(stdout);
+        }
+
+        tdat_drop(&zlib_dst);
+        tdat_drop(&output);
+        return NULL;
+}
+#endif /* WITH_ZLIB */
 
 /*
  * NOTE: Emacs sends HUP when associated buffer is killed
@@ -294,8 +380,16 @@ int
 main(int ac, char** av)
 {
         int ch;
-        while ((ch = getopt(ac, av, "L:E:R:f:jpl:v:h")) != -1) {
+        while ((ch = getopt(ac, av, "O:L:E:R:f:jpl:v:hz")) != -1) {
                 switch (ch) {
+#ifdef WITH_ZLIB
+                case 'z':
+                        zlib_enabled = true;
+                        break;
+#endif /* WITH_ZLIB */
+                case 'O':
+                        optimize = atoi(optarg);
+                        break;
                 case 'v':
                         verbosity = atoi(optarg);
                         telega_set_verbosity(verbosity);
@@ -340,7 +434,9 @@ main(int ac, char** av)
         void* tdlib_cln = td_json_client_create();
         assert(tdlib_cln != NULL);
         pthread_t td_thread;
-        int rc = pthread_create(&td_thread, NULL, tdlib_loop, tdlib_cln);
+        int rc = pthread_create(&td_thread, NULL,
+                                zlib_enabled ? tdlib_zlib_loop : tdlib_loop,
+                                tdlib_cln);
         assert(rc == 0);
 
 #ifdef WITH_APPINDICATOR

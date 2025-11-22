@@ -301,6 +301,16 @@ For other chats date of the last message is taken."
          (telega-chat-order chat))
         (t "10")))
 
+;;; ellit-org: chat-sorting-criteria
+;; - ~unread-mention~ ::
+;;   {{{fundoc(telega--sort-unread-mention, 2)}}}
+(define-telega-sorter unread-mention ("updateChatUnreadMentionCount")
+                      (chat)
+  "Makes chats having unread mentions on top."
+  (cond ((telega-chat-match-p chat 'mention)
+         (telega-chat-order chat))
+        (t "10")))
+
 ;; - TODO Date of last message sent by ~telega-user-me~
 ;; - TODO Date of last mention (thanks to https://t.me/lainposter)
 ;; - TODO By custom chat temex, i.e. matching chats goes first
