@@ -3953,7 +3953,10 @@ If SHORT-P is non-nil then use short version."
 If REMOVE-CAPTION is specified, then do not insert caption."
   (declare (indent 1))
   (telega-ins--one-lined
-   (let ((telega-inhibit-telega-display-by t)
+   (let (
+         ;; ARGUABLE: Why inhibit telega display ? Inhibiting it causes
+         ;; spoilers to be displayed
+         ;; (telega-inhibit-telega-display-by t)
          (telega-msg--current msg)
          (content (or content (plist-get msg :content))))
      (cl-case (telega--tl-type content)
