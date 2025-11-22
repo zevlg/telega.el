@@ -97,12 +97,11 @@ usage(char* prog)
         printf(", with VOIP tgvoip v%s", telega_voip_version());
 #endif /* WITH_VOIP */
 #ifdef WITH_APPINDICATOR
-        printf(", with appindicator"
+        printf(", with appindicator");
 #endif /* WITH_APPINDICATOR */
 #ifdef WITH_ZLIB
-               ", with zlib"
+        printf(", with zlib");
 #endif /* WITH_ZLIB */
-                );
         printf("\n");
         printf("usage: %s"
 #ifdef WITH_ZLIB
