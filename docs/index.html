@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2025-11-23 Вс 00:50 -->
+<!-- 2025-11-23 Вс 01:07 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.8.560)</title>
@@ -250,10 +250,10 @@ development</a>, also see benefits you get <a href="#telega-patrons-mode">being 
 <h2 id="installation"><a class="self-link" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h2>
 <div class="outline-text-2" id="text-installation">
 <p>
-<code>telega</code> depends on the <code>visual-fill-column</code> and <code>rainbow-identifiers</code>
-packages.  This dependency automatically installs if you install
-<code>telega</code> from MELPA or GNU Guix.  Otherwise will you need to install
-these packages by hand.
+<code>telega</code> depends on the <code>visual-fill-column</code> and <code>transient</code> packages.
+This dependency automatically installs if you install <code>telega</code> from
+MELPA or GNU Guix.  Otherwise will you need to install these packages
+by hand.
 </p>
 
 <p>
@@ -577,7 +577,7 @@ Or you could use git repository with this melpa-style recipe for <a href="https:
 <h3 id="installing-telega-directly-from-github"><a class="self-link" href="#installing-telega-directly-from-github"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installing telega directly from GitHub</h3>
 <div class="outline-text-3" id="text-installing-telega-directly-from-github">
 <p>
-Make sure dependencies are installed with <kbd>M-x package-install RET visual-fill-column RET</kbd> and <kbd>M-x package-install RET rainbow-identifiers RET</kbd>.
+Make sure dependencies are installed with <kbd>M-x package-install RET visual-fill-column RET</kbd> and <kbd>M-x package-install RET transient RET</kbd>.
 </p>
 
 <p>
@@ -851,7 +851,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgd15f365">
+<pre class="example" id="org55669d6">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -869,7 +869,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org36b75b4">
+<pre class="example" id="orgc37c54b">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -958,7 +958,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgbd7bb95">
+<pre class="example" id="orgc6d82e9">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -996,7 +996,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgc859989">
+<pre class="example" id="orgb224907">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -2442,7 +2442,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgde7e709">
+<pre class="example" id="org3d1e11e">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2646,7 +2646,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org58b8688">
+<pre class="example" id="org9fcde49">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2678,7 +2678,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orgae96b27">
+<pre class="example" id="orgfb6d2c0">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3591,7 +3591,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="orgadc8668">
+<pre class="example" id="org94ddb92">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4870,7 +4870,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org7d8c1e0">
+<pre class="example" id="orgc1cf714">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

@@ -148,10 +148,10 @@ development]], also see benefits you get [[#telega-patrons-mode][being telega pa
 :CUSTOM_ID: installation
 :END:
 
-=telega= depends on the =visual-fill-column= and =rainbow-identifiers=
-packages.  This dependency automatically installs if you install
-=telega= from MELPA or GNU Guix.  Otherwise will you need to install
-these packages by hand.
+=telega= depends on the =visual-fill-column= and =transient= packages.
+This dependency automatically installs if you install =telega= from
+MELPA or GNU Guix.  Otherwise will you need to install these packages
+by hand.
 
 =telega= is built on top of the official library provided by Telegram
 [[https://core.telegram.org/tdlib][TDLib]].  Most distributions do not provide this package in their
@@ -383,7 +383,7 @@ Or you could use git repository with this melpa-style recipe for [[https://githu
 :CUSTOM_ID: installing-telega-directly-from-github
 :END:
 
-Make sure dependencies are installed with @@html:<kbd>@@M-x package-install RET visual-fill-column RET@@html:</kbd>@@ and @@html:<kbd>@@M-x package-install RET rainbow-identifiers RET@@html:</kbd>@@.
+Make sure dependencies are installed with @@html:<kbd>@@M-x package-install RET visual-fill-column RET@@html:</kbd>@@ and @@html:<kbd>@@M-x package-install RET transient RET@@html:</kbd>@@.
 
 Get the source:
 #+begin_src shell
