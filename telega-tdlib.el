@@ -3603,6 +3603,31 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
          :limit limit)
    callback))
 
+(cl-defun telega--getChatJoinRequests (chat &key invite-link query
+                                            offset-request-tl limit callback)
+  "Return pending join requests in a chat."
+  (telega-server--call
+   (nconc (list :@type "getChatJoinRequests"
+                :chat_id (plist-get chat :id)
+                :limit (or limit 200))
+          (when invite-link
+            (list :invite_link invite-link))
+          (when query
+            (list :query query))
+          (when offset-request-tl
+            (list :offset_request offset-request-tl)))
+   callback))
+
+(defun telega--processChatJoinRequest (chat user approve-p &optional callback)
+  "Handle a pending join request."
+  (declare (indent 3))
+  (telega-server--call
+   (list :@type "processChatJoinRequest"
+         :chat_id (plist-get chat :id)
+         :user_id (plist-get user :id)
+         :approve (if approve-p t :false))
+   (or callback #'ignore)))
+
 (provide 'telega-tdlib)
 
 ;;; telega-tdlib.el ends here

@@ -16,8 +16,8 @@
 # This comment is to trigger ARM64 build
 
 FROM alpine:latest AS builder
-ARG tdlib_version=v1.8.56
-ARG tdlib_branch=dd1b761fd
+ARG tdlib_version=v1.8.57
+ARG tdlib_branch=f0d04d3
 ARG telega_branch=master
 
 RUN set +x && apk update && apk upgrade && \

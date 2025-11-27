@@ -768,11 +768,17 @@ By default N is 1."
 (define-telega-matcher chat has-active-stories (chat &optional unread-p)
   "Matches if chat has non-expired stories available to you.
 If UNREAD-P is non-nil then match only if there is at least one unread
-non-expired story."
-  (plist-get (telega-chat--info chat 'locally)
-             (if unread-p
-                 :has_unread_active_stories
-               :has_active_stories)))
+non-expired story.
+If UNREAD-P is `live', then match only if chat has active live story."
+  (when-let ((active-story-state (plist-get (telega-chat--info chat 'locally)
+                                            :active_story_state)))
+    (cl-ecase (telega--tl-type active-story-state)
+      (activeStoryStateLive
+       (eq unread-p 'live))
+      (activeStoryStateRead
+       (not unread-p))
+      (activeStoryStateUnread
+       t))))
 
 ;;; ellit-org: chat-temex
 ;; - (active-stories-list ~LIST~) ::

@@ -54,6 +54,7 @@
 (declare-function telega-chat-admin-get "telega-chat" (chat user))
 
 (declare-function telega--full-info "telega-info" (tlobj &optional _callback))
+(declare-function telega-describe-chat-join-requests "telega-info" (chat))
 (declare-function telega-topic-button-action "telega-root" (chat-topic))
 
 (defun telega-ins--text-button (label &rest props)
@@ -398,7 +399,6 @@ If WITH-YEARS-OLD-P is specified, insert years old as well."
                                              (with-badges-p t)
                                              (with-title-faces-p t)
                                              with-palette
-                                             (trail-delim " ")
                                              trail-inserter)
   "Insert message's sender title.
 If WITH-AVATAR-P is 2, then insert 2 lines version of an avatar.
@@ -441,13 +441,11 @@ WITH-BADGES-P is ignored if WITH-TITLE is specified."
                                  title-faces)
           (telega-ins username))))
 
-    ;; Trailer before closing bracket
-    (when trail-inserter
-      (telega-ins-prefix trail-delim
-        (funcall trail-inserter msg-sender)))
-
     (when brackets
       (telega-ins (nth 1 brackets)))
+
+    (when trail-inserter
+      (funcall trail-inserter msg-sender))
 
     (when (eq with-avatar-p 2)
       (telega-ins "\n")
@@ -2122,8 +2120,7 @@ Return number of done tasks."
          (ntasks (length checklist-tasks))
          (done-ntasks (seq-count
                        (lambda (task)
-                         (not (telega-zerop
-                               (plist-get task :completed_by_user_id))))
+                         (plist-get task :completed_by))
                        checklist-tasks)))
     (telega-ins--with-face 'bold
       (telega-ins--fmt-text (plist-get checklist :title)))
@@ -2155,9 +2152,9 @@ Return number of done tasks."
         :action #'telega-msg-checklist-task-add))
     (telega-ins "\n")
     (seq-doseq (task checklist-tasks)
-      (let* ((by-user-id (plist-get task :completed_by_user_id))
-             (by-user (unless (telega-zerop by-user-id)
-                        (telega-user-get by-user-id 'offline))))
+      (let* ((by-raw (plist-get task :completed_by))
+             (by-sender (when by-raw
+                          (telega-msg-sender by-raw))))
       (telega-ins--with-props (list :checklist-task task)
         (telega-ins--raw-button
             (list :action #'telega-msg-checklist-task-toggle
@@ -2168,21 +2165,21 @@ Return number of done tasks."
                                         #'telega-msg-checklist-task-edit)
                             map))
           (telega-ins--with-face (if can-done-p 'telega-link 'telega-shadow)
-            (telega-ins (if by-user
+            (telega-ins (if by-sender
                             (telega-symbol 'checkbox-on)
                           (telega-symbol 'checkbox-off))))
           (telega-ins " ")
           (telega-ins--fmt-text (plist-get task :text))
-          (when by-user
+          (when by-sender
             (telega-ins--with-face 'telega-shadow
               (telega-ins " (")
               (when (if (and (telega-msg-by-me-p msg)
-                             (telega-me-p by-user))
+                             (telega-me-p by-sender))
                         ;; Selfdone task
                         (when telega-msg-checklist-selfdone-user-format-args
-                          (apply #'telega-ins--msg-sender by-user
+                          (apply #'telega-ins--msg-sender by-sender
                                  telega-msg-checklist-selfdone-user-format-args))
-                      (apply #'telega-ins--msg-sender by-user
+                      (apply #'telega-ins--msg-sender by-sender
                              telega-msg-checklist-user-format-args))
                 (telega-ins " "))
               (telega-ins (telega-i18n "telega_at") " ")
@@ -4538,19 +4535,23 @@ Return non-nil if restrictions has been inserted."
               )
         t))))
 
-(defun telega-ins--pending-join-requests (pending-join-requests)
-  "Inserter for the PENDING-JOIN-REQUESTS."
-  (seq-doseq (user-id (plist-get pending-join-requests :user_ids))
-    (telega-ins--image
-     (telega-msg-sender-avatar-image-one-line (telega-user-get user-id))))
-  (telega-ins " ")
-  (telega-ins--text-button
-      (telega-i18n "lng_group_requests_pending"
-        :count (plist-get pending-join-requests :total_count))
-    'face 'telega-link
-    'action (lambda (_button)
-              (message "TODO: describe pending requests")))
-  t)
+(defun telega-ins--chat-pending-join-requests (chat &optional jr-info)
+  "Inserter for CHAT's pending join requests"
+  (unless jr-info
+    (setq jr-info (plist-get chat :pending_join_requests)))
+  (when jr-info
+    (seq-doseq (user-id (plist-get jr-info :user_ids))
+      (telega-ins--image
+       (telega-msg-sender-avatar-image-one-line (telega-user-get user-id))))
+    (telega-ins " ")
+    (telega-ins--text-button
+        (telega-i18n "lng_group_requests_pending"
+          :count (plist-get jr-info :total_count))
+      'face 'telega-link
+      'action (lambda (_button)
+                (funcall-interactively
+                 #'telega-describe-chat-join-requests chat)))
+    t))
 
 
 (defun telega-ins--root-msg (msg)

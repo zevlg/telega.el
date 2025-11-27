@@ -275,6 +275,8 @@ Automatically goto next video message, when previous video finishes.
 
 ** Saving chatbuf into file
 
+- ref :: https://github.com/gnu-emacs-ru/telega-export/blob/main/telega-export.el
+
 Save chatbuf into the file, that can be openned afterwards.  Save as
 plist like:
 

@@ -2275,9 +2275,9 @@ Use this to surrond header with some prefix and suffix."
   "Inserter for the pending join requests."
   (telega-chatbuf--dirtiness-init "updateChatPendingJoinRequests")
 
-  (when-let* ((pending-join-requests
+  (when-let* ((jr-info
                (plist-get telega-chatbuf--chat :pending_join_requests))
-              (nrequests (plist-get pending-join-requests :total_count)))
+              (nrequests (plist-get jr-info :total_count)))
     (unless (or (telega-zerop nrequests)
                 (eq nrequests (plist-get telega-chatbuf--hidden-headers
                                          :pending-join-requests)))
@@ -2288,7 +2288,7 @@ Use this to surrond header with some prefix and suffix."
                              :pending-join-requests nrequests)
                   (telega-chatbuf--chat-update "updateChatPendingJoinRequests")))
       (telega-ins " " (telega-i18n "lng_manage_peer_requests") ": ")
-      (telega-ins--pending-join-requests pending-join-requests)
+      (telega-ins--chat-pending-join-requests telega-chatbuf--chat jr-info)
       (telega-ins "\n"))))
 
 (defun telega-chatbuf-footer-ins-action-bar ()

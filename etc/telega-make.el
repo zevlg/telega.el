@@ -71,6 +71,31 @@
   (load "test")
   (ert-run-tests-batch-and-exit))
 
+(defmacro with-telega-edit-file (filename &rest body)
+  (declare (indent 1))
+  `(with-current-buffer (find-file-noselect
+                         (expand-file-name ,filename telega--lib-directory))
+     ,@body
+     (basic-save-buffer)))
+
+(defun telega-update-tdlib-version (&optional version tdlib-sha1)
+  "Update TDLib version."
+  (unless version
+    (setq version (or telega-tdlib-max-version
+                      telega-tdlib-min-version)))
+
+  (with-telega-edit-file "README.md"
+    (when (re-search-forward "badge/TDLib-v[0-9\\.]+_")
+      (replace-match (concat "badge/TDLib-v" version "_"))))
+
+  (with-telega-edit-file "etc/Dockerfile"
+    (when (re-search-forward "ARG tdlib_version=v[0-9\\.]+")
+      (replace-match (concat "ARG tdlib_version=v" version)))
+
+    (when (re-search-forward "ARG tdlib_branch=[0-9a-fA-F]+")
+      (replace-match (concat "ARG tdlib_branch=" tdlib-sha1))))
+  )
+
 (provide 'telega-make)
 
 ;; Local Variables:

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.560)
+#+title: Telega Manual (v0.8.570)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -237,7 +237,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.56-dd1b761fd.
+version equal to v1.8.57-f0d04d3.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -1280,6 +1280,7 @@ Use ~telega-chat-match-p~ to match a chat.
      Matches if chat has non-expired stories available to you.
      If ~UNREAD-P~ is non-nil then match only if there is at least one unread
      non-expired story.
+     If ~UNREAD-P~ is ~live~, then match only if chat has active live story.
 
 - (active-stories-list ~LIST~) :: 
      Matches if chat's active stories belongs to ~LIST~.

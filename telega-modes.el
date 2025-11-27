@@ -2066,6 +2066,20 @@ TDLib's autoDownloadSettings structure."
 ;; ~telega-contact-birthdays-mode~ is enabled by default.
 (defvar telega-contact-birthdays--exclude-users nil)
 
+(defface telega-contact-birthdays-today
+  '((t :inherit bold))
+  "Face to use if contact birthday is today."
+  :group 'telega-faces)
+
+(defun telega-contact-birthdays-today-p (birthdate)
+  "Return non-nil if BIRTHDATE is today."
+  (let* ((current-ts (telega-time-seconds))
+         (ctime (decode-time current-ts)))
+    (and (eq (plist-get birthdate :month)
+             (decoded-time-month ctime))
+         (eq (plist-get birthdate :day)
+             (decoded-time-day ctime)))))
+
 (defun telega-ins--contact-birthdays ()
   (when-let ((bd-users-list
               (cl-remove-if (lambda (bd-user)
@@ -2084,7 +2098,11 @@ TDLib's autoDownloadSettings structure."
         (telega-ins--with-face 'telega-shadow
           (telega-ins " • "))
         (telega-ins " ")
-        (telega-ins--birthdate (plist-get bd-user :birthdate) 'with-years-old))
+        (let ((birthdate (plist-get bd-user :birthdate)))
+          (telega-ins--with-face
+              (when (telega-contact-birthdays-today-p birthdate)
+                'telega-contact-birthdays-today)
+            (telega-ins--birthdate birthdate 'with-years-old))))
 
       (telega-ins " ")
       (telega-ins--text-button (telega-symbol 'button-close)
@@ -2097,9 +2115,13 @@ TDLib's autoDownloadSettings structure."
                   (telega-root-aux-redisplay #'telega-ins--contact-birthdays))))
     t))
 
-(defun telega-contact-birthdays--on-update (_event)
+(defun telega-contact-birthdays--on-update (event)
   "List of close birthdays has been changed."
-  (telega-root-aux-redisplay #'telega-ins--contact-birthdays))
+  (let ((event-type (telega--tl-type event)))
+    (when (or (eq event-type 'updateContactCloseBirthdays)
+              (and (eq event-type 'updateOption)
+                   (equal (plist-get event :name) "unix_time")))
+      (telega-root-aux-redisplay #'telega-ins--contact-birthdays))))
 
 (define-minor-mode telega-contact-birthdays-mode
   "Global mode to display close birthdays of the contacts."
@@ -2108,10 +2130,14 @@ TDLib's autoDownloadSettings structure."
       (progn
         (advice-add 'telega--on-updateContactCloseBirthdays
                     :after #'telega-contact-birthdays--on-update)
+        (advice-add 'telega--on-updateOption
+                    :after #'telega-contact-birthdays--on-update)
         (telega-root-aux-append #'telega-ins--contact-birthdays))
 
     ;; Disabled
     (telega-root-aux-remove #'telega-ins--contact-birthdays)
+    (advice-remove 'telega--on-updateOption
+                   #'telega-contact-birthdays--on-update)
     (advice-remove 'telega--on-updateContactCloseBirthdays
                    #'telega-contact-birthdays--on-update)
     ))

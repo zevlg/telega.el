@@ -1147,10 +1147,16 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_group_requests_pending"
   :one_value "{count} join request"
   :other_value "{count} join requests")
+ ("lng_group_requests_none"
+  :value "There are no pending join requests.")
  ("lng_group_request_sent"
   :value "You will be added to the group once an admin approves your request.")
  ("lng_group_request_sent_channel"
   :value "You will be added to the channel once its admins approve your request.")
+ ("lng_group_requests_add"
+  :value "Add to Group")
+ ("lng_group_requests_dismiss"
+  :value "Dismiss")
 
  ("lng_payments_date_label"
   :value "Paid")
