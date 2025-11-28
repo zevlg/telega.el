@@ -132,10 +132,12 @@ If any of predicates returns non-nil, then message contains advert."
 ;; TODO: heuristics about multiple links to same url
 ;; to block messages like https://t.me/c/1127375190/3747
 
-(defun telega-adblock-msg-extract-links (msg)
+(defun telega-adblock-msg-extract-links (msg &optional reply-markup-only-p)
   "Extract all links from the message.
 Return a list of cons cells, where car is the text used for link and
-cdr is the URL."
+cdr is the URL.
+If REPLY-MARKUP-ONLY-P is non-nil, then extract links from reply
+markup buttons only.  Otherwise, extract links from MSG body as well."
   (let ((reply-markup (plist-get msg :reply_markup))
         (ret-links nil))
     ;; Extract links from the reply-markup keyboard
@@ -149,24 +151,26 @@ cdr is the URL."
                         ret-links))))))
 
     ;; Extract links from the message's text
-    (let* ((content (plist-get msg :content))
-           (msg-text (or (telega-tl-str content :text)
-                         (telega-tl-str content :caption))))
-      (seq-doseq (txt (telega--split-by-text-prop msg-text :telega-link))
-        (when-let* ((txt-link (get-text-property 0 :telega-link txt))
-                    (link-url
-                     (cl-case (car txt-link)
-                       ;; NOTE: Convert direct mention to the url
-                       ;; see https://github.com/zevlg/telega.el/issues/309
-                       (username
-                        (concat "https://t.me/"
-                                ;; Strip leading "@"
-                                (substring (cdr txt-link) 1)))
-                       (url
-                        (cdr txt-link)))))
-          (setq ret-links
-                (cons (cons txt link-url)
-                      ret-links)))))
+    (unless reply-markup-only-p
+      (let* ((content (plist-get msg :content))
+             (msg-text (or (telega-tl-str content :text)
+                           (telega-tl-str content :caption))))
+        (seq-doseq (txt (telega--split-by-text-prop msg-text :telega-link))
+          (when-let* ((txt-link (get-text-property 0 :telega-link txt))
+                      (link-url
+                       (cl-case (car txt-link)
+                         ;; NOTE: Convert direct mention to the url
+                         ;; see https://github.com/zevlg/telega.el/issues/309
+                         (username
+                          (concat "https://t.me/"
+                                  ;; Strip leading "@"
+                                  (substring (cdr txt-link) 1)))
+                         (url
+                          (cdr txt-link)))))
+            (setq ret-links
+                  (cons (cons txt link-url)
+                        ret-links))))))
+
     ret-links))
 
 (defun telega-adblock--link-internal-p (chat link-spec)
