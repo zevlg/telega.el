@@ -37,7 +37,6 @@
 (require 'url-util)                     ; `url-unhex-string'
 (require 'org)                          ; `org-read-date', `org-do-emphasis-faces'
 (require 'org-element)                  ; for `org-do-emphasis-faces'
-(require 'transient)
 
 (require 'telega-core)
 (require 'telega-customize)
@@ -2273,7 +2272,7 @@ Save point only if SAVE-POINT is non-nil.
 Return new node."
   (let* ((node-value (ewoc--node-data node))
          (node-start (ewoc-location node))
-         (node-next (ewoc-next ewoc node))
+         (node-next (or (ewoc-next ewoc node) (ewoc--footer ewoc)))
          (point (point))
          (point-off (and save-point-p
                          (>= point node-start)
@@ -2296,7 +2295,8 @@ Return new node."
     (when (and point-off
                ;; See https://github.com/zevlg/telega.el/issues/197
                (not (equal (ewoc-location node)
-                           (when-let ((next-node (ewoc-next ewoc node)))
+                           (when-let ((next-node (or (ewoc-next ewoc node)
+                                                     (ewoc--footer ewoc))))
                              (ewoc-location next-node)))))
       (goto-char (+ (ewoc-location node) point-off))
       (telega-buffer--update-win-point))
@@ -2816,7 +2816,7 @@ Emacs does not respect buffer local nil value for
 in `(window-prev-buffers)' to achive behaviour for nil-valued
 `switch-to-buffer-preserve-window-point'."
   (unless switch-to-buffer-preserve-window-point
-    ;; (when (version< emacs-version "28.1.0")
+;    (when (version< emacs-version "28.1.0")
     (when-let ((entry (assq (current-buffer) (window-prev-buffers))))
       (setf (nth 2 entry)
             (copy-marker (or point (point))
@@ -3467,93 +3467,6 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
           (branch (when (re-search-forward "^ARG tdlib_branch=\\(.*\\)$")
                     (match-string 1))))
       (concat version "-" branch))))
-
-
-;;; Transients
-(transient-define-suffix telega-saved-messages-tag-filter ()
-  :key "/"
-  :description (lambda () (telega-i18n "lng_context_filter_by_tag"))
-  (interactive)
-  (let* ((cmd-scope (oref transient-current-prefix scope))
-         (tag (car cmd-scope)))
-    (telega-chatbuf-filter-by-saved-messages-tag tag)))
-
-(transient-define-suffix telega-saved-messages-tag-add-name ()
-  :key "n"
-  :description
-  (lambda ()
-    (let ((tag (car (oref transient--prefix scope))))
-      (if (telega-tl-str tag :label)
-          (telega-i18n "lng_context_tag_edit_name")
-        (telega-ins--as-string
-         (telega-ins (telega-i18n "lng_context_tag_add_name") "\n")
-         (telega-ins--help-message
-          (telega-ins-i18n "lng_edit_tag_about"))))))
-  (interactive)
-  (let* ((cmd-scope (oref transient-current-prefix scope))
-         (tag (car cmd-scope))
-         (msg (cdr cmd-scope))
-         (label (read-string
-                 (telega-ins--as-string
-                  (telega-ins-i18n "lng_edit_tag_name")
-                  (telega-ins ": ")
-                  (telega-ins--msg-reaction-type (plist-get tag :tag)))
-                 (telega-tl-str tag :label))))
-    (telega--setSavedMessagesTagLabel tag label
-      (when msg
-        (lambda (_ignored)
-          (telega-msg-redisplay msg))))))
-
-(transient-define-suffix telega-saved-messages-tag-remove ()
-  :key "d"
-  :description (lambda () (telega-i18n "lng_context_remove_tag"))
-  (interactive)
-  (let* ((cmd-scope (oref transient-current-prefix scope))
-         (tag (car cmd-scope))
-         (msg (cdr cmd-scope)))
-    (telega--removeMessageReaction msg (plist-get tag :tag)
-      (when msg
-        (lambda-with-current-buffer (_ignored)
-          ;; NOTE: Removing tag from the message might affect
-          ;; message's visibility if message filter is applied at the
-          ;; moment
-          (let ((msg-node (telega-chatbuf--node-by-msg-id (plist-get msg :id))))
-            (if (telega-chatbuf--filter-match-msg-p msg)
-                (telega-chatbuf--redisplay-node msg-node)
-              (ewoc-delete telega-chatbuf--ewoc msg-node))))))))
-
-;; scope for this commands is cons cell where car is tag and cdr is
-;; msg
-(transient-define-prefix telega-saved-messages-tag-commands ()
-  [:description
-   (lambda ()
-     (telega-ins--as-string
-      (telega-ins--saved-messages-tag (car (oref transient--prefix scope)))
-      (telega-ins " ")
-      (telega-ins--with-face 'transient-heading
-        (telega-ins "Tag Commands"))))
-   (telega-saved-messages-tag-filter)
-   (telega-saved-messages-tag-add-name)
-   (telega-saved-messages-tag-remove)
-   ])
-
-;;; Link Preview Options
-(transient-define-suffix telega-link-preview-options-disable ()
-  :key "d"
-  :description (lambda () (telega-i18n "lng_link_remove"))
-  (interactive)
-  (let ((msg (oref transient-current-prefix scope)))
-    (telega-msg-disable-link-preview msg)))
-
-(transient-define-prefix telega-link-preview-options-transient ()
-  [:description
-   (lambda ()
-     (telega-i18n "lng_link_options_header"))
-
-   ;; (telega-saved-messages-tag-filter)
-   ;; (telega-saved-messages-tag-add-name)
-   ;; (telega-saved-messages-tag-remove)
-   ])
 
 
 ;;; Stipple drawing

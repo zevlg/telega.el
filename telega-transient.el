@@ -29,6 +29,8 @@
 (require 'telega-core)
 (require 'telega-ins)
 
+(defvar telega-prefix-map)
+
 (declare-function telega-msg-forward-dwim "telega-chat" (messages &optional remove-sender-p remove-caption-p))
 (declare-function telega-msg-forward-dwim-to-many "telega-chat" (messages chats &optional remove-sender-p remove-caption-p))
 
@@ -110,7 +112,7 @@
   :description (lambda ()
                  (telega-ins--as-string
                   (telega-ins--with-attrs (list :fill 'left
-                                                :fill-column 60
+                                                :fill-column fill-column
                                                 :fill-prefix "  ")
                     (telega-ins--with-face 'telega-shadow
                       (telega-ins (telega-i18n "lng_forward_about"))))))
@@ -224,7 +226,7 @@
        (telega-msg-goto msg 'highlight)
        (user-error "telega: Message MSG-ID=%S can't be forwarded"
                    (plist-get msg :id))))
-   (transient-setup 'telega-transient-forward nil nil :scope messages))
+   (transient-setup 'telega-transient-msg-forward nil nil :scope messages))
 
 
 ;;; Delete message 
@@ -234,72 +236,226 @@
   :class 'telega-transient--checkbox-switches
   :variable :msg-report-spam-p)
 
-(transient-define-infix telega-transient--infix-msg-revoke ()
+(transient-define-suffix telega-transient--infix-msg-revoke ()
   "Revoke message."
   :description (lambda ()
-                 ;; TODO
-                 )
-  :class 'telega-transient--checkbox-switches
-  :variable :msg-revoke-p)
+                 (telega-i18n "lng_delete_for_everyone_hint"))
+  (interactive)
+  (let* ((messages (oref transient-current-prefix scope)))
+    ;; TODO
+    ))
 
-(transient-define-prefix telega-transient-msg-delete (message)
+(transient-define-suffix telega-transient--infix-msg-delete ()
+  "Delete messages for me only."
+  :key "d"
+  :description (lambda ()
+                 (telega-i18n "lng_delete_for_me_chat_hint"))
+  (interactive)
+  (let* ((messages (oref transient-current-prefix scope)))
+    ;; TODO
+    ))
+
+(transient-define-prefix telega-transient-msg-delete (messages)
   "Delete a MESSAGE."
-  [:if (plist-get (telega-chat-member-my-permissions telega-chatbuf--chat)
-                  :can_restrict_members)
+  [:description
+   (lambda ()
+     (let ((msg-count (length (oref transient--prefix scope))))
+       (if (> msg-count 1)
+           (telega-i18n "lng_selected_delete_sure"
+             :count msg-count)
+         (telega-i18n "lng_selected_delete_sure_this"))))
+   ]
+  [:if (lambda ()
+         (plist-get (telega-chat-member-my-permissions telega-chatbuf--chat)
+                    :can_restrict_members))
    :description (lambda () "Block Options")
    ("s" telega-transient--infix-msg-report-spam)
    ("a" telega-transient--infix-msg-sender-delete-all)
    ("b" telega-transient--infix-msg-sender-block)
    ]
   [
-   (telega-transient--infix-fwd-about)
-   ("d" telega-transient--infix-msg-delete)
-   ("r" telega-transient--infix-msg-revoke)
+;   (telega-transient--infix-msg-del-about)
+   ("d" telega-transient--suffix-msg-delete)
+   ("D" telega-transient--suffix-msg-revoke)
    ]
 
-  (interactive (list (or (telega-chatbuf-match-p
-                          '(type supergroup channel secret))
-                         (not current-prefix-arg))))
+  (interactive
+   (list (or telega-chatbuf--marked-messages
+             (when-let ((msg-at-point (telega-msg-at (point))))
+               (list msg-at-point)))))
+
+  ;; NOTE: Check every message can be deleted
+  (let ((telega-server-call-timeout 3.0))
+    (seq-doseq (msg messages)
+      (let ((msg-props (telega--getMessageProperties msg)))
+        (unless (or (plist-get msg-props :can_be_deleted_only_for_self)
+                    (plist-get msg-props :can_be_deleted_for_all_users))
+          (telega-msg-goto msg 'highlight)
+          (user-error "telega: Message MSG-ID=%S can't be deleted"
+                      (plist-get msg :id))))))
+  (transient-setup 'telega-transient-msg-delete nil nil :scope messages)
   )
 
 
 ;;; Delete chat
-(transient-define-prefix telega-transient-msg-delete (message)
-  "Delete a MESSAGE."
-  [:if (plist-get (telega-chat-member-my-permissions telega-chatbuf--chat)
-                  :can_restrict_members)
+(transient-define-prefix telega-transient-chat-delete (chat)
+  "Delete a CHAT."
+  [:if (lambda ()
+         (plist-get (telega-chat-member-my-permissions telega-chatbuf--chat)
+                    :can_restrict_members))
    :description (lambda () "Options")
    ("m" telega-transient--infix-chat-delete-history-for-me)
    ("h" telega-transient--infix-chat-delete-history-for-all)
    ("b" telega-transient--infix-chat-user-block)
    ]
   [
-   ("d" telega-transient--infix-chat-delete)
-   ("a" telega-transient--infix-chat-archive)
+   ("D" telega-transient--suffix-chat-delete)
+   ("A" telega-transient--suffix-chat-archive)
    ]
 
-  (interactive (list (or (telega-chatbuf-match-p
-                          '(type supergroup channel secret))
-                         (not current-prefix-arg))))
+  (interactive (list (telega-chat-for-interactive)))
+  (transient-setup 'telega-transient-chat-delete nil nil :scope chat)
   )
 
 
 ;;; Create Group
 
+
 
-;; Saved Messages tags
-(transient-define-prefix telega-saved-messages-tag-commands ()
+;;; Tag Commands
+(transient-define-suffix telega-transient--suffix-sm-tag-filter ()
+  :key "/"
+  :description (lambda () (telega-i18n "lng_context_filter_by_tag"))
+  (interactive)
+  (let* ((cmd-scope (oref transient-current-prefix scope))
+         (tag (plist-get cmd-scope :tag)))
+    (telega-chatbuf-filter-by-saved-messages-tag tag)))
+
+(transient-define-suffix telega-transient--suffix-sm-tag-add-name ()
+  :key "n"
+  :description
+  (lambda ()
+    (let ((tag (plist-get (oref transient--prefix scope) :tag)))
+      (if (telega-tl-str tag :label)
+          (telega-i18n "lng_context_tag_edit_name")
+        (telega-ins--as-string
+         (telega-ins (telega-i18n "lng_context_tag_add_name") "\n")
+         (telega-ins--help-message
+          (telega-ins-i18n "lng_edit_tag_about"))))))
+  (interactive)
+  (let* ((cmd-scope (oref transient-current-prefix scope))
+         (tag (plist-get cmd-scope :tag))
+         (msg (plist-get cmd-scope :msg))
+         (label (read-string
+                 (telega-ins--as-string
+                  (telega-ins-i18n "lng_edit_tag_name")
+                  (telega-ins ": ")
+                  (telega-ins--msg-reaction-type (plist-get tag :tag)))
+                 (telega-tl-str tag :label))))
+    (telega--setSavedMessagesTagLabel tag label
+      (when msg
+        (lambda (_ignored)
+          (telega-msg-redisplay msg))))))
+
+(transient-define-suffix telega-transient--suffix-sm-tag-remove ()
+  :key "d"
+  :description (lambda () (telega-i18n "lng_context_remove_tag"))
+  (interactive)
+  (let* ((cmd-scope (oref transient-current-prefix scope))
+         (tag (plist-get cmd-scope :tag))
+         (msg (plist-get cmd-scope :msg)))
+    (telega--removeMessageReaction msg (plist-get tag :tag)
+      (when msg
+        (lambda-with-current-buffer (_ignored)
+          ;; NOTE: Removing tag from the message might affect
+          ;; message's visibility if message filter is applied at the
+          ;; moment
+          (let ((msg-node (telega-chatbuf--node-by-msg-id (plist-get msg :id))))
+            (if (telega-chatbuf--filter-match-msg-p msg)
+                (telega-chatbuf--redisplay-node msg-node)
+              (ewoc-delete telega-chatbuf--ewoc msg-node))))))))
+
+(transient-define-prefix telega-transient-sm-tag-commands ()
   [:description
    (lambda ()
      (telega-ins--as-string
-      (telega-ins--saved-messages-tag (car (oref transient--prefix scope)))
+      (telega-ins--saved-messages-tag
+       (plist-get (oref transient--prefix scope) :tag))
       (telega-ins " ")
       (telega-ins--with-face 'transient-heading
         (telega-ins "Tag Commands"))))
-   ("/" telega-saved-messages-tag-filter)
-   ("n" telega-saved-messages-tag-add-name)
-   ("d" telega-saved-messages-tag-remove)
+   ("/" telega-transient--suffix-sm-tag-filter)
+   ("n" telega-transient--suffix-sm-tag-add-name)
+   ("d" telega-transient--suffix-sm-tag-remove)
    ])
+
+
+;;; Link Preview Options
+(transient-define-infix telega-transient--infix-link-preview-up ()
+  "Move link preview photo up."
+  :description (lambda () (telega-i18n "lng_link_move_up"))
+  :class 'telega-transient--radiobox-switches
+  :variable :lp-move-up
+  :deps-list '((t nil :lp-move-down))
+  )
+
+(transient-define-infix telega-transient--infix-link-preview-down ()
+  "Move link preview photo down."
+  :description (lambda () (telega-i18n "lng_link_move_down"))
+  :class 'telega-transient--radiobox-switches
+  :variable :lp-move-down
+  :deps-list '((t nil :lp-move-up))
+  )
+
+(transient-define-infix telega-transient--infix-link-preview-shrink ()
+  "Shrink preview photo."
+  :description (lambda () (telega-i18n "lng_link_move_down"))
+  :class 'telega-transient--checkbox-switches
+  :variable :lp-shrink-p
+  )
+
+(transient-define-suffix telega-transient--suffix-link-preview-save ()
+  :description (lambda () (telega-i18n "lng_settings_save"))
+  (interactive)
+  (let ((msg (oref transient-current-prefix scope)))
+    (telega-msg--set-link-preview-options msg
+      (list :@type "linkPreviewOptions"
+            :url 
+            :force_small_media
+            :force_large_media
+            :show_above_text (telega-transient--variable-get :lp-move-up)
+            ))
+    (telega-msg-disable-link-preview msg)))
+
+(transient-define-suffix telega-transient--suffix-link-preview-remove ()
+  :description (lambda ()
+                 (telega-ins--as-string
+                  (telega-ins--with-face 'error
+                    (telega-i18n "lng_link_remove"))))
+  (interactive)
+  (let ((msg (oref transient-current-prefix scope)))
+    (telega-msg-disable-link-preview msg)))
+
+(transient-define-prefix telega-transient-link-preview-options (msg)
+  [:description
+   (lambda ()
+     (telega-ins--as-string
+      (telega-ins--with-face 'transient-heading
+        (telega-ins-i18n "lng_link_options_header"))))
+
+   ("u" telega-transient--infix-link-preview-up)
+   ("d" telega-transient--infix-link-preview-down)
+   ("m" telega-transient--infix-link-preview-shrink)
+   ]
+
+  [
+   ("S" telega-transient--suffix-link-preview-save)
+   ("R" telega-transient--suffix-link-preview-remove)
+   ]
+
+  (interactive (list (telega-msg-for-interactive)))
+  (transient-setup 'telega-transient-link-preview-options nil nil :scope msg)
+  )
 
 
 ;;; ellit-org: minor-modes
@@ -325,42 +481,55 @@
     telega-root-view-map
     telega-chatbuf-fastnav-map)
   "List of keymaps names to apply transient for."
-  :type 'list
+  :type '(repeat symbol)
   :group 'telega-modes)
+
+(defun telega-transient--keymap-prefix-name (keymap-symbol)
+  (intern (format "telega-transient--prefix-%S" keymap-symbol)))
+
+(defun telega-transient--keymap-setup-children (keymap-symbol)
+  (let ((keymap (symbol-value keymap-symbol)))
+    (mapcar (lambda (kf)
+              (list (key-description (vector (car kf)))
+                    (car (split-string (documentation (cdr kf)) "\n"))
+                    (cdr kf)))
+            (cl-remove-if-not #'commandp (cdr keymap)
+                              :key #'cdr))))
 
 ;; TODO: add support for columns, i.e. vector of vectors instead of
 ;; single vector, see `magit-diff' as example
-(defmacro telega-transient-define-prefix-by-keymap (name label keymap)
-  (declare (indent 2))
-  `(transient-define-prefix ,name nil
-     ,(format "Transient command for `%S' keymap." keymap)
-     [,label
-      ,@(mapcar (lambda (kf)
-                  (list (key-description (vector (car kf)))
-                        (car (split-string (documentation (cdr kf)) "\n"))
-                        (cdr kf)))
-                (cl-remove-if-not #'commandp (cdr (symbol-value keymap))
-                                  :key #'cdr))
-      ]))
+(defmacro telega-transient-define-prefix-by-keymap (keymap &rest description)
+  (declare (indent 1))
+  (let ((prefix-name (telega-transient--keymap-prefix-name keymap)))
+    `(transient-define-prefix ,prefix-name nil
+       ,(format "Transient commands for `%S' keymap." keymap)
+       [,@description
+        [:class transient-column
+         :setup-children
+         (lambda (_)
+           (transient-parse-suffixes
+            ',prefix-name
+            (telega-transient--keymap-setup-children ',keymap)))
+         ]])))
 
-(telega-transient-define-prefix-by-keymap telega-transient-telega
-    "Telega commands:" telega-prefix-map)
-(telega-transient-define-prefix-by-keymap telega-transient-chat-sort
-    "Chat Sorter to apply:" telega-sort-map)
-(telega-transient-define-prefix-by-keymap telega-transient-chat-filter
-    "Chat Filter to apply:" telega-filter-map)
-(telega-transient-define-prefix-by-keymap telega-transient-describe
-    "Describe commands:" telega-describe-map)
-(telega-transient-define-prefix-by-keymap telega-transient-chat-folder
-    "Chat Folder commands:" telega-folder-map)
-(telega-transient-define-prefix-by-keymap telega-transient-voip
-    "VoIP commands:" telega-voip-map)
-(telega-transient-define-prefix-by-keymap telega-transient-root-fastnav
-    "Root buffer fast navigation commands:" telega-root-fastnav-map)
-(telega-transient-define-prefix-by-keymap telega-transient-root-view
-    "Root View commands:" telega-root-view-map)
-(telega-transient-define-prefix-by-keymap telega-transient-chatbuf-fastnav
-    "Chatbuf fast navigation commands:" telega-chatbuf-fastnav-map)
+(telega-transient-define-prefix-by-keymap telega-prefix-map
+  "Telega commands:")
+(telega-transient-define-prefix-by-keymap telega-sort-map
+  "Chat Sorter to apply:")
+(telega-transient-define-prefix-by-keymap telega-filter-map
+  "Chat Filter to apply:")
+(telega-transient-define-prefix-by-keymap telega-describe-map
+  "Describe commands:")
+(telega-transient-define-prefix-by-keymap telega-folder-map
+  "Chat Folder commands:")
+(telega-transient-define-prefix-by-keymap telega-voip-map
+  "VoIP commands:")
+(telega-transient-define-prefix-by-keymap telega-root-fastnav-map
+  "Root buffer fast navigation commands:")
+(telega-transient-define-prefix-by-keymap telega-root-view-map
+  "Root View commands:")
+(telega-transient-define-prefix-by-keymap telega-chatbuf-fastnav-map
+  "Chatbuf fast navigation commands:")
 
 ;;;###autoload
 (define-minor-mode telega-transient-keymaps-mode
@@ -370,29 +539,37 @@
       (progn
         (when (memq 'telega-sort-map telega-transient-keymaps)
           (define-key telega-root-mode-map (kbd "\\")
-            'telega-transient-chat-sort))
+                      (telega-transient--keymap-prefix-name
+                       'telega-sort-map)))
         (when (memq 'telega-filter-map telega-transient-keymaps)
           (define-key telega-root-mode-map (kbd "/")
-            'telega-transient-chat-filter))
+                      (telega-transient--keymap-prefix-name
+                       'telega-filter-map)))
         (when (memq 'telega-describe-map telega-transient-keymaps)
           (define-key telega-root-mode-map (kbd "?")
-            'telega-transient-describe))
+                      (telega-transient--keymap-prefix-name
+                       'telega-describe-map)))
         (when (memq 'telega-folder-map telega-transient-keymaps)
           (define-key telega-root-mode-map (kbd "F")
-            'telega-transient-chat-folder))
+                      (telega-transient--keymap-prefix-name
+                       'telega-folder-map)))
         (when (memq 'telega-voip-map telega-transient-keymaps)
           (define-key telega-root-mode-map (kbd "c")
-            'telega-transient-voip))
+                      (telega-transient--keymap-prefix-name
+                       'telega-voip-map)))
         (when (memq 'telega-root-fastnav-map telega-transient-keymaps)
           (define-key telega-root-mode-map (kbd "M-g")
-            'telega-transient-root-fastnav))
+                      (telega-transient--keymap-prefix-name
+                       'telega-root-fastnav-map)))
         (when (memq 'telega-root-view-map telega-transient-keymaps)
           (define-key telega-root-mode-map (kbd "v")
-            'telega-transient-root-view))
+                      (telega-transient--keymap-prefix-name
+                       'telega-root-view-map)))
 
         (when (memq 'telega-chatbuf-fastnav-map telega-transient-keymaps)
           (define-key telega-chat-mode-map (kbd "M-g")
-            'telega-transient-chatbuf-fastnav))
+                      (telega-transient--keymap-prefix-name
+                       'telega-chatbuf-fastnav-map)))
         )
 
     (define-key telega-root-mode-map (kbd "\\") telega-sort-map)

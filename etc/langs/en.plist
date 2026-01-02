@@ -36,6 +36,8 @@
   :value "Loading...")
  ("lng_cancel"
   :value "Cancel")
+ ("lng_settings_save"
+  :value "Save")
 
  ("lng_saved_open_chat"
   :value "Open Chat")
@@ -157,6 +159,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Deleted Message")
  ("lng_delete_all_from"
   :value "Delete all from this user")
+ ("lng_delete_all_from_user"
+  :value "Delete all from {user}")
 
  ("lng_settings_privacy_title"
   :value "Privacy")
@@ -165,7 +169,7 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_blocked_list_about"
   :value "Blocked users can't send you messages or add you to groups. They will not see your profile photos, stories, online and last seen status.")
  ("lng_blocked_list_add"
-  :value "Block user") 
+  :value "Block user")
  ("lng_blocked_list_add_title"
   :value "Select user to block")
  ("lng_settings_section_privacy"
@@ -1339,6 +1343,25 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
  ("lng_forward_many_title"
   :one_value "Forward {count} Message"
   :other_value "Forward {count} Messages")
+ ("lng_forward_action_hide_caption"
+  :value "Hide Caption")
+ ("lng_forward_action_hide_captions"
+  :value "Hide Captions")
+ ("lng_forward_action_hide_sender"
+  :value "Hide Sender Name")
+ ("lng_forward_action_hide_senders"
+  :value "Hide Sender Names")
+ ("lng_forward_about"
+  :value "You can remove the sender's name so that this message will look like it was sent by you.")
+ ("lng_forward_choose"
+  :value "Forward to…")
+ ("lng_selected_forward"
+  :value "Forward")
+
+ ("lng_share_message_to_chat"
+  :value "Message forwarded to **{chat}**.")
+ ("lng_share_messages_to_chat"
+  :value "Messages forwarded to **{chat}**.")
  ("lng_share_message_to_many_chats"
   :one_value "Message forwarded to **{count} chat**."
   :other_value "Message forwarded to **{count} chats**.")
@@ -1847,6 +1870,8 @@ You can send them an invite link as message instead.")
   :value "Reply to {name}")
  ("lng_preview_reply_to_quote"
   :value "Reply to quote from {name}")
+ ("lng_preview_loading"
+  :value "Getting Link Info...")
 
  ;; Chat Background
  ("lng_action_set_wallpaper"
@@ -2054,7 +2079,7 @@ You can send them an invite link as message instead.")
   :other_value "Pay for {count} Messages")
  ("lng_payment_confirm_dont_ask"
   :value "Don't ask me again")
- 
+
  ("lng_bot_choose_chat"
   :value "Select a chat")
  ("lng_similar_bots_title"
@@ -2206,4 +2231,16 @@ You can send them an invite link as message instead.")
   :value "Keep your number up to date to ensure you can always log into Telegram. {link}")
  ("lng_settings_suggestion_phone_number_about_link"
   :value "https://telegram.org/faq#q-i-have-a-new-phone-number-what-do-i-do")
+
+ ("lng_search_filter_all"
+  :value "All chats")
+ ("lng_search_filter_private"
+  :value "Private chats")
+ ("lng_search_filter_group"
+  :value "Group chats")
+ ("lng_search_filter_channel"
+  :value "Channels")
+
+ ("lng_recent_chats"
+  :value "Chats")
  )

@@ -53,7 +53,7 @@
         (package-install pkg)))))
 
 (defun telega-byte-compile-everything ()
-  "Recompiler everything in telega repository."
+  "Recompile everything in the telega repository."
   ;; NOTE: `telega-ensure-dependencies' might change `default-directory'
   (let ((src-dir default-directory))
     (telega-ensure-dependencies)
