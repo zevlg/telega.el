@@ -76,9 +76,9 @@ RUN cd /telega-server && \
 FROM alpine:latest
 
 # - psmisc (with killall tool) used to kill ffmpeg processes
-# - libqrencode (with qrencode tool) used for QR code auth method
+# - libqrencode-tools (with qrencode tool) used for QR code auth method
 RUN set +x && apk update && apk upgrade && \
-    apk add --update zlib-dev openssl ffmpeg libwebp-tools psmisc libqrencode bash
+    apk add --update zlib-dev openssl ffmpeg libwebp-tools psmisc libqrencode-tools bash
 
 # To make ALSA work
 COPY etc/asound.conf /etc/asound.conf
