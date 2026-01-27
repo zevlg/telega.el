@@ -5828,8 +5828,8 @@ voice-note.  Otherwise record voice note inplace.
     (write-region data nil tmpfile nil 'quiet)
     (telega-chatbuf-attach-media tmpfile (when doc-p 'preview))))
 
-(defun telega-chatbuf-attach-clipboard (doc-p)
-  "Attach clipboard image to the chatbuf as photo.
+(defun telega-chatbuf-attach-clipboard (as-file-p)
+  "Attach clipboard files to the chatbuf as photos.
 If `\\[universal-argument]' is given, then attach clipboard as document."
   (interactive "P")
   (if (eq system-type 'darwin)
@@ -5840,15 +5840,18 @@ If `\\[universal-argument]' is given, then attach clipboard as document."
           (error "Please install pngpaste to paste images"))
         (unless (= 0 (telega-screenshot-with-pngpaste tmpfile))
           (error "No image in CLIPBOARD"))
-        (telega-chatbuf-attach-media tmpfile (when doc-p 'preview)))
+        (telega-chatbuf-attach-media tmpfile (when as-file-p 'preview)))
 
-    (apply #'telega-chatbuf--yank-media
-           (or (catch 'found
-                 (dolist (mime-type '(image/png image/jpeg))
-                   (when-let* ((selection-coding-system 'no-conversion) ;raw data
-                               (data (gui-get-selection 'CLIPBOARD mime-type)))
-                     (throw 'found (list mime-type data (when doc-p 'preview))))))
-               (error "No image in CLIPBOARD")))))
+    (if-let* ((urls (gui-get-selection 'CLIPBOARD 'text/uri-list)))
+        (dolist (uri (split-string urls "[\r\n\0]" t))
+          (telega-chatbuf-dnd-attach uri nil as-file-p))
+      (apply #'telega-chatbuf--yank-media
+             (or (catch 'found
+                   (dolist (mime-type '(image/png image/jpeg))
+                     (when-let* ((selection-coding-system 'no-conversion) ;raw data
+                                 (data (gui-get-selection 'CLIPBOARD mime-type)))
+                       (throw 'found (list mime-type data (when as-file-p 'preview))))))
+                 (error "No files in CLIPBOARD"))))))
 
 (defun telega-chatbuf-attach-screenshot (&optional n chat)
   "Attach screenshot to the chatbuf input.
@@ -7666,12 +7669,12 @@ containing QUERY sent by specified sender."
         (fbase (file-name-nondirectory filename)))
     (file-exists-p (expand-file-name (concat "." fbase ".icloud") fdir))))
 
-(defun telega-chatbuf-dnd-attach (uri _action)
-  "DND open function for chat buffer."
+(defun telega-chatbuf-dnd-attach (uri _action &optional as-file-p)
+  "DND open function for chat buffer. Also used to yank files from clipboard."
   (cl-assert telega-chatbuf--chat)
   (if-let ((filename (dnd-get-local-file-name uri)))
       (cond ((file-exists-p filename)
-             (telega-chatbuf-attach-media filename))
+             (telega-chatbuf-attach-media filename as-file-p))
             ((telega-dnd--filename-icloud-p filename)
              (error "File %S is stored in the iCloud.  Please download it first"
                     filename))
@@ -7679,7 +7682,7 @@ containing QUERY sent by specified sender."
              (error "File %S is inaccessible" filename)))
 
     (cl-assert (string-match-p "https?://" uri))
-    (telega-chatbuf-attach-media uri))
+    (telega-chatbuf-attach-media uri as-file-p))
   'private)
 
 
