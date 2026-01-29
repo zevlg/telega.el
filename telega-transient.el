@@ -164,7 +164,7 @@
                                                 :fill-prefix "  ")
                     (telega-ins--with-face 'telega-shadow
                       (telega-ins (telega-i18n "lng_forward_about"))))))
-  :class 'transient-information*)
+  :class 'transient-information)
 
 (defclass telega-transient--chats (transient-argument) ()
    ((format      :initform " %k %d%v")
@@ -377,7 +377,7 @@
                     (_ (= 1 (length messages)))
                     (auto-delete-in (plist-get (car messages) :auto_delete_in)))
           (not (telega-zerop auto-delete-in))))
-  :class 'transient-information*)
+  :class 'transient-information)
 
 (transient-define-infix telega-transient--infix-msg-revoke ()
   "Revoke message."
@@ -704,7 +704,7 @@
                   (telega-ins-i18n "lng_sure_leave_channel"))
                  ;; TODO: other chats
                  ))))))
-  :class 'transient-information*)
+  :class 'transient-information)
 
 (transient-define-infix telega-transient--infix-chat-user-block ()
   "Block corresponding user."
@@ -824,7 +824,7 @@
                                   (telega-chat-user (telega-transient-scope))
                                 :with-avatar-p t
                                 :with-title 'first-name))))))
-  :class 'transient-information*)
+  :class 'transient-information)
 
 (transient-define-infix telega-transient--infix-chat-report-spam ()
   "Report chat as spam."
@@ -1142,7 +1142,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
              (telega-ins-i18n "lng_group_request_about_channel"))
            (telega-ins "\n"))
          ))))
-  :class 'transient-information*)
+  :class 'transient-information)
 
 (transient-define-suffix telega-transient--suffix-tos-stars ()
   "Open Telegram starts TOS."
