@@ -434,7 +434,10 @@ main(int ac, char** av)
         assert(tdlib_cln != NULL);
         pthread_t td_thread;
         int rc = pthread_create(&td_thread, NULL,
-                                zlib_enabled ? tdlib_zlib_loop : tdlib_loop,
+#ifdef WITH_ZLIB
+                                zlib_enabled ? tdlib_zlib_loop :
+#endif /* WITH_ZLIB */
+                                tdlib_loop,
                                 tdlib_cln);
         assert(rc == 0);
 
