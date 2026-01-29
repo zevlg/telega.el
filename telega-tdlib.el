@@ -547,14 +547,13 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
    (list :@type "getSuitableDiscussionChats")
    callback))
 
-(defun telega--setMessageSenderBlockList (msg-sender block-list
+(defun telega--setMessageSenderBlockList (msg-sender tl-block-list
                                                      &optional callback)
   "Set Toggle block state of a CHAT."
   (telega-server--call
    (list :@type "setMessageSenderBlockList"
          :sender_id (telega--MessageSender msg-sender)
-         :block_list (when block-list
-                       (list :@type (symbol-name block-list))))
+         :block_list tl-block-list)
    (or callback #'ignore)))
 
 (defun telega--getBlockedMessageSenders (block-list &optional offset callback)
@@ -1698,16 +1697,17 @@ TDLib 1.8.3"
    (list :@type "deleteFile"
          :file_id (plist-get file :id))))
 
-(defun telega--addFileToDownloads (file msg &optional priority callback)
+(cl-defun telega--addFileToDownloads (file msg &key (priority 1) callback)
   "Add a FILE from a message MSG to the list of file downloads.
 TDLib 1.8.2"
+  (declare (indent 2))
   (telega-server--call
    (list :@type "addFileToDownloads"
          :file_id (plist-get file :id)
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
-         :priority (or priority 1))
-   callback))
+         :priority priority)
+   (or callback #'ignore)))
 
 (cl-defun telega--preliminaryUploadFile (filename &key file-type priority
                                                   callback)
@@ -1877,6 +1877,7 @@ Media content is an animation, an audio, a document, a photo or a video."
    (or callback (unless sync-p #'ignore))))
 
 (cl-defun telega--editMessageCaption (msg caption &key reply-markup
+                                          show-caption-above-p
                                           callback sync-p)
   "Edits the message content caption."
   (telega-server--call
@@ -1885,7 +1886,9 @@ Media content is an animation, an audio, a document, a photo or a video."
                 :message_id (plist-get msg :id)
                 :caption caption)
           (when reply-markup
-            (list :reply_markup reply-markup)))
+            (list :reply_markup reply-markup))
+          (when show-caption-above-p
+            (list :show_caption_above_media t)))
    (or callback (unless sync-p #'ignore))))
 
 (defun telega--editMessageSchedulingState (msg scheduling-state)
@@ -2765,6 +2768,17 @@ TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code. "
          :to_language_code to-language-code)
    callback))
 
+(cl-defun telega--summarizeMessage (msg &key to-language-code callback)
+  "Summarize content of the message MSG with non-empty `:summary_language_code'."
+  (declare (indent 1))
+  (telega-server--call
+   (nconc (list :@type "summarizeMessage"
+                :chat_id (plist-get msg :chat_id)
+                :message_id (plist-get msg :id))
+          (when to-language-code
+            (list :translate_to_language_code to-language-code)))
+   callback))
+
 (defun telega--setAlarm (seconds &optional callback)
   "Succeeds after a specified amount of time has passed."
   (declare (indent 1))
@@ -2773,6 +2787,19 @@ TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code. "
          :seconds seconds)
    callback))
 
+(defun telega--getCountries (&optional callback)
+  "Return information about existing countries."
+  (telega-server--call
+   (list :@type "getCountries")
+   callback))
+
+(defun telega--getCountryCode (&optional callback)
+  "Use the current IP address to find the current country."
+  (with-telega-server-reply (reply)
+      (plist-get reply :text)
+    (list :@type "getCountryCode")
+    callback))
+  
 (defun telega--setNetworkType (tdlib-network-type &optional callback)
   (telega-server--call
    (list :@type "setNetworkType"

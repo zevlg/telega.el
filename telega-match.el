@@ -1237,7 +1237,8 @@ including anonymous messages to channels created by me."
 (define-telega-matcher msg ignored (msg &optional reason)
   "Matches if message is an ignored message.
 If REASON is specified, then match only if has been ignored by REASON
-function."
+function.
+If REASON is not specified, return reason why MSG is ignored."
   (when-let ((ignored-by
               (or (plist-get msg :ignored-p)
                   (when msg
@@ -1297,8 +1298,18 @@ Matching ignores case."
 (define-telega-matcher msg message-property (msg prop-name)
   "Matches if message MSG has message property set.
 This differs from `prop'."
-  (let ((telega-server-call-timeout 3.0)
-        (msg-options (telega--getMessageProperties msg)))
+  (let ((msg-options (plist-get msg :cached-msg-properties)))
+    ;; Message properties are cached for 60 seconds
+    (when (or (not msg-options)
+              (> (- (telega-time-seconds)
+                    (or (plist-get msg-options :cached-timestamp) 0))
+                 60))
+      ;; Need update
+      (let ((telega-server-call-timeout 3.0))
+        (setq msg-options (telega--getMessageProperties msg))
+        (plist-put msg-options :cached-timestamp (telega-time-seconds))
+        (plist-put msg :cached-msg-properties msg-options)))
+
     (plist-get msg-options prop-name)))
 
 

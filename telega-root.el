@@ -521,13 +521,9 @@ Terminate telega-server and kill all chat and supplementary buffers."
   "Format HEADER for root view ewoc."
   (when header
     (telega-ins--as-string
-     (telega-ins--with-attrs
-         (list :min telega-root-fill-column
-               :max telega-root-fill-column
-               :align 'left
-               :face 'telega-root-heading)
-       (telega-ins header))
-     (telega-ins "\n"))))
+     (telega-ins--with-face 'telega-root-heading
+       (telega-ins header)
+       (telega-ins "\n")))))
 
 (defun telega-root-view--ewoc-create (ewoc-spec)
   "Pretty printer for ewoc, specified by EWOC-SPEC.
@@ -652,24 +648,29 @@ Keep cursor position only if CHAT is visible."
   ;; NOTE: refill only if WIN is selected, making
   ;; `(line-number-display-width)' to work correctly
   (when (or (null win) (eq (selected-window) win))
-    ;; NOTE: `window-width' does not regard use of both
-    ;; `text-scale-increase' or `text-scale-decrease'.  So we manually
-    ;; calculate window width in characters
-    ;;
-    ;; Also, take into account width occupied by
-    ;; `display-line-numbers-mode', see
-    ;; https://github.com/zevlg/telega.el/issues/325
-    (let ((new-fill-column (1- (/ (- (window-width win 'pixels)
-                                     (line-number-display-width 'pixels))
-                                  (telega-chars-xwidth 1)))))
-      (when (and new-fill-column
-                 (> new-fill-column 15)   ;XXX ignore too narrow window
-                 (not (eq new-fill-column telega-root-fill-column)))
+    (let* ((win-margins (window-margins win))
+           (new-fill-column (+ (window-width win 'remap)
+                               (or (car win-margins) 0)
+                               (or (cdr win-margins) 0)))
+           ;; Take into account width occupied by
+           ;; `display-line-numbers-mode', see
+           ;; https://github.com/zevlg/telega.el/issues/325
+           (new-root-fill-column
+            (- new-fill-column
+               (telega-chars-in-width
+                (if win
+                    (with-selected-window win
+                      (line-number-display-width 'pixels))
+                  (line-number-display-width 'pixels))))))
+      (when (and new-root-fill-column
+                 (> new-root-fill-column 15)   ;XXX ignore too narrow window
+                 (not (eq new-root-fill-column telega-root-fill-column)))
         (let ((progress (make-progress-reporter
                          (format "telega: rootbuf auto fill %d -> %d ..."
-                                 telega-root-fill-column new-fill-column))))
+                                 telega-root-fill-column
+                                 new-root-fill-column))))
           (with-telega-root-buffer
-            (setq telega-root-fill-column new-fill-column)
+            (setq telega-root-fill-column new-root-fill-column)
             ;; Fully redisplay filters
             (let ((telega-filters--dirty t))
               (telega-filters--redisplay))
@@ -841,10 +842,11 @@ CONTACT is some user you have exchanged contacts with."
          #'telega-ins--chat-last-message
          #'telega-root--chat-goto-last-message)))))
 
-(defun telega-root--message-pp (msg &optional custom-inserter)
+(defun telega-root--message-pp (msg &optional custom-inserter visible-p)
   "Pretty printer for MSG button shown in root buffer."
   (declare (indent 1))
-  (let ((visible-p (telega-chat-match-active-p (telega-msg-chat msg))))
+  (let ((visible-p (or visible-p 
+                       (telega-chat-match-active-p (telega-msg-chat msg)))))
     (when visible-p
       (telega-button--insert 'telega-msg msg
         :inserter (or custom-inserter #'telega-ins--root-msg)
@@ -1466,7 +1468,7 @@ VIEW-FILTER is additional chat filter for this root view."
   (telega-view-default
    'telega-view-two-lines "Two Lines" #'telega-ins--chat-full-2lines))
 
-(defun telega-root--on-message-update (ewoc-name ewoc msg &optional msg-node)
+(defun telega-root--on-message-update (_ewoc-name ewoc msg &optional msg-node)
   "Handle message update."
   (unless msg-node
     (setq msg-node (telega-ewoc--find-by-data ewoc msg)))
@@ -2225,7 +2227,7 @@ state kinds to show. By default all kinds are shown."
 (defun telega-root--favorite-message-pp (msg)
   "Pretty printer for favorite message MSG."
   (when (telega-msg-favorite-p msg)
-    (telega-root--message-pp msg #'telega-ins--favorite-message)))
+    (telega-root--message-pp msg #'telega-ins--favorite-message 'visible)))
 
 (defun telega-view-favorite-msg--ewoc-spec (chat)
   "Create ewoc for favorite messages in the CHAT."
@@ -2238,7 +2240,12 @@ state kinds to show. By default all kinds are shown."
                                 :with-username-p 'telega-username
                                 :with-unread-trail-p t
                                 :with-status-icons-trail-p t)))
-                     (telega-ins--chat chat)))
+                     (telega-ins--raw-button
+                         (telega-link-props 'sender chat 'type 'telega)
+                       (telega-ins--chat chat)))
+                   (telega-ins--move-to-column 40)
+                   (telega-ins-i18n "lng_forum_messages"
+                     :count (length (telega-chat-favorite-messages-ids chat))))
           :pretty-printer #'telega-root--favorite-message-pp
           :loading (telega--getMessages (plist-get chat :id)
                        (telega-chat-favorite-messages-ids chat)

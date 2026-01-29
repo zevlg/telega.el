@@ -320,6 +320,10 @@
                            nil
                            "0.8.520")
 
+(telega-obsolete--variable 'telega-translate-replace-content
+                           'telega-translate-show-original-content
+                           "0.8.600")
+
 ;; Uncomment once `telega-ins--box-button2' is everywhere in use
 ;; (telega-obsolete--variable 'telega-box-button-endings
 ;;                            'telega-box-button-brackets

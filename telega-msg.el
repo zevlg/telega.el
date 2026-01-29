@@ -38,6 +38,7 @@
 (require 'telega-tme)
 (require 'telega-webpage)
 (require 'telega-story)
+(require 'telega-transient)
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
@@ -86,7 +87,7 @@
      :visible (telega-msg-match-p (telega-msg-for-interactive)
                 '(and (type Poll)
                       (message-property :can_be_edited)))]
-    ["forward" telega-msg-forward-dwim
+    ["forward" telega-transient-msg-forward
      :label (telega-i18n "lng_context_forward_msg")
      :enable (telega-msg-match-p (telega-msg-for-interactive)
                '(message-property :can_be_forwarded))]
@@ -97,6 +98,10 @@
     ["translate" telega-msg-translate
      :label (telega-i18n "lng_context_translate")
      :visible (telega-msg-content-text (telega-msg-for-interactive))]
+    ["summarize" telega-msg-summarize
+     :label (telega-i18n "lng_summarize_header_title")
+     :visible (plist-get (telega-msg-for-interactive)
+                         :summary_language_code)]
     "---"
     ["pin" telega-msg-pin-toggle
      :label (telega-i18n "lng_context_pin_msg")
@@ -171,24 +176,23 @@
     (define-key map [remap self-insert-command] #'undefined)
 
     (define-key map (kbd "SPC") 'scroll-up-command)
+    (define-key map (kbd "<tab>") 'telega-chatbuf-next-link)
+    (define-key map (kbd "<backtab>") 'telega-chatbuf-prev-link)
     (define-key map (kbd "c") 'telega-msg-copy-dwim)
-    (define-key map (kbd "d") 'telega-msg-delete-dwim)
+    (define-key map (kbd "d") 'telega-transient-msg-delete)
     (define-key map (kbd "e") 'telega-msg-edit)
-    (define-key map (kbd "f") 'telega-msg-forward-dwim)
+    (define-key map (kbd "f") 'telega-transient-msg-forward)
     (define-key map (kbd "i") 'telega-describe-message)
     (define-key map (kbd "l") 'telega-msg-copy-link)
-    ;; Marking, `telega-msg-forward' and `telega-msg-delete' can work
-    ;; on list of marked messages
     (define-key map (kbd "m") 'telega-msg-mark-toggle)
     (define-key map (kbd "n") 'telega-msg-next)
-    (define-key map (kbd "<tab>") 'telega-chatbuf-next-link)
+    (define-key map (kbd "o") 'telega-transient-msg-operate)
     (define-key map (kbd "p") 'telega-msg-previous)
-    (define-key map (kbd "<backtab>") 'telega-chatbuf-prev-link)
     (define-key map (kbd "r") 'telega-msg-reply)
-    (define-key map (kbd "t") 'telega-msg-translate)
+    (define-key map (kbd "s") 'telega-transient-msg-save)
+    (define-key map (kbd "t") 'telega-transient-msg-translate)
 
     (define-key map (kbd "B") 'telega-msg-ban-sender)
-    (define-key map (kbd "F") 'telega-msg-forward-dwim-to-many)
     (define-key map (kbd "L") 'telega-msg-redisplay)
     (define-key map (kbd "P") 'telega-msg-pin-toggle)
     (define-key map (kbd "R") 'telega-msg-resend)
@@ -199,7 +203,7 @@
     (define-key map (kbd "!") 'telega-msg-add-reaction)
     (define-key map (kbd "=") 'telega-msg-diff-edits)
     (define-key map (kbd "^") 'telega-msg-pin-toggle)
-    (define-key map (kbd "DEL") 'telega-msg-delete-dwim)
+    (define-key map (kbd "DEL") 'telega-transient-msg-delete)
 
     (define-key map (kbd "*") 'telega-msg-favorite-toggle)
 
@@ -249,9 +253,15 @@
         ;; otherwise open content
         (custom-action (button-get button :action)))
     (cl-assert msg)
-    (if custom-action
-        (funcall custom-action msg)
-      (telega-msg-open-content msg 'clicked))))
+    (cond (custom-action
+           (funcall custom-action msg))
+          ((telega-msg-match-p msg 'ignored)
+           (when (telega-msg-match-p msg
+                   telega-ignored-messages-reveal-on-ret-temex)
+             (plist-put msg :telega-ignored-revealed-p t)
+             (telega-msg-redisplay msg)))
+          (t
+           (telega-msg-open-content msg 'clicked)))))
 
 (defun telega-msg-create-internal (chat fmt-text &rest props)
   "Create message for internal use.
@@ -510,19 +520,25 @@ Return nil for deleted messages."
                   open-time
                   (let* ((dtime (- (time-to-seconds) open-time))
                          (dspeed (/ ddur (if (zerop dtime) 1 dtime)))
-                         (left-dtime (/ (- duration ddur 3) dspeed)))
-                    (< left-dtime duration)))
+                         (left-dtime (/ (- duration ddur) dspeed)))
+                    (< left-dtime (- duration 1.5))))
              ;; Check for 2)
-             (if (not (telega-ffplay-get-resolution
-                       (telega-file--path video-file)))
-                 ;; NOTE: Can't play this file incrementally, so start
-                 ;; playing it after full download
-                 (plist-put video :telega-video-probe-size nil)
+             ;; 
+             ;; NOTE: protect video from playing multiple times
+             ;; *before* calling `telega-ffplay-get-resolution', which
+             ;; might result in telega-server events processing,
+             ;; causing another call of the current function
+             ;; Ref. https://github.com/zevlg/telega.el/issues/532
+             (plist-put video :telega-video-pending-open nil)
+             (if (telega-ffplay-get-resolution (telega-file--path video-file))
+                 (telega-msg--play-video msg video-file
+                   (lambda ()
+                     (telega-file--cancel-download video-file)))
 
-               (plist-put video :telega-video-pending-open nil)
-               (telega-msg--play-video msg video-file
-                 (lambda ()
-                   (telega-file--cancel-download video-file))))
+               ;; NOTE: Can't play this file incrementally, so start
+               ;; playing it after full download
+               (plist-put video :telega-video-probe-size nil)
+               (plist-put video :telega-video-pending-open open-time))
              )))))
 
 (defun telega-msg-open-video (msg &optional video)
@@ -1312,7 +1328,7 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
               (plist-get v-status :bot_verification_icon_custom_emoji_id)))
          (unless (telega-zerop v-custom-emoji-id)
            (telega-symbol
-            'checkmark
+            'verified-by-bot
             (when-let ((v-sticker (telega-custom-emoji-get v-custom-emoji-id)))
               (telega-sticker--image v-sticker)))))))))
 
@@ -1357,7 +1373,8 @@ ARGS are passed directly to `telega-ins--msg-sender'."
 
 (defun telega-msg-sender-block (msg-sender &optional callback)
   "Block the message sender MSG-SENDER."
-  (telega--setMessageSenderBlockList msg-sender 'blockListMain callback))
+  (telega--setMessageSenderBlockList
+   msg-sender '(:@type "blockListMain") callback))
 
 (defun telega-msg-sender-unblock (msg-sender &optional callback)
   "Unblock the MSG-SENDER."
@@ -1745,17 +1762,25 @@ Saved Messages."
   (user-error "TODO: save to profile")
   )
 
+(defun telega-msg-save-to-file (msg)
+  "Save message's file into FILE."
+  )
+
 (defun telega-msg-save-to-saved-messages (msg)
   "Save a message MSG into Saved Messages."
   (interactive (list (telega-msg-for-interactive)))
-  (user-error "TODO: save to saved messages")
-  )
+  (telega--forwardMessages (telega-chat-me) (telega-msg-chat msg) (list msg))
+  (message "telega: %s"
+           (telega-i18n "lng_share_message_to_chat"
+             :chat (telega-chat-title (telega-chat-me)))))
 
 (defun telega-msg-save-to-downloads (msg)
-  "Add message's MSG file into Downloads folder."
+  "Add message's MSG file into Downloads list."
   (interactive (list (telega-msg-for-interactive)))
-  (user-error "TODO: save to downloads")
-  )
+  (let ((msg-file (telega-msg--content-file msg)))
+    (telega--addFileToDownloads msg-file msg
+      :priority 10)
+    (message "telega: Saving file to Telegram Downloads")))
 
 (defun telega-msg-copy-link (msg &optional for-thread-p)
   "Copy link to message to kill ring.
@@ -2038,8 +2063,7 @@ Requires administrator rights in the chat."
             (telega-ins " "))))
 
       (when-let ((translated (plist-get msg :telega-translated)))
-        (when (with-telega-chatbuf (telega-msg-chat msg)
-                telega-translate-replace-content)
+        (unless (plist-get translated :show-original-p)
           (telega-ins-describe-item "Original Content"
             (telega-ins--column 2 nil
               (telega-ins (telega-msg-content-text msg 'with-speech))))))
@@ -2142,6 +2166,10 @@ Requires administrator rights in the chat."
             (telega-ins "MsgSexp: "))
           (telega-ins-fmt "(telega-msg-get (telega-chat-get %d) %d)\n"
             chat-id msg-id)
+          (when-let ((msg-properties (telega--getMessageProperties msg)))
+            (telega-ins--with-face 'bold
+              (telega-ins "MsgProperties: "))
+            (telega-ins-fmt "%S\n" msg-properties))
           (telega-ins--with-face 'bold
             (telega-ins "Message: "))
           (telega-ins-fmt "%S\n" msg)))
@@ -2226,12 +2254,12 @@ Requires administrator rights in the chat."
 (defun telega-msg-add-reaction (msg &optional big-p)
   "Interactively add reaction to the message MSG.
 If `\\[universal-argument]' is used, reaction with big animation will
-be added."
+be added or new tag will be created."
   (interactive (list (telega-msg-for-interactive) current-prefix-arg))
 
   (let* ((sm-tags-p (telega-msg-match-p msg '(chat saved-messages)))
          (reaction-type
-          (when sm-tags-p
+          (when (and sm-tags-p (not big-p))
             (when-let ((tag (telega-completing-read-saved-messages-tag
                              "Add Tag: " nil 'with-new-tag)))
               (plist-get tag :tag))))
@@ -2300,10 +2328,12 @@ be added."
                         :custom_emoji_id (telega-custom-emoji-id sticker))
               big-p 'update-recent-reactions)))))))))
 
-(defun telega-msg-translate (msg to-language-code &optional quiet)
+(defun telega-msg-translate (msg &optional to-language-code quiet)
   "Translate message at point.
 If `\\[universal-argument]' is used, select language to translate message to.
-By default `telega-translate-to-language-default' is used."
+By default `telega-translate-to-language-default' is used.
+If message is already translated, then disable translation unless
+`\\[universal-argument]' is given."
   (interactive (list (telega-msg-for-interactive)
                      (if (or current-prefix-arg
                              (not telega-translate-to-language-by-default))
@@ -2311,22 +2341,26 @@ By default `telega-translate-to-language-default' is used."
                           "Translate to language: ")
                        telega-translate-to-language-by-default)))
 
-  (if (equal (telega--tl-get msg :telega-translated :to_language_code)
-             to-language-code)
+  (plist-put msg :telega-summary nil)
+
+  (if (and (plist-get msg :telega-translated)
+           (or (not to-language-code)
+               (equal (telega--tl-get msg :telega-translated :to_language_code)
+                      to-language-code)))
       ;; NOTE: Cancel translation on subsequent call if called
       ;; interactively, i.e. QUIET is not specified
       (unless quiet
         (plist-put msg :telega-translated nil)
         (telega-msg-redisplay msg))
 
-    (when-let* ((msg-text (telega-msg-content-text msg 'with-voice-note))
-                (extra (telega--translateText msg-text to-language-code
+    (when-let* (;(msg-text (telega-msg-content-text msg 'with-voice-note))
+                (extra (telega--translateMessageText msg to-language-code
                          :callback
                          (lambda (reply)
-                           (let ((translated-text (telega-tl-str reply :text)))
-                             (plist-put msg :telega-translated
-                                        (list :to_language_code to-language-code
-                                              :text translated-text))
+                           (let ((translated (plist-get msg :telega-translated)))
+                             (plist-put translated :loading nil)
+                             (plist-put translated
+                                        :text (telega-tl-str reply :text))
                              (telega-msg-redisplay msg))))))
       ;; NOTE: Also translate reply_markup buttons if any
       (when-let ((reply-markup (plist-get msg :reply_markup))
@@ -2346,9 +2380,41 @@ By default `telega-translate-to-language-default' is used."
 
       (plist-put msg :telega-translated
                  (list :to_language_code to-language-code
+                       :show-original-p telega-translate-show-original-content
                        :loading extra))
       (telega-msg-redisplay msg)
       )))
+
+(defun telega-msg-summarize (msg &optional to-language-code quiet)
+  "Summarize MSG's content and translate it to TO-LANGUAGE-CODE."
+  (interactive (list (telega-msg-for-interactive)))
+
+  (unless (plist-get msg :summary_language_code)
+    (user-error "Can't summarize this message"))
+
+  (plist-put msg :telega-translated nil)
+
+  (if (and (plist-get msg :telega-summary)
+           (equal to-language-code
+                  (telega--tl-get msg :telega-summary :to_language_code)))
+      ;; NOTE: Cancel translation on subsequent call if called
+      ;; interactively, i.e. QUIET is not specified
+      (unless quiet
+        (plist-put msg :telega-summary nil)
+        (telega-msg-redisplay msg))
+
+    (let ((extra (telega--summarizeMessage msg
+                   :to-language-code to-language-code
+                   :callback
+                   (lambda (reply)
+                     (plist-put msg :telega-summary
+                                (list :to_language_code to-language-code
+                                      :text reply))
+                     (telega-msg-redisplay msg)))))
+      (plist-put msg :telega-summary
+                 (list :to_language_code to-language-code
+                       :loading extra))
+      (telega-msg-redisplay msg))))
 
 (defun telega-msg-text-spoiler-toggle (msg)
   "Show spoiler text entity at point."
@@ -2378,9 +2444,9 @@ By default `telega-translate-to-language-default' is used."
                (not (plist-get msg :telega-media-spoiler-removed)))
     (telega-msg-redisplay msg)))
 
-(defun telega-msg-disable-link-preview (msg)
-  "Disable webpage preview for the given outgoing message."
-  (interactive (list (telega-msg-for-interactive)))
+(defun telega-msg--set-link-preview-options (msg tl-lp-options)
+  "Set `:link_preview_options' for the message MSG."
+  (declare (indent 1))
   (unless (telega-msg-match-p msg '(type Text))
     (user-error "telega: can disable link preview only for text messages"))
   (unless (telega-msg-match-p msg '(message-property :can_be_edited))
@@ -2388,11 +2454,15 @@ By default `telega-translate-to-language-default' is used."
 
   (telega--editMessageText
    msg (list :@type "inputMessageText"
-             :text
-             (telega-fmt-text-desurrogate
-              (copy-sequence (telega--tl-get msg :content :text)))
-             :link_preview_options
-             '(:@type "linkPreviewOptions" :is_disabled t))))
+             :text (telega-fmt-text-desurrogate
+                    (copy-sequence (telega--tl-get msg :content :text)))
+             :link_preview_options tl-lp-options)))
+
+(defun telega-msg-disable-link-preview (msg)
+  "Disable webpage preview for the given outgoing message."
+  (interactive (list (telega-msg-for-interactive)))
+  (telega-msg--set-link-preview-options msg
+    '(:@type "linkPreviewOptions" :is_disabled t)))
 
 (defun telega-msg--replied-message (msg)
   "Return message on which MSG depends."

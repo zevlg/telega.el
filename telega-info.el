@@ -646,6 +646,10 @@ For secret chats return nil."
 
       ;; Buttons for the owner of the group
       (telega-ins--line-wrap-prefix "  "
+        (unless (telega-chat-match-p chat 'is-known)
+          (telega-ins " ")
+          (telega-ins--chat-join-button chat))
+
         (when (telega-chat-match-p chat 'me-is-owner)
           (let ((channel-p (telega-chat-channel-p chat)))
             ;; Delete supergroup/channel for everyone

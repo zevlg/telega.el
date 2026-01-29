@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2025-11-28 Пт 00:12 -->
+<!-- 2026-01-29 Чт 22:29 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.570)</title>
+<title>Telega Manual (v0.8.600)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -68,7 +68,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.570)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.600)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -176,6 +176,7 @@
 <li><a href="#telega-play-media-sequence-mode"><span class="todo TODO">TODO</span> telega-play-media-sequence-mode</a></li>
 <li><a href="#telega-network-stats-mode">telega-network-stats-mode</a></li>
 <li><a href="#telega-ton-star-usd-rate-mode">telega-ton-star-usd-rate-mode</a></li>
+<li><a href="#telega-transient-keymaps-mode--use-transient-for-telega-keymaps">telega-transient-keymaps-mode &#x2013; Use transient for telega keymaps</a></li>
 <li><a href="#telega-voip-sounds-mode">telega-voip-sounds-mode</a></li>
 </ul>
 </li>
@@ -190,7 +191,6 @@
 <li><a href="#telega-mnzel--highlight-code-blocks-inside-messages"><i>telega-mnz.el</i> &#x2013; Highlight code blocks inside messages.</a></li>
 <li><a href="#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard"><i>telega-dashboard.el</i> &#x2013; Important telega chats in the Emacs dashboard</a></li>
 <li><a href="#telega-emacs-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-emacs-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</a></li>
-<li><a href="#telega-transientel--transient-magit-like-style-commands-for-telega"><i>telega-transient.el</i> &#x2013; Transient (magit-like style) commands for telega</a></li>
 <li><a href="#telega-adblockel--block-advertisement-messages"><i>telega-adblock.el</i> &#x2013; Block advertisement messages</a></li>
 <li><a href="#telega-channels-exportel--export-telegam-channels-to-opml"><i>telega-channels-export.el</i> &#x2013; Export Telegam channels to OPML</a></li>
 <li><a href="#telega-bridge-botel--replace-bridge-bot-user"><i>telega-bridge-bot.el</i> &#x2013; Replace bridge bot user.</a></li>
@@ -366,7 +366,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.57-f0d04d3.
+version equal to v1.8.60-0da5c72f8.
 </p>
 
 <p>
@@ -851,7 +851,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgd0c6c1d">
+<pre class="example" id="org195199d">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -869,7 +869,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org93ab09a">
+<pre class="example" id="org536d461">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -958,7 +958,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org37bbd5e">
+<pre class="example" id="orgdd63a60">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -996,7 +996,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orga957765">
+<pre class="example" id="org0e1206d">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1789,7 +1789,8 @@ including anonymous messages to channels created by me.</dd>
 
 <dt>(ignored [ <code>REASON</code> ])</dt><dd>Matches if message is an ignored message.
 If <code>REASON</code> is specified, then match only if has been ignored by <code>REASON</code>
-function.</dd>
+function.
+If <code>REASON</code> is not specified, return reason why <code>MSG</code> is ignored.</dd>
 
 <dt>(contains <code>REGEXP</code> )</dt><dd>Matches if message's text or caption contains <code>REGEXP</code>.
 Matching ignores case.</dd>
@@ -2443,7 +2444,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org08ac7fe">
+<pre class="example" id="org87397c3">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2647,7 +2648,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org77f86bf">
+<pre class="example" id="org15cc28c">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2679,7 +2680,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org1d8a733">
+<pre class="example" id="org44b763d">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2753,11 +2754,13 @@ If <kbd>C-u</kbd> is given, then attach as file.
 If <code>AS-FILE-P</code> is <code>preview</code>, then attach as file with preview.  <code>FILENAME</code>
 must be a photo in this case.</dd>
 
-<dt><kbd>C-c C-v</kbd> (<code>telega-chatbuf-attach-clipboard</code>)</dt><dd>Attach clipboard image to the chatbuf as photo.
+<dt><kbd>C-c C-v</kbd> (<code>telega-chatbuf-attach-clipboard</code>)</dt><dd>Attach clipboard files to the chatbuf as photos.
 If <kbd>C-u</kbd> is given, then attach clipboard as document.</dd>
 
 <dt><kbd>C-c C-e</kbd> (<code>telega-chatbuf-input-formatting-set</code>)</dt><dd>Attach formatting to the region in the chatbuf input.
 Use <kbd>C-u</kbd> to clear formatting from selected region.</dd>
+
+<dt><kbd>C-c C-o</kbd> (<code>telega-transient-chatbuf-input-options</code>)</dt><dd>Edit chatbuf input options before sending message.</dd>
 </dl>
 
 <p>
@@ -2815,7 +2818,7 @@ If <kbd>C-u</kbd> is given, then take screenshot of the screen area.
 Multiple <kbd>C-u</kbd> increases delay before taking
 screenshot of the area.
 Uses <code>telega-screenshot-function</code> to take a screenshot.</dd>
-<dt>clipboard</dt><dd>Attach clipboard image to the chatbuf as photo.
+<dt>clipboard</dt><dd>Attach clipboard files to the chatbuf as photos.
 If <kbd>C-u</kbd> is given, then attach clipboard as document.</dd>
 <dt>markup</dt><dd>Attach <code>MARKUP-TEXT</code> using <code>MARKUP-NAME</code> into chatbuf.
 Using this type of attachment it is possible to intermix multiple
@@ -2937,12 +2940,12 @@ It is possible to edit a message using markup syntax.
 <p>
 To forward a message, put cursor under the message which you want to
 forward and press
-<kbd>f</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;forward&gt;</kbd> (<code>telega-msg-forward-dwim</code>)
+ (<code>telega-msg-forward-dwim</code>)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
 <kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;mark&gt;</kbd> (<code>telega-msg-mark-toggle</code>) and then
 press
-<kbd>f</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;forward&gt;</kbd> (<code>telega-msg-forward-dwim</code>)
+ (<code>telega-msg-forward-dwim</code>)
 on one of the messages.
 </p>
 
@@ -3351,7 +3354,7 @@ Default value: <code>t</code>
 <div class="outline-text-3" id="text-filtering-chat-messages-aka-shared-media">
 <p>
 Message filtering means to show only some messages matching filter.
-Available message filters are: <code>scheduled</code>, <code>search</code>, <code>by-sender</code>, <code>hashtag</code>, <code>topic</code>, <code>tag</code>, <code>photo</code>, <code>photo-video</code>, <code>url</code>, <code>doc</code>, <code>file</code>, <code>gif</code>, <code>audio</code>, <code>video</code>, <code>voice-note</code>, <code>video-note</code>, <code>voice-video-note</code>, <code>chat-photo</code>, <code>mention</code>, <code>unread-mention</code>, <code>unread-reaction</code>, <code>failed-to-send</code>, <code>pinned</code>
+Available message filters are: <code>favorite</code>, <code>scheduled</code>, <code>search</code>, <code>by-sender</code>, <code>hashtag</code>, <code>topic</code>, <code>tag</code>, <code>photo</code>, <code>photo-video</code>, <code>url</code>, <code>doc</code>, <code>file</code>, <code>gif</code>, <code>audio</code>, <code>video</code>, <code>voice-note</code>, <code>video-note</code>, <code>voice-video-note</code>, <code>chat-photo</code>, <code>mention</code>, <code>unread-mention</code>, <code>unread-reaction</code>, <code>failed-to-send</code>, <code>pinned</code>
 </p>
 
 <p>
@@ -3592,7 +3595,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org0d06c73">
+<pre class="example" id="orgd3b6d76">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4761,6 +4764,44 @@ Default value: <code>"%i$%t, 100%I$%B/$%S"</code>
 </ul>
 </div>
 </div>
+<div id="outline-container-telega-transient-keymaps-mode--use-transient-for-telega-keymaps" class="outline-3">
+<h3 id="telega-transient-keymaps-mode--use-transient-for-telega-keymaps"><a class="self-link" href="#telega-transient-keymaps-mode--use-transient-for-telega-keymaps"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-transient-keymaps-mode &#x2013; Use transient for telega keymaps</h3>
+<div class="outline-text-3" id="text-telega-transient-keymaps-mode--use-transient-for-telega-keymaps">
+<p>
+Use transient (Magit-like style) commands in the telega.  Enable it
+with:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(telega-transient-keymaps-mode 1)
+</pre>
+</div>
+
+<p>
+Control keymaps for which to use transient with:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-transient-keymaps</code> 
+</p>
+
+<p>
+List of keymaps names to apply transient for. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(telega-prefix-map telega-sort-map telega-filter-map
+                   telega-describe-map telega-folder-map
+                   telega-voip-map telega-root-fastnav-map
+                   telega-root-view-map telega-chatbuf-fastnav-map)
+</pre>
+</div></li>
+</ul>
+</div>
+</div>
 <div id="outline-container-telega-voip-sounds-mode" class="outline-3">
 <h3 id="telega-voip-sounds-mode"><a class="self-link" href="#telega-voip-sounds-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-voip-sounds-mode</h3>
 <div class="outline-text-3" id="text-telega-voip-sounds-mode">
@@ -4871,7 +4912,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org519be1e">
+<pre class="example" id="org308758a">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -5284,45 +5325,6 @@ Non-nil to keep story in the root view after story is viewed.
 <p>
 Default value: <code>t</code>
 </p></li>
-</ul>
-</div>
-</div>
-<div id="outline-container-telega-transientel--transient-magit-like-style-commands-for-telega" class="outline-3">
-<h3 id="telega-transientel--transient-magit-like-style-commands-for-telega"><a class="self-link" href="#telega-transientel--transient-magit-like-style-commands-for-telega"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-transient.el</i> &#x2013; Transient (magit-like style) commands for telega</h3>
-<div class="outline-text-3" id="text-telega-transientel--transient-magit-like-style-commands-for-telega">
-<p>
-Use transient (magit-like style) commands in the telega.  Enable it
-with:
-</p>
-
-<div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-transient</span>)
-(telega-transient-mode 1)
-</pre>
-</div>
-
-<p>
-Control keymaps for which to use transient with:
-</p>
-<ul class="org-ul">
-<li><p>
-User Option: <code>telega-transient-keymaps</code> 
-</p>
-
-<p>
-List of keymaps names to apply transient for. 
-</p>
-
-<p>
-Default value: 
-</p>
-<div class="org-src-container">
-<pre class="src src-emacs-lisp">(telega-prefix-map telega-sort-map telega-filter-map
-                   telega-describe-map telega-folder-map
-                   telega-voip-map telega-root-fastnav-map
-                   telega-root-view-map telega-chatbuf-fastnav-map)
-</pre>
-</div></li>
 </ul>
 </div>
 </div>

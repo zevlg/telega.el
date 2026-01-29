@@ -776,7 +776,7 @@ If LONG-P is specified, then use long form."
   (let ((ncomponents (or n 3))
         (intervals
          `((,(* 365 24 60 60) . ,(concat "lng_years" (unless long-p "_tiny")))
-           (,(round (* 30.5 24 60 60)) . ,(concat "lng_months" (unless long-p "_tiny")))
+           (,(round (* 30 24 60 60)) . ,(concat "lng_months" (unless long-p "_tiny")))
            (,(* 7 24 60 60) . ,(concat "lng_weeks" (unless long-p "_tiny")))
            (,(* 24 60 60) . ,(concat "lng_days" (unless long-p "_tiny")))
            (,(* 60 60) . ,(concat "lng_hours" (unless long-p "_tiny")))
@@ -2022,40 +2022,6 @@ Return a chat."
         (error "Discussion group is required to have all the history visible"))
       (telega--toggleSupergroupIsAllHistoryAvailable supergroup t))
     linked-chat))
-
-(defun telega-join-invite-link-y-or-n-p (invite-link-info)
-  ;; NOTE: We create fake "chat" structure to draw brackets
-  ;; using `telega-msg-sender-brackets'
-  (let* ((fake-chat
-          (list :@type "chat"
-                :type (cl-ecase (telega--tl-type
-                                 (plist-get invite-link-info :type))
-                        (inviteLinkChatTypeBasicGroup
-                         '(:@type "chatTypeBasicGroup"))
-                        (inviteLinkChatTypeSupergroup
-                         '(:@type "chatTypeSupergroup"))
-                        (inviteLinkChatTypeChannel
-                         '(:@type "chatTypeSupergroup" :is_channel t)))))
-         (brackets (telega-msg-sender-brackets fake-chat))
-         (invite-title
-          (telega-ins--as-string
-           (when-let ((photo (plist-get invite-link-info :photo)))
-             (telega-ins--image
-              (telega-chat-photo-info-image-one-line photo)))
-           (telega-ins (nth 0 brackets))
-           (telega-ins (telega-tl-str invite-link-info :title))
-           (telega-ins " ")
-           (telega-ins--with-face 'telega-shadow
-             (telega-ins (telega-number-human-readable
-                          (plist-get invite-link-info :member_count))))
-           (telega-ins (telega-symbol 'member))
-           (telega-ins (nth 1 brackets)))))
-    (y-or-n-p (concat (if (plist-get invite-link-info :creates_join_request)
-                          (telega-i18n "lng_group_request_to_join")
-                        (telega-i18n "lng_group_invite_join"))
-                      " "
-                      invite-title
-                      "? "))))
 
 (defvar telega-permission-read-history nil)
 (defun telega-completing-read-permission (prompt &optional permissions)

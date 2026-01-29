@@ -572,6 +572,10 @@ COMMAND is passed directly to `telega-server--send'."
                         "-l")
                       (when telega-server-logfile
                         telega-server-logfile)
+                      (when telega-server-logfile-size
+                        "-L")
+                      (when telega-server-logfile-size
+                        (int-to-string telega-server-logfile-size))
                       "-v"
                       (if telega-server-logfile
                           (int-to-string telega-server-verbosity)
@@ -618,15 +622,6 @@ COMMAND is passed directly to `telega-server--send'."
   (when (buffer-live-p telega-server--buffer)
     (kill-buffer telega-server--buffer)
     (run-hooks 'telega-kill-hook)))
-
-
-;;; Misc TDLib API methods
-(defun telega--searchHashtags (prefix &optional limit)
-  (let ((reply (telega-server--call
-                (list :@type "searchHashtags"
-                      :prefix prefix
-                      :limit (or limit 20)))))
-    (append (plist-get reply :hashtags) nil)))
 
 (provide 'telega-server)
 

@@ -1,6 +1,6 @@
 ;;; telega-customize.el --- Customization for telega  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2018 by Zajcev Evgeny.
+;; Copyright (C) 2018-2026 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Mon Apr 23 18:11:45 2018
@@ -391,11 +391,11 @@ If nil, then use language suggested by the server."
                  string)
   :group 'telega)
 
-(defcustom telega-translate-replace-content nil
-  "Non-nil to replace message's content with the translated text.
-Original message's content can be seen with
+(defcustom telega-translate-show-original-content t
+  "Non-nil to show origin message's content along with translated text.
+If disabled, original message's content can be seen with
 `\\<telega-chat-mode-map>\\[telega-describe-message]' command."
-  :package-version '(telega . "0.8.72")
+  :package-version '(telega . "0.8.600")
   :type 'boolean
   :group 'telega)
 
@@ -771,6 +771,13 @@ TELEGA-SERVER-LIBS-PREFIX/lib is used for library files."
   "*Write server logs to this file.
 Set it to nil to disable telega-server logging."
   :type 'file
+  :group 'telega-server)
+
+(defcustom telega-server-logfile-size nil
+  "Maximum size for the `telega-server-logfile' file."
+  :package-version '(telega . "0.8.572")
+  :type '(choice (const :tag "Default size (4M)" nil)
+                 (const :tag "logfile size in bytes" int))
   :group 'telega-server)
 
 (defcustom telega-server-verbosity (if telega-debug 5 3)
@@ -1845,9 +1852,12 @@ See `mode-line-buffer-identification'."
      ;; is displayed last
      (telega-chatbuf-footer-ins-aux-plist
       :with-avatar-p telega-chat-show-avatars)
+
+     ;; Input options, such as Link Preview Options and others
+     (telega-chatbuf-footer-ins-input-options)
     )
-  "*Inserter sexp for the chatbuf's footer."
-  :package-version '(telega . "0.8.256")
+  "*Inserter sexp for the chatbuf's footer." 
+  :package-version '(telega . "0.8.600")
   :type 'sexp
   :group 'telega-chat)
 
@@ -2182,9 +2192,16 @@ Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
 (defcustom telega-ignored-messages-visible nil
   "*Non-nil to make ignored messages visible as <ignored message>.
 It can be an inserter function accepting one argument - ignored message."
-  :package-version '(telega . "0.8.215")
+  :package-version '(telega . "0.8.573")
   :type '(choice (boolean :tag "Enable/Disable")
+                 (string :tag "Custom label for ignored message")
                  (function :tag "Custom inserter for ignored message"))
+  :group 'telega-chat)
+
+(defcustom telega-ignored-messages-reveal-on-ret-temex '(return t)
+  "Message Temex to reveal ignored message on RET."
+  :package-version '(telega . "0.8.573")
+  :type 'telega-msg-temex
   :group 'telega-chat)
 
 (defcustom telega-ignored-messages-ring-size 100
@@ -2401,7 +2418,12 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-verified (propertize "🟏" 'face 'telega-blue)
+(defcustom telega-symbol-verified-by-bot (propertize "A+" 'face 'telega-blue)
+  "Symbol used to emphasize verified by bot."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-verified "✔️"
   "Symbol used to emphasize verified users/groups."
   :type 'string
   :group 'telega-symbol)
@@ -2690,7 +2712,7 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-premium (propertize "*" 'face 'telega-blue)
+(defcustom telega-symbol-premium (propertize "🌟" 'face 'telega-blue)
   "Symbol used to emphasize premium Telegram users."
   :type 'string
   :group 'telega-symbol)
@@ -2832,9 +2854,21 @@ Used in one line message inserter."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-my-notes "📝"
-  "*Symbol used for my notes in SavedMessages chat."
-  :package-version '(telega . "0.8.510")
+(defcustom telega-symbol-summarize-in (propertize "><" 'face 'bold)
+  "*Symbol used to enable summary."
+  :package-version '(telega . "0.8.600")
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-summarize-out (propertize "<>" 'face 'bold)
+  "*Symbol used to disable summary."
+  :package-version '(telega . "0.8.600")
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-translate "A文"
+  "*Symbol used in translation context."
+  :package-version '(telega . "0.8.600")
   :type 'string
   :group 'telega-symbol)
 
@@ -2843,7 +2877,7 @@ Used in one line message inserter."
   :package-version '(telega . "0.8.520")
   :type 'string
   :group 'telega-symbol)
-  
+
 (defcustom telega-symbols-emojify
   '((vbar-left (when (and telega-use-images (image-type-available-p 'svg))
                  (telega-svg-create-vertical-bar
@@ -2968,12 +3002,21 @@ Used in one line message inserter."
     (story-reply
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "symbols/story-reply.svg" 2)))
+    (summarize-in
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "symbols/summarize-in.svg" 2)))
+    (summarize-out
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "symbols/summarize-out.svg" 2)))
     (telegram-star (when (and telega-use-images (image-type-available-p 'svg))
                      (telega-etc-file-create-image "symbols/premium.svg" 2)))
     timer-clock
     (ton 
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "symbols/ton_symbol.svg" 2)))
+    (translate
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "symbols/translate.svg" 2)))
     (typing
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "symbols/typing.svg" 2)))
@@ -3105,6 +3148,11 @@ non-nil if symbol gets emojification."
   "*Official blue color of telegram."
   :group 'telega-faces)
 
+(defface telega-red
+  '((t :inherit error :weight normal))
+  "*Face for dangerous actions, such as deletion."
+  :group 'telega-faces)
+
 (defface telega-enckey-00
   '((t :foreground "#ffffff" :background "#ffffff"))
   "Face used for encryption key"
@@ -3142,9 +3190,9 @@ non-nil if symbol gets emojification."
 
 (defface telega-root-heading
   '((((background light))
-     :background "light gray" :foreground "dim gray")
+     :background "light gray" :foreground "dim gray" :extend t)
     (((background dark))
-     :background "dim gray" :foreground "light gray"))
+     :background "dim gray" :foreground "light gray" :extend t))
   "Face used to display headings, such as GLOBAL SEARCH, in root buffer."
   :group 'telega-faces)
 
@@ -3297,6 +3345,11 @@ non-nil if symbol gets emojification."
 (defface telega-msg-inline-forward
   '((t :inherit telega-msg-heading))
   "Face to highlight message forwarding header."
+  :group 'telega-faces)
+
+(defface telega-msg-inline-other
+  '((t :inherit telega-msg-heading))
+  "Face to highlight other message headers, such as translate/summarize."
   :group 'telega-faces)
 
 (defface telega-msg-deleted

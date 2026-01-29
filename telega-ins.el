@@ -1,6 +1,6 @@
 ;;; telega-ins.el --- Inserters for the telega  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2018 by Zajcev Evgeny.
+;; Copyright (C) 2018-2026 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Sat Jul 14 19:06:40 2018
@@ -403,16 +403,22 @@ If WITH-YEARS-OLD-P is specified, insert years old as well."
   "Insert message's sender title.
 If WITH-AVATAR-P is 2, then insert 2 lines version of an avatar.
 WITH-TITLE specifies custom title to use for this message sender.
+If MSG-SENDER is a user, then WITH-TITLE can be one of `first-name',
+`last-name', `full-name' or `username'.  By default `full-name' is
+used as user title.
 WITH-BADGES-P is ignored if WITH-TITLE is specified."
   (declare (indent 1))
   (let* ((chat-p (telega-chat-p msg-sender))
-         (title (cond (with-title with-title)
+         (title (cond ((stringp with-title) with-title)
                       (chat-p
                        (telega-chat-title msg-sender (not with-badges-p)))
                       (t
                        (cl-assert (telega-user-p msg-sender))
+                       (cl-assert (memq with-title '(nil first-name last-name
+                                                         full-name username)))
                        (telega-user-title
-                        msg-sender 'full-name (not with-badges-p)))))
+                        msg-sender (or with-title 'full-name)
+                        (not with-badges-p)))))
          (title-faces (when (or with-title-faces-p with-palette)
                         (telega-msg-sender-title-faces msg-sender with-palette)))
          (brackets (when with-brackets-p
@@ -547,7 +553,7 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
                        :no-display-if (not telega-user-show-avatars))
     ;; Setup `off-column' for "invited by" string
     (setq off-column (current-column))
-    (when-let* ((use-image-p telega-use-images)                
+    (when-let* ((use-image-p telega-use-images)
                 (full-info (telega--full-info user))
                 (user-rating (plist-get full-info :rating)))
       (telega-ins--with-face (assq :foreground (telega-msg-sender-palette user))
@@ -1188,9 +1194,13 @@ and thumbnail are shown."
         (telega-ins (telega-tl-str game :description)))
       t)))
 
-(defun telega-ins--link-preview-description (msg link-preview palette)
+(defun telega-ins--link-preview-description (_msg link-preview palette
+                                                  &optional small-image-2slices)
   "Insert LINK-PREVIEW description part."
   (when-let ((sitename (telega-tl-str link-preview :site_name)))
+    (when small-image-2slices
+      (telega-ins--image small-image-2slices 0)
+      (telega-ins " "))
     (telega-ins--with-face (list (assq :foreground palette)
                                  'telega-link-preview-sitename)
       (telega-ins sitename))
@@ -1199,18 +1209,12 @@ and thumbnail are shown."
         (unless (equal sitename author)
           (telega-ins--with-face 'telega-shadow
             (telega-ins " --" author)))))
-    ;; NOTE: `(message-property :can_be_edited)' matcher makes TDLib
-    ;; request, so we put button only for outgoing messages,
-    ;; considering outgoing message can be edited
-    (when (telega-msg-match-p msg 'is-outgoing)
-      (telega-ins " ")
-      (telega-ins--text-button (telega-symbol 'button-close)
-        'face 'telega-link
-        :action #'telega-msg-disable-link-preview
-        'help-echo "telega: Press to disable link preview"))
     (telega-ins "\n"))
 
   (when-let ((title (telega-tl-str link-preview :title)))
+    (when small-image-2slices
+      (telega-ins--image small-image-2slices 1)
+      (telega-ins " "))
     (telega-ins--with-face 'telega-link-preview-title
       (telega-ins title))
     (telega-ins "\n"))
@@ -1331,6 +1335,10 @@ and thumbnail are shown."
                    (model-sticker (telega--tl-get upgraded-gift :model :sticker)))
          (telega-ins--image-slices (telega-sticker--image model-sticker))
          (telega-ins "\n")))
+      (linkPreviewTypeGiftAuction
+       (when-let* ((gift-sticker (telega--tl-get lp-type :gift :sticker)))
+         (telega-ins--image-slices (telega-sticker--image gift-sticker))
+         (telega-ins "\n")))
       ((linkPreviewTypeMessage
         linkPreviewTypeInvoice
         linkPreviewTypeGroupCall
@@ -1414,6 +1422,8 @@ and thumbnail are shown."
                               "lng_view_button_user")))
               (linkPreviewTypeUpgradedGift
                (telega-i18n "lng_view_button_collectible"))
+              (linkPreviewTypeGiftAuction
+               (telega-i18n "lng_auction_preview_view_results"))
               (linkPreviewTypeVideoChat
                (if (plist-get lp-type :is_live_stream)
                    (telega-i18n "lng_view_button_voice_chat_channel")
@@ -1446,13 +1456,32 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
                      (telega-msg-sender msg)))
            (telega-palette-context 'link-preview)
            (palette (telega-msg-sender-palette sender))
+           (small-image-2slices
+            (unless (plist-get link-preview :show_large_media)
+              (when-let* ((lp-type (plist-get link-preview :type))
+                          (lp-photo
+                           (cl-case (telega--tl-type lp-type)
+                             ((linkPreviewTypeApp
+                               linkPreviewTypeArticle
+                               linkPreviewTypeChat
+                               linkPreviewTypePhoto
+                               linkPreviewTypeWebApp)
+                              (plist-get lp-type :photo))
+                             ((linkPreviewTypeEmbeddedAnimationPlayer
+                               linkPreviewTypeEmbeddedAudioPlayer
+                               linkPreviewTypeEmbeddedVideoPlayer)
+                              (plist-get lp-type :thumbnail))
+                             )))
+                (telega-photo--image lp-photo '(2 2 10 2)))))
            (media-above-p
-            (plist-get link-preview :show_media_above_description)))
+            (plist-get link-preview :show_media_above_description))
+           )
       (telega-ins--with-outline-palette palette
-        (when media-above-p
+        (when (and media-above-p (not small-image-2slices))
           (telega-ins--link-preview-media msg link-preview))
-        (telega-ins--link-preview-description msg link-preview palette)
-        (unless media-above-p
+        (telega-ins--link-preview-description msg link-preview palette
+                                              small-image-2slices)
+        (when (and (not media-above-p) (not small-image-2slices))
           (telega-ins--link-preview-media msg link-preview))
         (telega-ins--link-preview-button msg link-preview))
       t)))
@@ -2673,18 +2702,19 @@ Special messages are determined with `telega-msg-special-p'."
          (caption (plist-get content :caption))
          (caption-above-p (plist-get content :show_caption_above_media))
          (translated (plist-get msg :telega-translated))
-         (translated-replaces-p (and translated
-                                     (not (plist-get translated :loading))
-                                     (with-telega-chatbuf (telega-msg-chat msg)
-                                       telega-translate-replace-content))))
+         (translated-text (telega-tl-str translated :text))
+         (summary (plist-get msg :telega-summary))
+         (summary-text (telega-tl-str summary :text)))
 
     (when (and caption caption-above-p)
-      (when (if translated-replaces-p
-                (progn
-                  (cl-assert translated)
-                  (telega-ins (telega-tl-str translated :text)))
-              (telega-ins--with-props '(:message-text t)
-                (telega-ins--fmt-text caption msg)))
+      (when (cond ((and translated-text
+                        (not (plist-get translated :show-original-p)))
+                   (telega-ins translated-text))
+                  (summary-text
+                   (telega-ins summary-text))
+                  (t
+                   (telega-ins--with-props '(:message-text t)
+                     (telega-ins--fmt-text caption msg))))
         (telega-ins "\n")))
 
     (pcase (telega--tl-type content)
@@ -2706,8 +2736,11 @@ Special messages are determined with `telega-msg-special-p'."
                 (telega-ins--image-slices
                     (telega-emoji-create-svg
                      emojis-text telega-emoji-large-height)))
-               ((and translated translated-replaces-p)
-                (telega-ins (telega-tl-str translated :text)))
+               ((and translated-text
+                     (not (plist-get translated :show-original-p)))
+                (telega-ins translated-text))
+               (summary-text
+                (telega-ins summary-text))
                (t
                 (telega-ins--with-props '(:message-text t)
                   (telega-ins--fmt-text (plist-get content :text) msg))))
@@ -2787,24 +2820,27 @@ Special messages are determined with `telega-msg-special-p'."
 
     (when (and caption (not caption-above-p))
       (telega-ins-prefix "\n"
-        (if translated-replaces-p
-            (progn
-              (cl-assert translated)
-              (telega-ins (telega-tl-str translated :text)))
-          (telega-ins--with-props '(:message-text t)
-            (telega-ins--fmt-text caption msg)))))
+        (cond ((and translated-text
+                    (not (plist-get translated :show-original-p)))
+               (telega-ins translated-text))
+              (summary-text
+               (telega-ins summary-text))
+              (t
+               (telega-ins--with-props '(:message-text t)
+                 (telega-ins--fmt-text caption msg))))))
 
     ;; Translation
-    (when (and translated (not translated-replaces-p))
+    (when (and translated-text
+               (plist-get translated :show-original-p))
       (telega-ins--with-face 'telega-shadow
         (telega-ins "\n")
-        (telega-ins "--- Translation to "
-                    (plist-get translated :to_language_code)
+        (telega-ins "--- "
+                    (telega-i18n "lng_translate_bar_to"
+                      :name (telega-i18n-translate-language-code-to-language
+                             (plist-get translated :to_language_code)))
                     " ---\n")
-        (if (plist-get translated :loading)
-            (telega-ins "Translating...")
-          (telega-ins (plist-get translated :text)))))
-    ))
+        (telega-ins translated-text)))
+    t))
 
 (cl-defun telega-ins--keyboard-button (kbd-button msg &key
                                                   bb-style
@@ -3118,15 +3154,18 @@ argument - MSG to insert additional information after header."
               (telega-ins " " (telega-symbol 'flames)
                           (telega-duration-human-readable auto-delete-in 1))))
 
-          ;; Show language code if translation replaces message's content
-          (when-let ((translated (plist-get msg :telega-translated)))
-            (when (with-telega-chatbuf chat
-                    telega-translate-replace-content)
-              (telega-ins--with-face 'telega-shadow
-                (telega-ins " ["
-                            (telega-symbol 'right-arrow)
-                            (plist-get translated :to_language_code)
-                            "]"))))
+          ;; AI summary
+          (when (plist-get msg :summary_language_code)
+            (telega-ins " ")
+            (telega-ins--text-button
+                (if (plist-get msg :telega-summary)
+                    (telega-symbol 'summarize-out)
+                  (telega-symbol 'summarize-in))
+              'face 'telega-link
+              'help-echo (if (plist-get msg :telega-summary)
+                             "Disable AI summary"
+                           "Enable AI summary")
+              :action #'telega-msg-summarize))
 
           (when (numberp telega-debug)
             (telega-ins-fmt " (ID=%d)" (plist-get msg :id)))
@@ -3488,6 +3527,65 @@ If SENDER is specified, use it instead of messageOrigin from FWD-INFO."
        (telega-ins--msg-reply-to-story-inline msg reply-to))
       )))
 
+(defun telega-ins--msg-translation-inline (msg)
+  "Insert message translation state."
+  (when-let ((translated (plist-get msg :telega-translated)))
+    (let* ((telega-palette-context 'translate)
+           (palette (telega-msg-sender-palette (telega-user-me))))
+      (telega-ins--line-wrap-prefix
+          (propertize (telega-symbol 'vbar-left) 'face
+                      (telega-face-with-palette 'telega-msg-inline-other
+                          palette :foreground :background))
+        (telega-ins--raw-button
+            (list 'action (lambda (_button)
+                            (telega-msg-translate msg nil))
+                  'help-echo "telega: Press to disable translation")
+          (telega-ins--with-face
+              (telega-face-with-palette 'telega-msg-inline-other
+                  palette :foreground :background)
+            (telega-ins (telega-symbol 'translate) " ")
+            (if (and (not (plist-get translated :loading))
+                     (not (telega-tl-str translated :text)))
+                (telega-ins-i18n "lng_translate_box_error")
+              (telega-ins-i18n "lng_translate_bar_to"
+                :name (telega-i18n-translate-language-code-to-language
+                       (plist-get translated :to_language_code))))
+            (when (plist-get translated :loading)
+              (telega-ins ", " (telega-i18n "telega_loading")))
+            (telega-ins "\n")))))))
+
+(defun telega-ins--msg-summary-inline (msg)
+  "Insert AI summary state."
+  (when-let ((summary (plist-get msg :telega-summary)))
+    (let* ((telega-palette-context 'summary)
+           (palette (telega-msg-sender-palette (telega-user-me))))
+      (telega-ins--line-wrap-prefix
+          (propertize (telega-symbol 'vbar-left) 'face
+                      (telega-face-with-palette 'telega-msg-inline-other
+                          palette :foreground :background))
+        (telega-ins--raw-button
+            (list :action #'telega-msg-summarize
+                  'action 'telega-button--action
+                  'help-echo "telega: Press to disable AI summary")
+          (telega-ins--with-face
+              (telega-face-with-palette 'telega-msg-inline-other
+                  palette :foreground :background)
+            (telega-ins (telega-symbol 'summarize-out) " "
+                        (telega-i18n "lng_summarize_header_title"))
+            (when-let ((lang-code
+                        (plist-get summary :to_language_code)))
+              (telega-ins " & " (telega-i18n "lng_context_translate"))
+              (telega-ins " ("
+                      (telega-i18n-translate-language-code-to-language
+                       (plist-get msg :summary_language_code))
+                      " " (telega-symbol 'right-arrow) " "
+                      (telega-i18n-translate-language-code-to-language
+                       lang-code)
+                      ")"))
+            (when (plist-get summary :loading)
+              (telega-ins ", " (telega-i18n "telega_loading")))
+            (telega-ins "\n")))))))
+
 (defun telega-ins--msg-sending-state-failed (msg)
   "Insert sending state failure reason for message MSG."
   (when-let ((send-state (plist-get msg :sending_state)))
@@ -3597,6 +3695,8 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
             :sender (when (telega-replies-p chat)
                       (telega--fwd-info-source-chat fwd-info))))
         (telega-ins--msg-reply-inline msg)
+        (telega-ins--msg-summary-inline msg)
+        (telega-ins--msg-translation-inline msg)
         ;; NOTE: We mark actual message content with special
         ;; `:message-content' property.  Used by various commands,
         ;; such as `telega-chatbuf-beginning-of-thing'
@@ -3690,12 +3790,20 @@ Pass all ARGS directly to `telega-ins--message0'."
 
 (defun telega-ins--message-ignored (msg)
   "Inserter for ignored message MSG in chatbuf."
-  (if (functionp telega-ignored-messages-visible)
-      (progn
-        (cl-assert (not (eq telega-ignored-messages-visible
-                            #'telega-ins--message-ignored)))
-        (funcall telega-ignored-messages-visible msg))
-    (telega-ins (propertize "<Ignored Message>" 'face 'telega-shadow))))
+  (cond ((plist-get msg :telega-ignored-revealed-p)
+         (funcall telega-inserter-for-msg-button msg))
+
+        ((functionp telega-ignored-messages-visible)
+         (cl-assert (not (eq telega-ignored-messages-visible
+                             #'telega-ins--message-ignored)))
+         (funcall telega-ignored-messages-visible msg))
+
+        (t
+         (telega-ins--with-face 'telega-shadow
+           (telega-ins "<" (if (stringp telega-ignored-messages-visible)
+                               telega-ignored-messages-visible
+                             "Ignored Message")
+                       ">")))))
 
 (defun telega-ins--message-with-chat-header (msg)
   "Inserter for message MSG showing chat header."
@@ -3845,7 +3953,7 @@ If SHORT-P is non-nil then use short version."
                                  :with-brackets-p t))))
                     " ")
         (telega-ins--story-one-line story)))
-     
+
      ;; Special IMC for inline query results
      (telegaInlineQuery
       (telega-ins telega-symbol-inline " ")
@@ -4553,6 +4661,64 @@ Return non-nil if restrictions has been inserted."
                  #'telega-describe-chat-join-requests chat)))
     t))
 
+(defun telega-ins--chat-join-button (chat &optional bot-start-param
+                                          margin-string)
+  "Inserter for the CHAT's [Join] button."
+  (when-let ((button-text
+              (cond ((telega-chat-match-p chat '(type bot))
+                     (cond ((telega-chat-match-p chat 'is-blocked)
+                            (telega-i18n "lng_profile_restart_bot"))
+                           ((not (telega-chat-match-p chat 'is-known))
+                            (telega-i18n "lng_bot_start"))))
+
+                    ((telega-chat-match-p chat 'is-blocked)
+                     (telega-i18n "lng_unblock_button"))
+
+                    ;; No need for button in these chats
+                    ((or (telega-chat-match-p chat
+                           '(or is-known (type private secret)))
+                         ;; Basicgroup upgraded to the supergroup
+                         (telega-chat-match-p chat
+                           '(and (type basicgroup) (not (info :is_active))))
+                         ;; Discussion group or direct messages group
+                         ;; of a channel, where no need to join
+                         ;; NOTE: if no thread filtering is applied
+                         ;; (telega-chat-match-p chat
+                         ;;  '(and (type supergroup)
+                         ;;        (not (info :join_to_send_messages))
+                         ;;        can-send-or-post))
+                         )
+                     nil)
+
+                    ((telega-chat-match-p chat '(type channel))
+                     (telega-i18n "lng_profile_join_channel"))
+
+                    ((telega-chat-match-p chat
+                      '(and (type supergroup) (info :join_by_request)))
+                     (telega-i18n "lng_profile_apply_to_join_group"))
+
+                    (t
+                     (telega-i18n "lng_profile_join_group")))))
+    (telega-ins--box-button
+        (concat margin-string (upcase button-text)
+                (when bot-start-param
+                  (concat " " bot-start-param))
+                margin-string)
+      'action (lambda (_ignored)
+                (cl-assert (not (telega-chat-secret-p chat)))
+
+                (if (telega-chat-private-p chat)
+                    (progn
+                      (telega-msg-sender-unblock chat)
+                      (when (telega-chat-bot-p chat)
+                        (telega--sendBotStartMessage
+                         (telega-chat-user chat) chat bot-start-param)
+                        (with-telega-chatbuf chat
+                          (setq telega-chatbuf--bot-start-parameter nil))))
+
+                  (telega--joinChat chat))))
+    ))
+
 
 (defun telega-ins--root-msg (msg)
   "Inserter for message MSG shown in `telega-root-messages--ewoc'."
@@ -4701,8 +4867,8 @@ argument of `ReactionType' type."
           (telega-ins--raw-button
               (list 'action (lambda (_button)
                               (transient-setup
-                               'telega-saved-messages-tag-commands nil nil
-                               :scope (cons tag msg))))
+                               'telega-transient-sm-tag-commands nil nil
+                               :scope (list :tag tag :msg msg))))
             (telega-ins--saved-messages-tag tag))
         ;; NOTE: if Saved Messages are not yet loaded we will
         ;; fallback to `telega-ins--msg-reaction'

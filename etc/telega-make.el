@@ -81,8 +81,15 @@
 (defun telega-update-tdlib-version (&optional version tdlib-sha1)
   "Update TDLib version."
   (unless version
+    (load "telega")
     (setq version (or telega-tdlib-max-version
                       telega-tdlib-min-version)))
+
+  (unless tdlib-sha1
+    (setq tdlib-sha1
+          (string-trim-right (shell-command-to-string
+                              "git -C ~/dev/td/ rev-parse --short @")
+                             "\n")))
 
   (with-telega-edit-file "README.md"
     (when (re-search-forward "badge/TDLib-v[0-9\\.]+_")
@@ -94,6 +101,8 @@
 
     (when (re-search-forward "ARG tdlib_branch=[0-9a-fA-F]+")
       (replace-match (concat "ARG tdlib_branch=" tdlib-sha1))))
+
+  (message "Version -> %s, TDLib -> %s" version tdlib-sha1)
   )
 
 (provide 'telega-make)

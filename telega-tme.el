@@ -33,6 +33,7 @@
 (require 'telega-i18n)
 (require 'telega-sticker)
 (require 'telega-util)
+(require 'telega-transient)
 
 ;; telega-chat.el depends on telega-tme.el
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
@@ -178,9 +179,11 @@ PARAMS are additional params."
          (chat-id (plist-get invite-link :chat_id))
          (chat (when invite-link
                  (if (zerop chat-id)
-                     ;; Can only join (or request to join) by link
-                     (when (telega-join-invite-link-y-or-n-p invite-link)
-                       (telega--joinChatByInviteLink url))
+                     ;; Can only join (or request to join) by invite link
+                     (transient-setup 'telega-transient-invite-link-join
+                                      nil nil :scope
+                                      (list :url url
+                                            :invite-link-info invite-link))
 
                    ;; Can preview messages before deciding to join
                    (telega-chat-get chat-id)))))

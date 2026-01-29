@@ -38,6 +38,8 @@
   :value "Cancel")
  ("lng_settings_save"
   :value "Save")
+ ("lng_settings_apply"
+  :value "Apply")
 
  ("lng_saved_open_chat"
   :value "Open Chat")
@@ -47,6 +49,9 @@
   :value "Replies")
  ("lng_replies_discussion_started"
   :value "Discussion started")
+ ("lng_replies_view"
+  :one_value "View {count} Reply"
+  :other_value "View {count} Replies")
  ("lng_replies_view_topic"
   :value "View in Topic")
  ("lng_replies_view_thread"
@@ -161,6 +166,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Delete all from this user")
  ("lng_delete_all_from_user"
   :value "Delete all from {user}")
+ ("lng_delete_all_from_users"
+  :value "Delete all from users")
 
  ("lng_settings_privacy_title"
   :value "Privacy")
@@ -427,8 +434,15 @@ Example: 23 y.o. designer from San Francisco")
   :value "{user} is an admin of {name}, a group you requested to join.")
  ("lng_new_contact_from_request_channel"
   :value "{user} is an admin of {name}, a channel you requested to join.")
+ ("lng_blocked_list_confirm_title"
+  :value "Block {name}")
  ("lng_blocked_list_confirm_text"
   :value "Do you want to block {name} from messaging and calling you on Telegram?")
+ ("lng_blocked_list_confirm_clear"
+  :value "Delete this chat")
+ ("lng_blocked_list_confirm_ok"
+  :value "Block")
+
  ("lng_info_delete_contact"
   :value "Delete contact")
  ("lng_sure_delete_contact"
@@ -1162,6 +1176,17 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_group_requests_dismiss"
   :value "Dismiss")
 
+ ("lng_channel_invite_subscription_title"
+  :value "Subscribe to the Channel")
+ ("lng_channel_invite_subscription_about"
+  :value "Do you want to subscribe to {channel} for {price} per month?")
+ ("lng_channel_invite_subscription_terms"
+  :value "By subscribing you agree to the {link}.")
+ ("lng_paid_react_agree_link"
+  :value "Terms of Service")
+ ("lng_channel_invite_subscription_button"
+  :value "Subscribe")
+
  ("lng_payments_date_label"
   :value "Paid")
  ("lng_payments_invoice_label_test"
@@ -1220,7 +1245,7 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_restricted_list_title"
   :value "Restricted users")
  ("lng_restricted_send_message"
-  :value "Group admins have restricted you from messaging.")
+  :value "The admins of this group have restricted your ability to send messages.")
  ("lng_restricted_send_inline_all"
   :value "Posting inline content isn't allowed in this group.")
  ("lng_restricted_send_inline"
@@ -1331,6 +1356,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "View collectible")
  ("lng_view_button_call"
   :value "Join call")
+ ("lng_auction_preview_view_results"
+  :value "View Results")
 
  ("lng_unblock_button"
   :value "Unblock")
@@ -1351,10 +1378,14 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Hide Sender Name")
  ("lng_forward_action_hide_senders"
   :value "Hide Sender Names")
+ ("lng_forward_action_change_recipient"
+  :value "Change Recipient")
  ("lng_forward_about"
   :value "You can remove the sender's name so that this message will look like it was sent by you.")
  ("lng_forward_choose"
   :value "Forward to…")
+ ("lng_forward_cant"
+  :value "Sorry, no way to forward here :(")
  ("lng_selected_forward"
   :value "Forward")
 
@@ -2203,6 +2234,10 @@ You can send them an invite link as message instead.")
  ("lng_delete_for_me_chat_hint"
   :one_value "This will delete it just for you, not for other participants of the chat."
   :other_value "This will delete them just for you, not for other participants of the chat.")
+ ("lng_delete_for_other_check"
+  :value "Also delete for {user}")
+ ("lng_delete_for_everyone_check"
+  :value "Delete for everyone")
 
  ;; Quick Replies
  ("lng_replies_title"
@@ -2243,4 +2278,88 @@ You can send them an invite link as message instead.")
 
  ("lng_recent_chats"
   :value "Chats")
+ ("lng_summarize_header_title"
+  :value "AI summary")
+ ("lng_translate_menu_to"
+  :value "Translate To")
+ ("lng_translate_menu_dont"
+  :value "Don't translate {name}")
+ ("lng_translate_bar_to"
+  :value "Translate to {name}")
+ ("lng_translate_show_original"
+ :value "Show Original")
+ ("lng_translate_box_error"
+  :value "Translate failed.")
+
+ ("lng_settings_change_lang"
+  :value "Change language")
+ ("lng_languages"
+  :value "Language")
+ ("lng_ban_user"
+  :value "Ban User")
+ ("lng_ban_users"
+  :value "Ban users")
+ ("lng_restrict_user_full"
+  :value "Fully ban this user {emoji}")
+ ("lng_restrict_users_full"
+  :value "Fully ban users {emoji}")
+
+ ("lng_box_delete"
+  :value "Delete")
+ ("lng_box_leave"
+  :value "Leave")
+ ("lng_box_no"
+  :value "No")
+ ("lng_box_yes"
+  :value "Yes")
+ ("lng_box_ok"
+  :value "OK")
+ ("lng_box_done"
+  :value "Done")
+ ("lng_box_remove"
+  :value "Remove")
+
+ ("lng_profile_delete_conversation"
+  :value "Delete chat")
+ ("lng_profile_clear_and_exit"
+  :value "Delete and leave")
+ ("lng_profile_leave_channel"
+  :value "Leave channel")
+ ("lng_profile_block_bot"
+  :value "Stop and block bot")
+ ("lng_sure_delete_history"
+  :value "Are you sure you want to delete all message history with {contact}?
+
+This action cannot be undone.")
+ ("lng_sure_leave_group"
+  :value "Are you sure you want to leave this group?")
+ ("lng_sure_leave_channel"
+  :value "Are you sure you want to leave
+this channel?")
+ ("lng_filters_checkbox_remove_channel"
+  :value "Remove channel from all folders")
+
+ ("lng_context_mark_read"
+  :value "Mark as read")
+ ("lng_context_mark_unread"
+  :value "Mark as unread")
+ ("lng_context_pin_to_top"
+  :value "Pin")
+ ("lng_context_unpin_from_top"
+  :value "Unpin")
+
+ ("lng_bot_earn_title"
+  :value "Stars Balance")
+ ("lng_credits_summary_balance"
+  :value "Balance")
+ ("lng_credits_balance_me_count"
+  :value "Your balance: {emoji} {amount}")
+
+ ("lng_caption_move_down"
+  :value "Move Caption Down")
+ ("lng_caption_move_up"
+  :value "Move Caption Up")
+ ("lng_context_spoiler_effect"
+  :value "Hide with Spoiler")
+
  )

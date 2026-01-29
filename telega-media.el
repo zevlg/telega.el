@@ -112,6 +112,12 @@ As side-effect might update root view, if current root view is \"Files\"."
                               (telega-file--downloading-progress old-file))
                            0.01))))))
     (unless throttle-p
+      ;; Keep number of download tries
+      (unless (or (telega-file--downloaded-p file)
+                  (telega-file--downloading-p file))
+        (when-let ((dtries (plist-get old-file :download-tries)))
+          (plist-put file :download-tries dtries)))
+
       (telega-file--ensure file)
 
       (let* ((callbacks (gethash file-id telega--files-updates))
@@ -158,6 +164,13 @@ OFFSET and LIMIT specifies file part to download."
                  (funcall update-callback file)
                  (telega-file--downloading-p file)))))
 
+          ((> (or (plist-get dfile :download-tries) 0) 3)
+           ;; NOTE: workaround TDLib issue, that file which can't be
+           ;; downloaded is not marked with `can_be_downloaded:false'.
+           ;; We try 3 times to start downloading file, then mark this
+           ;; file as non-downloadable
+           )
+
           ((telega-file--can-download-p dfile)
            (when update-callback
              (telega-file--add-update-callback file-id
@@ -165,16 +178,19 @@ OFFSET and LIMIT specifies file part to download."
                  (funcall update-callback file)
                  (telega-file--downloading-p file))))
 
-             ;; NOTE: Mark file as being downloading before calling
-             ;; `telega--downloadFile', so subsequent calls to
-             ;; `telega-file--download' won't call to
-             ;; `telega--downloadFile' multiple times
-             (plist-put (plist-get file :local) :is_downloading_active t)
-             (telega--downloadFile file-id
-               :priority priority
-               :offset offset
-               :limit limit
-               :callback #'ignore)))))
+           (plist-put dfile :download-tries
+                      (1+ (or (plist-get dfile :download-tries) 0)))
+
+           ;; NOTE: Mark file as being downloading before calling
+           ;; `telega--downloadFile', so subsequent calls to
+           ;; `telega-file--download' won't call to
+           ;; `telega--downloadFile' multiple times
+           (plist-put (plist-get dfile :local) :is_downloading_active t)
+           (telega--downloadFile file-id
+             :priority priority
+             :offset offset
+             :limit limit
+             :callback #'ignore)))))
 
 (defun telega-file--cancel-download (file &optional sync-p)
   "Cancel downloading a FILE.

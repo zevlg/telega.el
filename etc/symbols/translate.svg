@@ -368,8 +368,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="5.6568542"
-     inkscape:cx="62.428078"
-     inkscape:cy="12.934877"
+     inkscape:cx="25.835302"
+     inkscape:cy="12.316159"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -389,7 +389,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -438,30 +438,31 @@
          id="g962" />
     </g>
     <path
-       style="opacity:1;vector-effect:none;fill:none;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:1.99996364;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="opacity:1;vector-effect:none;fill:none;fill-opacity:1;fill-rule:nonzero;stroke:currentColor;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="M 5.9882404,291.53356 H 26.011252 c 1.655635,0 2.988512,1.33289 2.988512,2.98852 v 20.02301 c 0,1.65562 -1.332877,2.98851 -2.988512,2.98851 H 5.9882404 c -1.6556362,0 -2.9885128,-1.33289 -2.9885128,-2.98851 v -20.02301 c 0,-1.65563 1.3328766,-2.98852 2.9885128,-2.98852 z"
        id="rect825"
        inkscape:connector-curvature="0" />
     <g
        id="g8612"
-       transform="translate(0.09418627,0.8098005)">
+       transform="translate(0.09418627,0.8098005)"
+       style="stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none">
       <g
          aria-label="文"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:13.38051414px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.00707698"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:13.38051414px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
          id="text8602">
         <path
            d="m 22.258077,299.94912 c -0.575362,1.51199 -1.338052,2.76976 -2.301449,3.81344 -1.030299,-1.08382 -1.81975,-2.36835 -2.395112,-3.81344 z m 3.800066,0 v -1.55214 h -5.312064 v -2.11413 h -1.619043 v 2.11413 h -5.245161 v 1.55214 h 1.913413 c 0.722548,1.95355 1.645804,3.62611 2.85005,5.00431 -1.351432,1.0303 -3.023996,1.79299 -5.004312,2.31483 0.321132,0.38803 0.816211,1.13734 1.003538,1.55214 2.033838,-0.64227 3.759925,-1.512 5.218401,-2.67611 1.404954,1.19087 3.144421,2.08736 5.298683,2.63596 0.24085,-0.45493 0.749309,-1.20424 1.137344,-1.59228 -2.033838,-0.45493 -3.719783,-1.24438 -5.097976,-2.30144 1.231007,-1.33806 2.207785,-2.9571 2.930333,-4.93741 z"
-           style="stroke-width:2.00707698"
+           style="stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;fill:currentColor;fill-opacity:1"
            id="path8614"
            inkscape:connector-curvature="0" />
       </g>
       <g
          aria-label="A"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:13.38051414px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.00707698"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:13.38051414px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
          id="text8606">
         <path
            d="M 12.5949,309.38709 H 8.6617604 l -0.6206782,1.77709 H 5.5126355 l 3.6130001,-9.75444 h 2.9988554 l 3.613,9.75444 h -2.528447 z m -3.305928,-1.80977 h 2.672183 l -1.332825,-3.88087 z"
-           style="stroke-width:2.00707698"
+           style="stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;fill:currentColor;fill-opacity:1"
            id="path8617"
            inkscape:connector-curvature="0" />
       </g>

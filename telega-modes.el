@@ -2457,6 +2457,24 @@ FMT-STRING is format string to be used instead of
                    #'telega-suggested-actions--on-update)
     ))
 
+
+;;; Minor mode to 
+(defconst telega-chat-phone-regexp
+  "+＋" "0-9０-９٠-٩۰-۹")
+
+(defun telega-chat-phone-numbers--fmt-text-faces (orig-func &rest args)
+  (let ((text (apply orig-func args)))
+    text))
+
+(define-minor-mode telega-chat-phone-numbers-mode
+  "Minor mode to emphasize phone numbers in the messages."
+  :init-value nil :group 'telega-modes
+  (if telega-chat-phone-numbers-mode
+      (advice-add 'telega--fmt-text-faces
+                  :around #'telega-chat-phone-numbers--fmt-text-faces)
+    (advice-remove 'telega--fmt-text-faces
+                   #'telega-chat-phone-numbers--fmt-text-faces)))
+
 (provide 'telega-modes)
 
 ;;; telega-modes.el ends here

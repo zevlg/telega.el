@@ -214,6 +214,23 @@ Updated on `updateDefaultPaidReactionType' event.")
   (rx (one-or-more (or space "=" "-" "_" "." "," ":" ";" "^" "|" "(" ")" "[" "]" "{" "}")))
   "Punctuation symbols ignored by history search.")
 
+(defvar telega-countries-list nil
+  "List of countryInfo TL structures.")
+
+(defun telega-country-info-by-code (country-code)
+  "Return countryInfo by two-letters COUNTRY-CODE."
+  (cl-find country-code telega-countries-list
+           :test #'equal :key (telega--tl-prop :country_code)))
+
+;; NOTE: KZ and RU uses same "7" as calling code, this function will
+;; return first matching country, i.e. KZ
+(defun telega-country-info-by-calling-code (calling-code)
+  "Return countryInfo by CALLING-CODE."
+  (cl-find calling-code telega-countries-list
+           :test (lambda (cc codes)
+                   (seq-contains-p codes cc))
+           :key (telega--tl-prop :calling_codes)))
+
 ;;; Runtime variables
 (defvar telega-msg--current nil
   "Bound to currenty inserting message.")
@@ -523,7 +540,7 @@ display the list.")
   "Bind this to the context where palette is used.
 Available contexts are: `title', `msg-header', `link-preview', `quote',
 `precode', `codeblock', `blockquote', `edit', `reply', `iv-chat-link',
-`sponsored', `story', `avatar'")
+`sponsored', `story', `avatar', `summary', `translate'")
 
 (defun telega-palette-by-colors (colors &optional background-mode)
   "Return palette created from COLORS list."
@@ -706,6 +723,12 @@ To be used in various TDLib methods as `:topic_id` argument."
   "messageSendOptions for the current input.")
 (make-variable-buffer-local 'telega-chatbuf--msg-send-options)
 
+(defvar telega-chatbuf--input-options-plist nil
+  "Additional options applied to the message when sending.
+Such as marking media as spoiler/self-destructuring, link preview
+settings, etc.")
+(make-variable-buffer-local 'telega-chatbuf--input-options-plist)
+  
 
 (defun telega--init-vars ()
   "Initialize runtime variables.

@@ -32,6 +32,10 @@ compile:
 	$(EMACS) -batch -L . -l etc/telega-make \
 	         -f telega-byte-compile-everything
 
+update-version:
+	$(EMACS) -batch -L . -l etc/telega-make \
+	         -f package-initialize -f telega-update-tdlib-version
+
 docs:
 	$(MAKE) -C docs
 

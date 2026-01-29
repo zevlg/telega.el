@@ -210,6 +210,22 @@ Return KEY if KEY is unknown to i18n."
   (or (ignore-errors (apply #'telega-i18n key args))
       key))
 
+(defun telega-i18n-translate-languages-alist ()
+  "Return i18n alist of languages for translation."
+  (mapcar (lambda (lang-spec)
+            (cons (capitalize
+                   (or (ignore-errors
+                         (telega-i18n
+                             (concat "cloud_lng_language_" (cdr lang-spec))))
+                       (car lang-spec)))
+                  (cdr lang-spec)))
+          telega-translate-languages-alist))
+
+(defun telega-i18n-translate-language-code-to-language (lang-code)
+  "Return i18n language name for the language code LANG-CODE."
+  (car (cl-find lang-code (telega-i18n-translate-languages-alist)
+                :test #'equal :key #'cdr)))
+
 (provide 'telega-i18n)
 
 ;;; telega-i18n.el ends here

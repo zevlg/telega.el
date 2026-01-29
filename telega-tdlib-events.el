@@ -725,6 +725,8 @@ Message id could be updated on this update."
             (telega-ewoc--move-node telega-chatbuf--ewoc node before-node
                                     'save-point)
             (when before-node
+              (message "BEFORE-NODE: id=%S"
+                       (plist-get (ewoc-data before-node) :id))
               ;; NOTE: need to redisplay next to newly created
               ;; node, in case `telega-chat-group-messages-for' is
               ;; used, see https://github.com/zevlg/telega.el/issues/159

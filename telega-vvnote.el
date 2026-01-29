@@ -95,6 +95,26 @@
   :type 'string
   :group 'telega-vvnote)
 
+(defvar telega-vvnote-controls-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd ",") 'telega-msg--vvnote-rewind-10-backward)
+    (define-key map (kbd "<") 'telega-msg--vvnote-rewind-10-backward)
+    (define-key map (kbd ".") 'telega-msg--vvnote-rewind-10-forward)
+    (define-key map (kbd ">") 'telega-msg--vvnote-rewind-10-forward)
+    (define-key map (kbd "x") 'telega-msg--vvnote-play-speed-toggle)
+
+    (define-key map (kbd "0") 'telega-msg--vvnote-stop)
+    (define-key map (kbd "1") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "2") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "3") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "4") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "5") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "6") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "7") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "8") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "9") 'telega-msg--vvnote-rewind-part)
+    map))
+
 (defun telega-vvnote--waves-squeeze (waves factor)
   "Squeeze the decoded WAVES by FACTOR."
   ;; Squeeze by averaging and normalizing
