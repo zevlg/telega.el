@@ -26,15 +26,15 @@
   "Ensure telega dependencies are installed."
   (package-initialize)
 
-  (let* ((core-pkgs '(visual-fill-column rainbow-identifiers))
-         (contrib-pkgs '(all-the-icons alert dashboard transient))
+  (let* ((core-pkgs '(visual-fill-column transient))
+         (contrib-pkgs '(all-the-icons alert dashboard))
          (all-pkgs (append core-pkgs contrib-pkgs))
          (need-pkgs (cl-remove-if #'package-installed-p all-pkgs)))
     (when need-pkgs
       (add-to-list 'package-archives
                    '("melpa-stable" . "https://stable.melpa.org/packages/"))
-      ;; (add-to-list 'package-archives
-      ;;              '("melpa" . "http://melpa.org/packages/"))
+      (add-to-list 'package-archives
+                   '("melpa" . "http://melpa.org/packages/"))
 ;      (add-to-list 'package-archives '("melpa" . "http://www.mirrorservice.org/sites/melpa.org/packages/"))
 ;      (add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/"))
       (package-refresh-contents)
