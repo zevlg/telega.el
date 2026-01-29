@@ -60,7 +60,7 @@
       (when link
         (telega-browse-url link)))))
 
-(cl-defun telega--getCallbackQueryAnswer (msg payload &key (callback #'ignore))
+(cl-defun telega--getCallbackQueryAnswer (msg payload &key (callback #'telega--on-callbackQueryAnswer))
   "Async send callback to bot."
   (declare (indent 2))
   (telega-server--call
