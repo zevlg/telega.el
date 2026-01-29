@@ -34,6 +34,19 @@
 (declare-function telega-msg-forward-dwim "telega-chat" (messages &optional remove-sender-p remove-caption-p chat))
 (declare-function telega-msg-forward-dwim-to-many "telega-chat" (messages chats &optional remove-sender-p remove-caption-p))
 
+;; Compatibility with older transient
+(unless (fboundp 'transient-prefix-object)
+  (defun transient-prefix-object ()
+    (or transient--prefix transient-current-prefix)))
+
+;; Compatibility with older transient
+(defclass telega-transient-information (transient-suffix)
+  ((format :initform "  %d")
+   (key    :initform "<unbound>"))
+  "Display-only information, aligned with suffix keys.
+Technically a suffix object with no associated command.")
+
+
 (defvar telega-transient--variable-values nil
   "List of values used for transient.")
 
@@ -153,13 +166,6 @@
   :prompt (lambda () "Forward to: ")
   :multi-value t
   )
-
-;; Compatibility with older transient
-(defclass telega-transient-information (transient-suffix)
-  ((format :initform "  %d")
-   (key    :initform "<unbound>"))
-  "Display-only information, aligned with suffix keys.
-Technically a suffix object with no associated command.")
 
 (transient-define-infix telega-transient--infix-fwd-about ()
   "Help for forwarding options."
