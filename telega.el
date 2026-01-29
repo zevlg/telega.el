@@ -6,7 +6,7 @@
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords: comm
-;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (transient "0.3.0"))
+;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (transient "0.9.0"))
 ;; URL: https://github.com/zevlg/telega.el
 ;; Version: 0.8.600
 (defconst telega-version "0.8.600")
