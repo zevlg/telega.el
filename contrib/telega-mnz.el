@@ -227,7 +227,7 @@ language-detection is used in this case, used for
                    ((consp telega-mnz-use-language-detection)
                     (and (>= (length code-text)
                              (car telega-mnz-use-language-detection))
-                         (>= (length (string-split code-text nil t))
+                         (>= (length (split-string code-text nil t))
                              (cdr telega-mnz-use-language-detection))))
                    (t telega-mnz-use-language-detection)))
     (setq language (funcall #'language-detection-string code-text)))

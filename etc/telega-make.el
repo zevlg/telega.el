@@ -29,12 +29,14 @@
   (let* ((core-pkgs '(visual-fill-column transient))
          (contrib-pkgs '(all-the-icons alert dashboard))
          (all-pkgs (append core-pkgs contrib-pkgs))
-         (need-pkgs (cl-remove-if #'package-installed-p all-pkgs)))
+         (need-pkgs all-pkgs)
+         ;; (need-pkgs (cl-remove-if #'package-installed-p all-pkgs))
+         )
     (when need-pkgs
       (add-to-list 'package-archives
                    '("melpa-stable" . "https://stable.melpa.org/packages/"))
-      (add-to-list 'package-archives
-                   '("melpa" . "http://melpa.org/packages/"))
+      ;; (add-to-list 'package-archives
+      ;;              '("melpa" . "http://melpa.org/packages/"))
 ;      (add-to-list 'package-archives '("melpa" . "http://www.mirrorservice.org/sites/melpa.org/packages/"))
 ;      (add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/"))
       (package-refresh-contents)
@@ -49,7 +51,7 @@
       ;;                     () (list (list 'dashboard '(1 9 0)))))))
 
       (dolist (pkg need-pkgs)
-        (cl-assert (not (package-installed-p pkg)))
+;        (cl-assert (not (package-installed-p pkg)))
         (package-install pkg)))))
 
 (defun telega-byte-compile-everything ()

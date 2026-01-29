@@ -7468,7 +7468,7 @@ If `\\[universal-argument]' is given, then cancel topic filtering as well."
 
 (defun telega-search-query-as-regexp (query)
   "Return QUERY as regexp for `telega-highlight-text-mode'."
-  (when-let ((tokens (string-split query telega-history-search-separators t)))
+  (when-let ((tokens (split-string query telega-history-search-separators t)))
     (propertize (regexp-opt tokens)
                 :telega-inplace-query query
                 'display

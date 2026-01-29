@@ -374,7 +374,7 @@
                                                  auto-delete-in 1 'long))))))))
   :if (lambda ()
         (when-let* ((messages (telega-transient-scope))
-                    (_ (= 1 (length messages)))
+                    ((= 1 (length messages)))
                     (auto-delete-in (plist-get (car messages) :auto_delete_in)))
           (not (telega-zerop auto-delete-in))))
   :class 'transient-information)
@@ -498,8 +498,9 @@
   :if (lambda ()
         (telega-msg-match-p (telega-transient-scope)
           '(type Audio)))
+
   (interactive (list (telega-transient-scope)))
-  ;; TODO
+  (message "TODO: save audio to profile: msg-id=%S" (plist-get msg :id))
   )
 
 (transient-define-suffix telega-transient--suffix-save-to-downloads (msg)
@@ -515,8 +516,9 @@
 (transient-define-suffix telega-transient--suffix-save-to-file (msg)
   "Save message's file into local file."
   :description (lambda () (telega-i18n "lng_save_file"))
+
   (interactive (list (telega-transient-scope)))
-  ;; TODO
+  (message "TODO: save to file: msg-id=%S" (plist-get msg :id))
   )
 
 (transient-define-prefix telega-transient-msg-save (msg)
@@ -1105,7 +1107,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
 
          (unless (telega-transient--invite-link-need-subscription-p)
            (when-let* ((desc (telega-tl-str il-info :description))
-                       (desc-lines (string-split desc "\n")))
+                       (desc-lines (split-string desc "\n")))
              (telega-ins (nth 0 desc-lines))
              (when (> (length desc-lines) 1)
                (telega-ins (telega-symbol 'eliding)))
@@ -1427,9 +1429,8 @@ Return fake chat suitable for `telega-ins--msg-sender'."
   :type '(repeat symbol)
   :group 'telega-modes)
 
-(eval-when-compile
-  (defun telega-transient--keymap-prefix-name (keymap-symbol)
-    (intern (format "telega-transient--prefix-%S" keymap-symbol))))
+(defun telega-transient--keymap-prefix-name (keymap-symbol)
+  (intern (format "telega-transient--prefix-%S" keymap-symbol)))
 
 (defun telega-transient--keymap-setup-children (keymap-symbol)
   (let ((keymap (symbol-value keymap-symbol)))
