@@ -29,8 +29,7 @@
   (let* ((core-pkgs '(visual-fill-column transient))
          (contrib-pkgs '(all-the-icons alert dashboard))
          (all-pkgs (append core-pkgs contrib-pkgs))
-         (need-pkgs all-pkgs)
-         ;; (need-pkgs (cl-remove-if #'package-installed-p all-pkgs))
+         (need-pkgs (cl-remove-if #'package-installed-p all-pkgs))
          )
     (when need-pkgs
       (add-to-list 'package-archives
@@ -51,7 +50,7 @@
       ;;                     () (list (list 'dashboard '(1 9 0)))))))
 
       (dolist (pkg need-pkgs)
-;        (cl-assert (not (package-installed-p pkg)))
+        (cl-assert (not (package-installed-p pkg)))
         (package-install pkg)))))
 
 (defun telega-byte-compile-everything ()
