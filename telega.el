@@ -386,7 +386,11 @@ string at point."
 (provide 'telega)
 
 
-(push (expand-file-name "contrib" telega--lib-directory) load-path)
+;; don't add contrib directory when it doesn't exist
+;; in guix contrib is installed separately from the main package
+(let ((contrib (expand-file-name "contrib" telega--lib-directory)))
+  (when (file-directory-p contrib)
+    (push contrib load-path)))
 
 ;; Enable some global minor modes by default
 (telega-patrons-mode 1)
