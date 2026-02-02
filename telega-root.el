@@ -638,6 +638,13 @@ Keep cursor position only if CHAT is visible."
           (telega-buffer--update-win-point)
           (run-hooks 'telega-root-update-hook))))))
 
+(defcustom telega-root-auto-fill-margin-columns 1
+  "Number off additional columns to use as margin."
+  :package-version '(telega . "0.8.573")
+  :type '(choice (const :tag "No additional margin" :value nil)
+                 (integer :tag "Additional margin"))
+  :group 'telega-root)
+
 (defun telega-root-buffer-auto-fill (&optional win)
   "Automatically resize root buffer formatting to WIN's width."
   (interactive (list (get-buffer-window)))
@@ -657,6 +664,7 @@ Keep cursor position only if CHAT is visible."
            ;; https://github.com/zevlg/telega.el/issues/325
            (new-root-fill-column
             (- new-fill-column
+               (or telega-root-auto-fill-margin-columns 0)
                (telega-chars-in-width
                 (if win
                     (with-selected-window win

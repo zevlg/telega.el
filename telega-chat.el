@@ -7731,7 +7731,7 @@ containing QUERY sent by specified sender."
 ;; to the width of the window displaying chatbuf.
 ;;
 ;; ~telega-chat-auto-fill-mode~ is enabled by default.
-(defcustom telega-chat-auto-fill-margin-columns nil
+(defcustom telega-chat-auto-fill-margin-columns 1
   "Number off additional columns to use as margin."
   :package-version '(telega . "0.8.573")
   :type '(choice (const :tag "No additional margin" :value nil)
@@ -7750,10 +7750,10 @@ containing QUERY sent by specified sender."
     (let* ((win-margins (window-margins win))
            (new-fill-column (+ (window-width win 'remap)
                                (or (car win-margins) 0)
-                               (or (cdr win-margins) 0)
-                               (- (or telega-chat-auto-fill-margin-columns 0))))
+                               (or (cdr win-margins) 0)))
            (new-chat-fill-column
             (- new-fill-column
+               (or telega-chat-auto-fill-margin-columns 0)
                (telega-chars-in-width
                 (if win
                     (with-selected-window win
