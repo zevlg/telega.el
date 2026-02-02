@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (transient "0.9.0"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.600
-(defconst telega-version "0.8.600")
+;; Version: 0.8.601
+(defconst telega-version "0.8.601")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.8.60")
 (defconst telega-tdlib-max-version nil)
