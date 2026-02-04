@@ -638,7 +638,9 @@ NOT USED."
         ((executable-find "mpv")
          '(concat "mpv"
                   (when telega-ffplay-media-timestamp
-                    (format " --start=%f" telega-ffplay-media-timestamp))))
+                    (format " --start=%f" telega-ffplay-media-timestamp))
+                  (when telega-video-play-incrementally
+                    " --cache=no")))
         ((executable-find "mplayer")
          '(concat "mplayer"
                   (when telega-ffplay-media-timestamp
