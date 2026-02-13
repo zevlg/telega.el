@@ -5858,7 +5858,10 @@ If `\\[universal-argument]' is given, then attach clipboard as document."
           (error "No image in CLIPBOARD"))
         (telega-chatbuf-attach-media tmpfile (when as-file-p 'preview)))
 
-    (if-let* ((urls (gui-get-selection 'CLIPBOARD 'text/uri-list)))
+    (if-let* ((urls (and (cl-position "text/plain"
+                                      (gui-get-selection 'CLIPBOARD 'TARGETS)
+                                      :test #'string-equal)
+                         (gui-get-selection 'CLIPBOARD 'text/uri-list))))
         (dolist (uri (split-string urls "[\r\n\0]" t))
           (telega-chatbuf-dnd-attach uri nil as-file-p))
       (apply #'telega-chatbuf--yank-media
