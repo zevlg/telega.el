@@ -39,11 +39,14 @@
   :type '(cons color color)
   :group 'telega-vvnote)
 
-(defcustom telega-vvnote-play-speed 1
-  "*Playback speed for voice/video notes."
-  :package-version '(telega . "0.7.52")
-  :type 'number
+(defcustom telega-vvnote-play-speeds '(1 1.5 2)
+  "List of playback speeds to cycle through for voice/video notes."
+  :package-version '(telega . "0.8.602")
+  :type '(repeat number)
   :group 'telega-vvnote)
+
+(defvar telega-vvnote-play-speed 1
+  "Current playback speed for voice/video notes.")
 
 (defcustom telega-vvnote-play-next t
   "*After playing voice note continue playing next voice note in the chat."
@@ -575,17 +578,16 @@ Return filename with recorded video note."
 
 ;; Callbacks for ffplay controls, used by `telega-msg-button-map'
 (defun telega-msg--vvnote-play-speed-toggle (msg)
-  "Toggle playback speed for the media message.
-Only two modes are available: normal speed and x2 speed."
+  "Cycle playback speed for the media message.
+Cycles through speeds defined in `telega-vvnote-play-speeds'."
   (interactive (list (telega-msg-for-interactive)))
   (when-let ((proc (plist-get msg :telega-ffplay-proc)))
-    (if (equal telega-vvnote-play-speed 1)
-        (setq telega-vvnote-play-speed 1.8)
-      (setq telega-vvnote-play-speed 1))
-
+    (let ((tail (cdr (member telega-vvnote-play-speed
+                             telega-vvnote-play-speeds))))
+      (setq telega-vvnote-play-speed
+            (if tail (car tail) (car telega-vvnote-play-speeds))))
     (telega-msg-redisplay msg)
-
-    ;; Restart ffplay by reopenning message content
+    ;; Restart ffplay by reopening message content
     (when (telega-ffplay-playing-p proc)
       (telega-ffplay-pause proc nil 'ignore-callback)
       (telega-msg-open-content msg))))
