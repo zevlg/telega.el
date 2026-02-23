@@ -39,13 +39,13 @@
   :type '(cons color color)
   :group 'telega-vvnote)
 
-(defcustom telega-vvnote-play-speeds '(1 1.5 2)
+(defcustom telega-vvnote-play-speeds '(1 1.8)
   "List of playback speeds to cycle through for voice/video notes."
   :package-version '(telega . "0.8.602")
   :type '(repeat number)
   :group 'telega-vvnote)
 
-(defvar telega-vvnote-play-speed 1
+(defvar telega-vvnote--play-speed 1
   "Current playback speed for voice/video notes.")
 
 (defcustom telega-vvnote-play-next t
@@ -582,9 +582,9 @@ Return filename with recorded video note."
 Cycles through speeds defined in `telega-vvnote-play-speeds'."
   (interactive (list (telega-msg-for-interactive)))
   (when-let ((proc (plist-get msg :telega-ffplay-proc)))
-    (let ((tail (cdr (member telega-vvnote-play-speed
+    (let ((tail (cdr (member telega-vvnote--play-speed
                              telega-vvnote-play-speeds))))
-      (setq telega-vvnote-play-speed
+      (setq telega-vvnote--play-speed
             (if tail (car tail) (car telega-vvnote-play-speeds))))
     (telega-msg-redisplay msg)
     ;; Restart ffplay by reopening message content
