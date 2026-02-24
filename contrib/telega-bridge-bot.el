@@ -172,28 +172,29 @@ CALLBACK-FUNC is called when fetch finished or cache exists."
         (url-retrieve
          url
          (lambda (_status cb-cache cb-cache-key cb-func)
-           (goto-char url-http-end-of-headers)
-           (when-let* ((json-object-type 'hash-table)
-                       (json-array-type 'list)
-                       (json-key-type 'string)
-                       (json (json-read))
-                       (joined-members (gethash "joined" json))) ; skip if joined_members is empty
-             (dolist (member (hash-table-keys joined-members))
-               (when-let* ((not-t2bot? (not (string-suffix-p ":t2bot.io" member)))
-                           (avatar-url (gethash "avatar_url" (gethash member joined-members)))
-                           (display-name (gethash "display_name" (gethash member joined-members))))
-                 (puthash display-name avatar-url cb-cache)))
-             ;; update cache
-             (setq telega-bridge-bot--matrix-room-cache
-                   (plist-put telega-bridge-bot--matrix-room-cache cb-cache-key cb-cache))
-             (setq
-              telega-bridge-bot--matrix-room-cache-last-modified-plist
-              (plist-put
-               telega-bridge-bot--matrix-room-cache-last-modified-plist
-               cb-cache-key
-               (current-time)))
-             (when (functionp cb-func)
-               (funcall cb-func cb-cache))))
+           (when url-http-end-of-headers
+             (goto-char url-http-end-of-headers)
+             (when-let* ((json-object-type 'hash-table)
+                         (json-array-type 'list)
+                         (json-key-type 'string)
+                         (json (json-read))
+                         (joined-members (gethash "joined" json))) ; skip if joined_members is empty
+               (dolist (member (hash-table-keys joined-members))
+                 (when-let* ((not-t2bot? (not (string-suffix-p ":t2bot.io" member)))
+                             (avatar-url (gethash "avatar_url" (gethash member joined-members)))
+                             (display-name (gethash "display_name" (gethash member joined-members))))
+                   (puthash display-name avatar-url cb-cache)))
+               ;; update cache
+               (setq telega-bridge-bot--matrix-room-cache
+                     (plist-put telega-bridge-bot--matrix-room-cache cb-cache-key cb-cache))
+               (setq
+                telega-bridge-bot--matrix-room-cache-last-modified-plist
+                (plist-put
+                 telega-bridge-bot--matrix-room-cache-last-modified-plist
+                 cb-cache-key
+                 (current-time)))
+               (when (functionp cb-func)
+                 (funcall cb-func cb-cache)))))
          (list cache cache-key callback-func)
          'silent)
       ;; use cache
