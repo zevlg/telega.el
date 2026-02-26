@@ -116,7 +116,7 @@
   "%s/_matrix/media/v3/download/%s") ; mxc id
 (defvar telega-bridge-bot--matrix-media-thumbnail-endpoint
   "%s/_matrix/media/v3/thumbnail/%s?width=96&height=96&method=crop") ; mxc id
-(defvar telega-bridge-bot--matrix-media-auth-download-endpoint
+(defconst telega-bridge-bot--matrix-media-auth-download-endpoint
   "%s/_matrix/client/v1/media/download/%s"
   "Authenticated Matrix media download endpoint (MSC3916 / Matrix 1.11).")
 
