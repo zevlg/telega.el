@@ -106,6 +106,8 @@
 
 (defvar telega-bridge-bot--matrix-room-cache nil)
 (defvar telega-bridge-bot--matrix-room-cache-last-modified-plist '())
+(defvar telega-bridge-bot--matrix-room-fetch-callbacks (make-hash-table :test 'equal)
+  "Maps room-id to list of pending callbacks waiting for members fetch.")
 
 (defvar telega-bridge-bot--matrix-host "https://matrix-client.matrix.org")
 (defvar telega-bridge-bot--matrix-joined-members-endpoint
@@ -114,10 +116,13 @@
   "%s/_matrix/media/v3/download/%s") ; mxc id
 (defvar telega-bridge-bot--matrix-media-thumbnail-endpoint
   "%s/_matrix/media/v3/thumbnail/%s?width=96&height=96&method=crop") ; mxc id
+(defvar telega-bridge-bot--matrix-media-auth-download-endpoint
+  "%s/_matrix/client/v1/media/download/%s"
+  "Authenticated Matrix media download endpoint (MSC3916 / Matrix 1.11).")
 
 (defun telega-bridge-bot--download-async (url filename callback)
   "Download URL to FILENAME asynchronously.
-CALLBACK is called when download finished."
+CALLBACK is called when download finished, whether or not it succeeded."
   (url-retrieve
    url
    (lambda (_status path cb)
@@ -125,8 +130,9 @@ CALLBACK is called when download finished."
      (when (string-match "200 OK" (buffer-string))
        (let ((inhibit-message t))
          (re-search-forward "\r?\n\r?\n")
-         (write-region (point) (point-max) path)
-         (funcall cb))))
+         (write-region (point) (point-max) path)))
+     (funcall cb))
+
    (list filename callback)
    'silent))
 
@@ -151,54 +157,71 @@ If FORCE-UPDATE is non-nil, force update the cache.
 The result will be stored in `telega-bridge-bot--matrix-room-cache' async.
 CALLBACK-FUNC is called when fetch finished or cache exists."
   (let* ((cache-key (intern matrix-room-id))
-         (cache
-          (or (plist-get telega-bridge-bot--matrix-room-cache cache-key)
-              (make-hash-table :test 'equal))))
-    (if-let* ((update-p
-               (or force-update
-                   (time-less-p
-                    (plist-get telega-bridge-bot--matrix-room-cache-last-modified-plist cache-key)
-                    (time-subtract (current-time)
-                                   telega-bridge-bot-matrix-members-expires))
-                   (hash-table-empty-p cache)))
-              (url-request-method "GET")
-              (url-request-extra-headers '(("Content-Type" . "application/json")))
-              (access-token (telega-bridge-bot--get-matrix-access-token))
-              (url (format telega-bridge-bot--matrix-joined-members-endpoint
-                           telega-bridge-bot--matrix-host
-                           matrix-room-id
-                           access-token)))
-        ;; fetch joined members asynchronously
-        (url-retrieve
-         url
-         (lambda (_status cb-cache cb-cache-key cb-func)
-           (when url-http-end-of-headers
-             (goto-char url-http-end-of-headers)
-             (when-let* ((json-object-type 'hash-table)
-                         (json-array-type 'list)
-                         (json-key-type 'string)
-                         (json (json-read))
-                         (joined-members (gethash "joined" json))) ; skip if joined_members is empty
-               (dolist (member (hash-table-keys joined-members))
-                 (when-let* ((not-t2bot? (not (string-suffix-p ":t2bot.io" member)))
-                             (avatar-url (gethash "avatar_url" (gethash member joined-members)))
-                             (display-name (gethash "display_name" (gethash member joined-members))))
-                   (puthash display-name avatar-url cb-cache)))
-               ;; update cache
-               (setq telega-bridge-bot--matrix-room-cache
-                     (plist-put telega-bridge-bot--matrix-room-cache cb-cache-key cb-cache))
-               (setq
-                telega-bridge-bot--matrix-room-cache-last-modified-plist
-                (plist-put
-                 telega-bridge-bot--matrix-room-cache-last-modified-plist
-                 cb-cache-key
-                 (current-time)))
-               (when (functionp cb-func)
-                 (funcall cb-func cb-cache)))))
-         (list cache cache-key callback-func)
-         'silent)
-      ;; use cache
-      (funcall callback-func cache))))
+         (cache (or (plist-get telega-bridge-bot--matrix-room-cache cache-key)
+                    (make-hash-table :test 'equal)))
+         (update-p (or force-update
+                       (time-less-p
+                        (plist-get telega-bridge-bot--matrix-room-cache-last-modified-plist cache-key)
+                        (time-subtract (current-time) telega-bridge-bot-matrix-members-expires))
+                       (hash-table-empty-p cache))))
+    (cond
+     ((not update-p)
+      ;; cache is fresh; fire callback immediately
+      (when (functionp callback-func) (funcall callback-func cache)))
+     ((gethash matrix-room-id telega-bridge-bot--matrix-room-fetch-callbacks)
+      ;; fetch already in-progress; queue callback to avoid duplicate requests
+      (when (functionp callback-func)
+        (puthash matrix-room-id
+                 (append (gethash matrix-room-id telega-bridge-bot--matrix-room-fetch-callbacks)
+                         (list callback-func))
+                 telega-bridge-bot--matrix-room-fetch-callbacks)))
+     (t
+      ;; start a new fetch
+      (if-let* ((url-request-method "GET")
+                (url-request-extra-headers '(("Content-Type" . "application/json")))
+                (access-token (telega-bridge-bot--get-matrix-access-token))
+                (url (format telega-bridge-bot--matrix-joined-members-endpoint
+                             telega-bridge-bot--matrix-host
+                             (url-hexify-string matrix-room-id)
+                             access-token)))
+          (progn
+            (puthash matrix-room-id
+                     (if (functionp callback-func) (list callback-func) nil)
+                     telega-bridge-bot--matrix-room-fetch-callbacks)
+            (url-retrieve
+             url
+             (lambda (_status cb-cache cb-cache-key cb-room-id)
+               (when url-http-end-of-headers
+                 (goto-char url-http-end-of-headers)
+                 (when-let* ((json-object-type 'hash-table)
+                             (json-array-type 'list)
+                             (json-key-type 'string)
+                             (json (json-read))
+                             (joined-members (gethash "joined" json)))
+                   (dolist (member (hash-table-keys joined-members))
+                     (let* ((member-info (gethash member joined-members))
+                            (not-t2bot? (not (string-suffix-p ":t2bot.io" member)))
+                            (avatar-url (gethash "avatar_url" member-info))
+                            (display-name (gethash "display_name" member-info)))
+                       (when (and not-t2bot? avatar-url)
+                         (when display-name
+                           (puthash display-name avatar-url cb-cache))
+                         ;; also cache by MXID for bridges that use @user:server format
+                         (puthash member avatar-url cb-cache))))
+                   (setq telega-bridge-bot--matrix-room-cache
+                         (plist-put telega-bridge-bot--matrix-room-cache cb-cache-key cb-cache))
+                   (setq telega-bridge-bot--matrix-room-cache-last-modified-plist
+                         (plist-put telega-bridge-bot--matrix-room-cache-last-modified-plist
+                                    cb-cache-key (current-time)))))
+               ;; fire all queued callbacks regardless of success/failure
+               (let ((pending (gethash cb-room-id telega-bridge-bot--matrix-room-fetch-callbacks)))
+                 (remhash cb-room-id telega-bridge-bot--matrix-room-fetch-callbacks)
+                 (dolist (cb pending)
+                   (when (functionp cb) (funcall cb cb-cache)))))
+             (list cache cache-key matrix-room-id)
+             'silent))
+        ;; no access token; fire callback with current cache
+        (when (functionp callback-func) (funcall callback-func cache)))))))
 
 (defun telega-bridge-bot--matrix-fetch-user (chat-id msg-id matrix-room-id display-name file-path
                                                      &optional force-update)
@@ -225,12 +248,15 @@ If FORCE-UPDATE is non-nil, force update the file."
   (when-let* ((name (telega--desurrogate-apply display-name 'no-props))
               (avatar-url (gethash name members))
               (mxc-id (telega-bridge-bot--matrix-mxc-id avatar-url))
+              ;; try thumbnail via homeserver proxy first
               (thumbnail-url (format telega-bridge-bot--matrix-media-thumbnail-endpoint
                                      telega-bridge-bot--matrix-host
                                      mxc-id))
-              (original-url (format telega-bridge-bot--matrix-media-download-endpoint
-                                    telega-bridge-bot--matrix-host
-                                    mxc-id))
+              ;; fallback: authenticated download via homeserver (handles MSC3916 servers)
+              (access-token (telega-bridge-bot--get-matrix-access-token))
+              (auth-url (format telega-bridge-bot--matrix-media-auth-download-endpoint
+                                telega-bridge-bot--matrix-host
+                                mxc-id))
               (url-request-extra-headers '(("Accept" . "image/jpeg"))))
     (when (and
            (file-exists-p file-path)
@@ -244,15 +270,20 @@ If FORCE-UPDATE is non-nil, force update the file."
      thumbnail-url
      file-path
      (lambda ()
-       (if (not (zerop (file-attribute-size (file-attributes file-path))))
-           (telega-bridge-bot--download-async-callback chat-id msg-id)
-         ;; server not support thumbnail, use original image
-         (delete-file file-path)
-         (telega-bridge-bot--download-async
-          original-url
-          file-path
-          (lambda ()
-            (telega-bridge-bot--download-async-callback chat-id msg-id))))))))
+       (let* ((size (and (file-exists-p file-path)
+                         (file-attribute-size (file-attributes file-path)))))
+         (if (and size (not (zerop size)))
+             (telega-bridge-bot--download-async-callback chat-id msg-id)
+           ;; thumbnail via proxy failed; try authenticated download via homeserver
+           (when (file-exists-p file-path) (delete-file file-path))
+           (let ((url-request-extra-headers
+                  `(("Accept" . "image/jpeg")
+                    ("Authorization" . ,(format "Bearer %s" access-token)))))
+             (telega-bridge-bot--download-async
+              auth-url
+              file-path
+              (lambda ()
+                (telega-bridge-bot--download-async-callback chat-id msg-id))))))))))
 
 (defun telega-bridge-bot--matrix-text-spliter (text)
   "Split TEXT into username and message."
@@ -395,7 +426,8 @@ By CHAT-ID BOT-ID and USERNAME, return bridge sender id.
 It will recaculate the profile photo path and file id,
 you can run this function after user profile photo file created or changed.
 If FORCE-UPDATE is non-nil, force update the user info."
-  (let* ((sender-id (telega-bridge-bot--user-id chat-id bot-id username))
+  (let* ((username (replace-regexp-in-string "\\`[^[:ascii:]]+ " "" username))
+         (sender-id (telega-bridge-bot--user-id chat-id bot-id username))
          (info-hash (alist-get 'user telega--info))
          (user (gethash sender-id info-hash)))
     (when (or
