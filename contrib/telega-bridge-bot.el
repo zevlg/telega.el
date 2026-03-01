@@ -108,6 +108,8 @@
 (defvar telega-bridge-bot--matrix-room-cache-last-modified-plist '())
 (defvar telega-bridge-bot--matrix-room-fetch-callbacks (make-hash-table :test 'equal)
   "Maps room-id to list of pending callbacks waiting for members fetch.")
+(defvar telega-bridge-bot--recent-counterparty-name (make-hash-table :test 'equal)
+  "Maps (chat-id bot-id) to recently resolved bridge username.")
 
 (defvar telega-bridge-bot--matrix-host "https://matrix-client.matrix.org")
 (defvar telega-bridge-bot--matrix-joined-members-endpoint
@@ -368,6 +370,14 @@ Return a string if STRING is non-nil."
    "telega-bridge-bot-"
    (telega-bridge-bot--user-id chat-id bot-id username 'string)))
 
+(defun telega-bridge-bot--cache-counterparty-name (chat-id bot-id username)
+  "Cache USERNAME for bridge pair CHAT-ID and BOT-ID."
+  (puthash (list chat-id bot-id) username telega-bridge-bot--recent-counterparty-name))
+
+(defun telega-bridge-bot--cached-counterparty-name (chat-id bot-id)
+  "Return cached bridge username for CHAT-ID and BOT-ID."
+  (gethash (list chat-id bot-id) telega-bridge-bot--recent-counterparty-name))
+
 (defun telega-bridge-bot--file-id (path)
   "Return file id based on PATH and modification time seconds."
   (let* ((mtime (file-attribute-modification-time (file-attributes path)))
@@ -442,6 +452,7 @@ If FORCE-UPDATE is non-nil, force update the user info."
          (sender-id (telega-bridge-bot--user-id chat-id bot-id username))
          (info-hash (alist-get 'user telega--info))
          (user (gethash sender-id info-hash)))
+    (telega-bridge-bot--cache-counterparty-name chat-id bot-id username)
     (when (or
            force-update
            (not user)
@@ -449,6 +460,19 @@ If FORCE-UPDATE is non-nil, force update the user info."
       (telega-bridge-bot--fetch-user msg-id chat-id bot-id username force-update)
       (puthash sender-id (telega-bridge-bot--user chat-id bot-id username) info-hash))
     sender-id))
+
+(defun telega-bridge-bot--update-sticker (msg)
+  "Update sender id in sticker MSG using recently resolved bridge username."
+  (when-let* ((msg-id (telega--tl-get msg :id))
+              (chat-id (telega--tl-get msg :chat_id))
+              (bot-id (telega--tl-get (telega-msg-sender msg) :id))
+              (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id))
+              (content (telega--tl-get msg :content))
+              (sticker-p (eq (telega--tl-type content) 'messageSticker))
+              (name (or (telega-tl-str msg :author_signature)
+                        (telega-bridge-bot--cached-counterparty-name chat-id bot-id))))
+    (let ((sender-id (telega-bridge-bot--update-user-info msg-id chat-id bot-id name)))
+      (plist-put msg :sender_id (list :@type "messageSenderUser" :user_id sender-id)))))
 
 (defun telega-bridge-bot--download-async-callback (chat-id msg-id)
   "Callback for `telega-bridge-bot--download-async'.
@@ -545,7 +569,8 @@ Will update CHAT-ID MSG-ID when download completed."
   (when-let* ((no-modify? (not (telega--tl-get msg :telega-bridge-bot-modified))))
     (let ((update-functions '(telega-bridge-bot--update-fmt-text
                               telega-bridge-bot--update-forwarded
-                              telega-bridge-bot--update-file))
+                              telega-bridge-bot--update-file
+                              telega-bridge-bot--update-sticker))
           (bridge-sender nil))
       ;; break if one of the update function return non-nil
       (while (and (not bridge-sender) update-functions)
