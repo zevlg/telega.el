@@ -639,19 +639,19 @@ Return nil for deleted messages."
 (defun telega-msg-voice-note--ffplay-callback (proc msg &optional
                                                     no-progress-adjust)
   "Callback for voice/video note.
-Adjust progress according to the `telega-vvnote-play-speed'.
+Adjust progress according to the `telega-vvnote--play-speed'.
 Also, start playing next voice/video note when active voice/video
 note finishes."
-  ;; NOTE: adjust `:progress' with `telega-vvnote-play-speed'
+  ;; NOTE: adjust `:progress' with `telega-vvnote--play-speed'
   ;; since ffplay reports progress disreguarding atempo
   (unless no-progress-adjust
     (when-let* ((proc-plist (process-plist proc))
                 (progress (plist-get proc-plist :progress))
                 (resumed-at (or (plist-get msg :telega-ffplay-resumed-at) 0)))
       (cl-assert (numberp progress))
-      (unless (equal 1 telega-vvnote-play-speed)
+      (unless (equal 1 telega-vvnote--play-speed)
         (setq progress (+ resumed-at (* (- progress resumed-at)
-                                        telega-vvnote-play-speed)))
+                                        telega-vvnote--play-speed)))
         (set-process-plist proc (plist-put proc-plist :progress progress)))))
 
   (telega-msg-redisplay msg)
@@ -709,9 +709,9 @@ note finishes."
                            (concat
                             (when paused-p
                               (format "-ss %.2f " paused-p))
-                            (unless (equal telega-vvnote-play-speed 1)
+                            (unless (equal telega-vvnote--play-speed 1)
                               (format "-af atempo=%.2f "
-                                      telega-vvnote-play-speed))
+                                      telega-vvnote--play-speed))
                             (cdr (assq 'voice-note
                                        telega-open-message-ffplay-args)))
                          (lambda (proc)
@@ -800,13 +800,13 @@ non-nil."
                            (telega-file--path file)
                            (concat
                             "-vf scale=120:120"
-                            (unless (equal telega-vvnote-play-speed 1)
+                            (unless (equal telega-vvnote--play-speed 1)
                               (format " -af atempo=%.2f"
-                                      telega-vvnote-play-speed))
+                                      telega-vvnote--play-speed))
                             (concat " -f " (car telega-vvnote--has-audio-inputs))
                             " default -vsync 0")
                          (list #'telega-msg-video-note--ffplay-callback msg)
-                         :seek paused-p :speed telega-vvnote-play-speed))
+                         :seek paused-p :speed telega-vvnote--play-speed))
             (with-telega-chatbuf (telega-msg-chat msg)
               (telega-chatbuf--activate-vvnote-msg msg)))
 
