@@ -11,7 +11,7 @@
 ;; Version: 0.8.601
 (defconst telega-version "0.8.601")
 (defconst telega-server-min-version "0.7.7")
-(defconst telega-tdlib-min-version "1.8.60")
+(defconst telega-tdlib-min-version "1.8.61")
 (defconst telega-tdlib-max-version nil)
 
 (defconst telega-tdlib-releases '("1.8.0" . "1.9.0")
