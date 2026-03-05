@@ -975,7 +975,7 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
               (telega-msg--vvnote-rewind msg 10)))
   (telega-ins " ")
   (unless no-2x-button
-    (let* ((label2x (if (eq telega-vvnote-play-speed 1) "1×" "2×"))
+    (let* ((label2x (format "%g×" telega-vvnote--play-speed))
            (ends (if (functionp telega-box-button-endings)
                      (funcall telega-box-button-endings label2x)
                    telega-box-button-endings)))
