@@ -75,6 +75,7 @@
 (require 'visual-fill-column)
 
 ;; shutup compiler
+(defvar company-backend)
 (defvar company-backends)
 (declare-function company-complete "company")
 (declare-function company-begin-backend "company" (backend &optional callback))
@@ -6834,30 +6835,102 @@ REVOKE forced to non-nil for supergroup, channel or a secret chat."
       ;; TODO: add other completions
       ))
 
-(defun telega-chatbuf-completion-candidates (prefix)
-  "Return list of completion candidates for current user input."
+(defun telega-chatbuf-completion-candidates (prefix &optional backend)
+  "Return completion candidates for PREFIX.
+If BACKEND is non-nil, query that backend directly."
   ;; NOTE: for empty PREFIX string we can't decide which company
   ;; backend to use to fetch candidates
   (unless (string-empty-p prefix)
-    (when-let* ((chat telega-chatbuf--chat)
-                (company-backend (with-temp-buffer
-                                   (setq telega-chatbuf--chat chat)
-                                   ;; NOTE: `telega-company-grab-botcmd' uses
-                                   ;; `telega-chatbuf--input-marker'
-                                   (setq telega-chatbuf--input-marker (point))
-                                   (insert prefix)
-                                   (telega-company--grab-backend 'backend))))
-      (company-call-backend 'candidates prefix))))
+    (let ((company-backend (or backend
+                               (telega-chatbuf--grab-backend-safe 'backend))))
+      (when company-backend
+        (company-call-backend 'candidates prefix)))))
+
+(defun telega-chatbuf--grab-backend-safe (what)
+  "Like `telega-company--grab-backend' but skip failing backends.
+WHAT is one of `prefix', `backend' or `prefix-and-backend'."
+  (let* ((prefix nil)
+         (backend
+          (cl-find-if
+           (lambda (b)
+             (let ((company-backend b))
+               (setq prefix
+                     (condition-case _err
+                         (company-call-backend 'prefix)
+                       (error nil)))))
+           telega-company-backends)))
+    (when prefix
+      (cl-ecase what
+        (prefix prefix)
+        (backend backend)
+        (prefix-and-backend (cons prefix backend))))))
+
+(defun telega-chatbuf--normalize-username-cands (cands str)
+  "Ensure CANDS have the same leading-@ count as STR.
+When the username backend returns candidates without the leading @@
+that the user typed, prepend the missing @ and set the `display'
+text property to the original candidate so the UI shows it correctly."
+  (let ((want-ats (if (string-prefix-p "@@" str) 2 1)))
+    (mapcar
+     (lambda (c)
+       (let* ((have-ats (cond ((string-prefix-p "@@" c) 2)
+                              ((string-prefix-p "@" c) 1)
+                              (t 0)))
+              (need (max 0 (- want-ats have-ats))))
+         (if (zerop need)
+             c
+           (let ((s (concat (make-string need ?@) c)))
+             (set-text-properties 0 (length s) (text-properties-at 0 c) s)
+             (put-text-property 0 (length s) 'display c s)
+             s))))
+     cands)))
 
 (defun telega-chatbuf-complete-at-point ()
   "Function suitable for use by `completion-at-point-functions'.
 Works only if `company' feature is provided."
   (interactive)
-  (when-let ((has-company-p (featurep 'company))
-             (prefix (telega-company--grab-backend 'prefix)))
-    (list (- (point) (length (car prefix))) (point)
-          (completion-table-with-cache
-           #'telega-chatbuf-completion-candidates))))
+  (when-let* ((has-company-p (featurep 'company))
+              (pb (telega-chatbuf--grab-backend-safe 'prefix-and-backend))
+              (raw-prefix (car pb))
+              (prefix-str (if (consp raw-prefix) (car raw-prefix) raw-prefix))
+              (prefix-len (if (stringp prefix-str) (length prefix-str) 0))
+              (backend (cdr pb))
+              ((> prefix-len 0)))
+    (let ((cached-str nil)
+          (cached-cands nil))
+      (list (copy-marker (- (point) prefix-len))
+            (copy-marker (point) t)
+            (lambda (str pred action)
+              (pcase action
+                ('metadata
+                 '(metadata
+                   (category . telega-completion)
+                   (display-sort-function . identity)
+                   (cycle-sort-function . identity)))
+                (`(boundaries . ,_)
+                 '(boundaries . (0 . 0)))
+                (_
+                 (unless (equal str cached-str)
+                   (setq cached-str str
+                         cached-cands
+                         (let ((cands (telega-chatbuf-completion-candidates str backend)))
+                           (if (and (eq backend 'telega-company-username)
+                                    (string-prefix-p "@" str))
+                               (telega-chatbuf--normalize-username-cands cands str)
+                             cands))))
+                 (if (eq action t)
+                     (if pred (seq-filter pred cached-cands) cached-cands)
+                   (complete-with-action action cached-cands str pred)))))
+            :annotation-function
+            (lambda (cand)
+              (let ((company-backend backend))
+                (ignore-errors (company-call-backend 'annotation cand))))
+            :exit-function
+            (lambda (cand status)
+              (when (memq status '(finished sole))
+                (let ((company-backend backend))
+                  (ignore-errors (company-call-backend 'post-completion cand)))))
+            :company-prefix-length t))))
 
 (defun telega-chatbuf-next-link (n)
   "Jump to N's next link in the message.
