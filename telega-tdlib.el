@@ -104,9 +104,15 @@ If SYNC-P is specified, then set option is sync manner."
 
 (defun telega--addProxy (proxy-spec &optional callback)
   "Add PROXY-SPEC to the list of proxies."
-  (telega-server--call
-   `(:@type "addProxy" ,@proxy-spec)
-   (or callback #'ignore)))
+  (let ((proxy-obj (list :@type "proxy"
+                         :server (plist-get proxy-spec :server)
+                         :port (plist-get proxy-spec :port)
+                         :type (plist-get proxy-spec :type))))
+    (telega-server--call
+     `(:@type "addProxy"
+       :proxy ,proxy-obj
+       :enable ,(if (plist-get proxy-spec :enable) t :false))
+     (or callback #'ignore))))
 
 (defun telega--enableProxy (proxy &optional callback)
   (declare (indent 1))
