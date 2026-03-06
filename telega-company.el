@@ -26,6 +26,7 @@
 ;;  `telega-company-username' to complete usernames
 
 ;;; Code:
+(require 'telega-completions)
 (require 'telega-core)
 (require 'telega-tdlib)
 (require 'telega-util)
@@ -80,14 +81,7 @@ Matches only if CHAR does not apper in the middle of the word."
 
 (defun telega-company-emoji-annotation (emoji)
   "Generate annotation for the EMOJI."
-  ;; NOTE: if `telega-emoji-use-images' is used, use "EE" as
-  ;; corresponding string for better formatting.
-  ;; Flag, Fitzpatrick's emojis and emojis with ZWJ char has `1'
-  ;; width, though occupies 2 or more chars
-  (concat "  "
-          (if telega-emoji-use-images
-              (propertize "EE" 'display (telega-emoji-create-svg emoji))
-            emoji)))
+  (telega-completions--emoji-annotation emoji))
 
 ;;;###autoload
 (defun telega-company-emoji (command &optional arg &rest _ignored)
@@ -103,13 +97,8 @@ Matches only if CHAR does not apper in the middle of the word."
     ;; No caching for fuzzy matching, otherwise it won't work
     (no-cache telega-company-emoji-fuzzy-match)
     (candidates
-     (or (cl-remove-if-not
-          (lambda (en)
-            (or (string-prefix-p arg en)
-                (and telega-company-emoji-fuzzy-match
-                     (string-match-p
-                      (regexp-quote (concat "-" (substring arg 1))) en))))
-          telega-emoji-candidates)
+     (or (telega-completions--emoji-candidates
+          arg telega-company-emoji-fuzzy-match)
 
          ;; NOTE: Pass control to other emoji completion backend if no
          ;; candidates
@@ -118,9 +107,8 @@ Matches only if CHAR does not apper in the middle of the word."
      (telega-company-emoji-annotation
       (cdr (assoc arg telega-emoji-alist))))
     (post-completion
-     (delete-region (- (point) (length arg)) (point))
-     (let ((emoji (cdr (assoc arg telega-emoji-alist))))
-       (insert emoji)))
+     (telega-completions--emoji-post-completion
+      arg (cdr (assoc arg telega-emoji-alist))))
     ))
 
 ;;; ellit-org: company-backends
@@ -129,19 +117,7 @@ Matches only if CHAR does not apper in the middle of the word."
 ;;   but uses Telegram cloud for the emojis completion.
 (defun telega-company-telegram-emoji-gen-candidates (text)
   "Generate callback to asynchronously fetch emoji candidates for TEXT."
-  ;; Replace `-' with spaces before the search, so one could use `:i-love-you'
-  (cons :async
-        (lambda (callback)
-          (telega--searchEmojis
-           (replace-regexp-in-string
-            (regexp-quote "-") " " (substring text 1))
-           nil nil
-           (lambda (emoji-keywords)
-             (funcall callback
-                      (mapcar (lambda (ek)
-                                (propertize (telega-tl-str ek :keyword)
-                                            'emoji (telega-tl-str ek :emoji)))
-                              emoji-keywords)))))))
+  (telega-completions--telegram-emoji-candidates text))
 
 ;;;###autoload
 (defun telega-company-telegram-emoji (command &optional arg &rest _ignored)
@@ -162,9 +138,8 @@ Matches only if CHAR does not apper in the middle of the word."
     (annotation
      (telega-company-emoji-annotation (get-text-property 0 'emoji arg)))
     (post-completion
-     (let ((emoji (get-text-property 0 'emoji arg)))
-       (delete-region (- (point) (length arg)) (point))
-       (insert emoji)))
+     (telega-completions--emoji-post-completion
+      arg (get-text-property 0 'emoji arg)))
     ))
 
 
@@ -197,107 +172,19 @@ Matches only if CHAR does not apper in the middle of the word."
     (require-match 'never)
     (candidates
      (cl-assert (> (length arg) 0))
-     (let ((members
-            (telega--searchChatMembers
-             telega-chatbuf--chat (substring arg 1)
-             ;; NOTE: use @@ to mention admin/owner
-             (if (string-prefix-p "@@" arg)
-                 '(:@type "chatMembersFilterAdministrators")
-               ;; NOTE: "chatMembersFilterMention" might have some
-               ;; issues (see https://github.com/tdlib/td/issues/1393).
-               ;; However, using "chatMembersFilterMention" is essential
-               ;; because of Topics feature.
-               (list :@type "chatMembersFilterMention"
-                     :topic_id (telega-chatbuf--MessageTopic)))
-             )))
-       (or (nconc (mapcar (lambda (member)
-                            (propertize
-                             (or (telega-msg-sender-username member 'with-@)
-                                 (telega-msg-sender-title member))
-                             'telega-member member
-                             'telega-input arg))
-                          ;; NOTE: remove deleted and blocked users
-                          ;; from the completion list
-                          (cl-remove-if (telega-match-gen-predicate 'sender
-                                          '(or is-blocked (user is-deleted)))
-                                        members))
-                  (cl-remove-if-not (lambda (botname)
-                                      (string-prefix-p arg botname 'ignore-case))
-                                    (cl-union telega--recent-inline-bots
-                                              telega-known-inline-bots
-                                              :test #'string=)))
-
-           ;; NOTE: In case there is no candidates, and `arg' starts
-           ;; some username from Main chat list, then complete it
-           (cl-remove-if-not
-            (lambda (username)
-              (and username
-                   (string-prefix-p arg (concat "@" username) 'ignore-case)))
-            (mapcar #'telega-msg-sender-username
-                    (telega-filter-chats (telega-chats-list)
-                      telega-company-username-complete-nonmember-for)))
-           )))
+     (telega-completions--username-search
+      telega-chatbuf--chat arg
+      telega-company-username-complete-nonmember-for))
     (annotation
      ;; Use non-nil `company-tooltip-align-annotations' to align
-     (when-let ((member (or (get-text-property 0 'telega-member arg)
-                            (telega-user--by-username arg))))
-       (telega-ins--as-string
-        (telega-ins "  ")
-        (telega-ins--msg-sender member
-          :with-avatar-p telega-company-username-show-avatars)
-        (when (telega-user-p member)
-          (when-let ((admin (telega-chat-admin-get telega-chatbuf--chat member)))
-            (telega-ins--with-face 'telega-shadow
-              (telega-ins " ("
-                          (or (telega-tl-str admin :custom_title)
-                              (if (plist-get admin :is_owner)
-                                  (telega-i18n "lng_owner_badge")
-                                (telega-i18n "lng_admin_badge")))
-                          ")"))))
-        )))
+     (telega-completions--username-annotation
+      telega-chatbuf--chat arg
+      telega-company-username-show-avatars))
     (post-completion
-     (when-let ((input (get-text-property 0 'telega-input arg))
-                (member (get-text-property 0 'telega-member arg)))
-       ;; Name you get after completion is controlled by
-       ;; `telega-company-username-prefer-name' user option
-       (when (telega-user-p member)
-         (delete-region (- (point) (length arg)) (point))
-         (when-let* ((fmt-names telega-company-username-prefer-name)
-                     (name (let ((tmp-name nil))
-                             (while (and fmt-names (not tmp-name))
-                               (setq tmp-name (telega-user-title
-                                               member (car fmt-names) 'raw)
-                                     fmt-names (cdr fmt-names)))
-                             tmp-name)))
-           (telega-ins
-            (cond ((string-prefix-p "@" name)
-                   name)
-
-                  ((member telega-company-username-markup
-                           '("markdown1" "markdown2"))
-                   (telega-string-as-markup
-                       (format "[%s](tg://user?id=%d)"
-                               name (plist-get member :id))
-                       telega-company-username-markup
-                       (cdr (assoc telega-company-username-markup
-                                   telega-chat-markup-functions))))
-                  (t
-                   (propertize
-                    name
-                    :tl-entity-type (list :@type "textEntityTypeMentionName"
-                                          :user_id (plist-get member :id))
-                    'face 'telega-entity-type-mention
-                    ;; NOTE: Make it editable from the end, and not
-                    ;; editable from the beginning, see
-                    ;; https://t.me/emacs_telega/38257
-                    'rear-nonsticky nil
-                    'front-sticky nil
-                    )))))))
-     (insert " ")
-     (let ((chatbuf-input (telega-chatbuf-input-string)))
-       (when (or (member chatbuf-input telega-known-inline-bots)
-                 (member chatbuf-input telega--recent-inline-bots))
-         (telega-chatbuf-attach-inline-bot-query 'no-search))))
+     (telega-completions--username-post-completion
+      arg
+      telega-company-username-prefer-name
+      telega-company-username-markup))
     ))
 
 
@@ -322,8 +209,7 @@ Matches only if CHAR does not apper in the middle of the word."
     (require-match 'never)
     (candidates
      (cl-assert (> (length arg) 0))
-     (mapcar (lambda (ht) (concat "#" ht))
-             (telega--searchHashtags (substring arg 1))))
+     (telega-completions--hashtag-search arg))
     (post-completion
      (insert " "))
     ))
@@ -341,33 +227,6 @@ Matches only if CHAR does not apper in the middle of the word."
     (when (and cg (= telega-chatbuf--input-marker (match-beginning 0)))
       (cons cg company-minimum-prefix-length))))
 
-(defun telega-company--bot-commands-list (bot-commands &optional suffix)
-  (mapcar (lambda (bot-cmd)
-            (propertize (concat "/" (telega-tl-str bot-cmd :command) suffix)
-                        'telega-annotation
-                        (telega-ins--as-string
-                         (telega-ins--with-attrs
-                             (list :max (/ telega-chat-fill-column 2) :elide t)
-                           (telega-ins (telega-tl-str bot-cmd :description))))))
-          bot-commands))
-
-(defun telega-company--bot-commands ()
-  (cl-assert telega-chatbuf--chat)
-  (let* ((info (telega-chat--info telega-chatbuf--chat))
-         (telega-full-info-offline-p nil)
-         (full-info (telega--full-info info)))
-    (if (telega-chatbuf-match-p '(type bot))
-        (telega-company--bot-commands-list
-         (telega--tl-get full-info :bot_info :commands))
-      (apply #'nconc
-             (mapcar (lambda (bot-commands)
-                       (telega-company--bot-commands-list
-                        (plist-get bot-commands :commands)
-                        (let ((bot-user (telega-user-get
-                                         (plist-get bot-commands :bot_user_id))))
-                          (telega-msg-sender-username bot-user 'with-@))))
-                     (plist-get full-info :bot_commands))))))
-
 ;;;###autoload
 (defun telega-company-botcmd (command &optional arg &rest _ignored)
   (interactive (list 'interactive))
@@ -377,12 +236,14 @@ Matches only if CHAR does not apper in the middle of the word."
     (sorted t)
     ;; Complete only if chatbuf has corresponding bot
     (prefix
-     (when (telega-chatbuf-match-p '(type bot))
-       (telega-company-grab-botcmd)))
+     (when-let* ((prefix (telega-company-grab-botcmd))
+                 ((telega-completions--bot-commands telega-chatbuf--chat)))
+       prefix))
     (candidates
-     (all-completions arg (telega-company--bot-commands)))
+     (all-completions arg
+                      (telega-completions--bot-commands telega-chatbuf--chat)))
     (annotation
-     (get-text-property 0 'telega-annotation arg))
+     (telega-completions--annotation arg))
     ))
 
 
@@ -394,26 +255,6 @@ Matches only if CHAR does not apper in the middle of the word."
   "Return non-nil if chatbuf input starts a quick reply shortcut."
   (telega-company-grab-single-char ?/))
 
-(defun telega-company--quick-reply-shorcuts ()
-  "Return list of quick reply shortcut names."
-  (mapcar (lambda (qr)
-            (propertize
-             (concat "/" (telega-tl-str qr :name))
-             'telega-annotation
-             (telega-ins--as-string
-              (telega-ins--content-one-line (plist-get qr :first_message)))))
-          telega--quick-replies))
-
-(defun telega-company--quick-reply-annotation (qr-name)
-  (when-let ((qr (telega-quick-reply-by-name (string-trim qr-name "/"))))
-    (telega-ins--as-string
-     (telega-ins--content-one-line (plist-get qr :first_message))
-     (let ((nmessages (length (plist-get qr :messages))))
-       (when (> nmessages 1)
-         (telega-ins--with-face 'telega-shadow
-           (telega-ins " +" (telega-i18n "lng_forum_messages"
-                              :count (1- nmessages)))))))))
-
 ;;;###autoload
 (defun telega-company-quick-reply (command &optional arg &rest _ignored)
   (interactive (list 'interactive))
@@ -424,13 +265,12 @@ Matches only if CHAR does not apper in the middle of the word."
      (when (telega-chatbuf-match-p '(type private))
        (telega-company-grab-quick-reply)))
     (candidates
-     (all-completions arg (telega-company--quick-reply-shorcuts)))
+     (all-completions arg (telega-completions--quick-replies)))
     (annotation
-     (telega-company--quick-reply-annotation arg))
+     (telega-completions--quick-reply-annotation arg))
     (post-completion
      ;; TODO: prepare messages and attach them into chatbuf
-     (user-error "TODO: post-completion for Quick Replies")
-     )
+     (user-error "TODO: post-completion for Quick Replies"))
     ))
 
 
@@ -443,28 +283,6 @@ Matches only if CHAR does not apper in the middle of the word."
   (when-let ((cg (company-grab "```\\([^`\t\n ]*\\)" 1)))
     (cons cg company-minimum-prefix-length)))
 
-(defun telega-company--language-names ()
-  "Return list of all language names.
-Sort modes by usage of current Emacs session."
-  (let* ((all-buffers (buffer-list))
-         (modes
-          (seq-uniq (seq-filter #'symbolp (mapcar #'cdr auto-mode-alist))))
-         (indexed-modes
-          (mapcar (lambda (mode)
-                    (cons mode (seq-count
-                                (lambda (buffer)
-                                  (eq (buffer-local-value 'major-mode buffer)
-                                      mode))
-                                all-buffers)))
-                  modes))
-         (sorted-modes
-          (mapcar #'car (cl-sort indexed-modes #'> :key #'cdr))))
-    (delq nil (mapcar (lambda (mode)
-                        (let ((mode-name (symbol-name mode)))
-                          (when (string-suffix-p "-mode" mode-name)
-                            (substring mode-name 0 -5))))
-                      sorted-modes))))
-
 ;;;###autoload
 (defun telega-company-markdown-precode (command &optional arg &rest _ignored)
   (interactive (list 'interactive))
@@ -475,12 +293,9 @@ Sort modes by usage of current Emacs session."
     (prefix (telega-company-grab-markdown-precode))
     (sorted t)
     (candidates
-     (all-completions arg (telega-company--language-names)))
+     (all-completions arg (telega-completions--language-names)))
     (post-completion
-     (if (save-excursion (re-search-forward "^```" nil 'noerror))
-         (forward-char)
-       (insert "\n")
-       (save-excursion (insert "\n```"))))
+     (telega-completions--markdown-precode-post-completion))
     ))
 
 
