@@ -386,7 +386,9 @@ string at point."
 (provide 'telega)
 
 
-(push (expand-file-name "contrib" telega--lib-directory) load-path)
+(let ((contrib (expand-file-name "contrib" telega--lib-directory)))
+  (when (file-directory-p contrib)
+    (push contrib load-path)))
 
 ;; Enable some global minor modes by default
 (telega-patrons-mode 1)
