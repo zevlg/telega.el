@@ -1,5 +1,9 @@
 ;;; test.el --- Testing routines for telega  -*- lexical-binding:t -*-
+
 (require 'telega)
+
+(require 'telega-completions)
+
 
 ;; Setup
 (setq telega-language "en")
@@ -247,6 +251,49 @@ Have Stoploss 690 Satoshi." :entities []))))
   ;; ref: https://t.me/emacs_telega/44040
   (should (equal (progn (telega-ins--box-button "test here") 'aa)
                  'aa)))
+
+
+(ert-deftest telega-completions ()
+  "Test shared completion helper functions."
+  (should (telega-completions--username-admin-p "@@foo"))
+  (should-not (telega-completions--username-admin-p "@foo"))
+  (should (equal (telega-completions--username-query "@@foo") "foo"))
+  (should (equal (telega-completions--username-query "@foo") "foo"))
+  (should (equal (telega-completions--telegram-emoji-query ":i-love-you")
+                 "i love you"))
+  (should (telega-completions--emoji-match-p ":you" ":i-love-you" t))
+  (should-not (telega-completions--emoji-match-p ":you" ":i-love-you" nil))
+  (let ((candidate (telega-completions--username-candidate
+                    (telega-user-get 22220) "@@vp")))
+    (should (equal candidate "@@vpupkin"))
+    (should (eq (get-text-property 0 'telega-member candidate)
+                (telega-user-get 22220))))
+  (cl-letf (((symbol-function 'telega--searchHashtags)
+             (lambda (query &rest args)
+               (if-let* ((callback (plist-get args :callback)))
+                   (funcall callback (list query (concat query "-extra")))
+                 (list query (concat query "-extra"))))))
+    (should (equal (telega-completions--hashtag-query "#emacs") "emacs"))
+    (should (equal (telega-completions--hashtag-search "#emacs")
+                   '("#emacs" "#emacs-extra")))
+    (let (result)
+      (telega-completions--hashtag-search
+       "#telega"
+       (lambda (candidates)
+         (setq result candidates)))
+      (should (equal result '("#telega" "#telega-extra"))))))
+
+(ert-deftest telega-completions-external-completion-ensure ()
+  "Test external completion compatibility layer."
+  (should (telega-completions--ensure-external-completion))
+  (should (featurep 'external-completion))
+  (should (assoc 'external completion-styles-alist))
+  (let ((table (external-completion-table
+                'telega-test-external
+                (lambda (_string _point)
+                  '("i-love-you")))))
+    (should (equal (external-completion--all-completions "you" table nil 3)
+                   '("i-love-you")))))
 
 ;; Local Variables:
 ;; no-byte-compile: t
