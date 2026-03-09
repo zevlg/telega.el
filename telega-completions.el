@@ -45,7 +45,7 @@
 ;;   (add-hook 'telega-chat-mode-hook #'telega-completions-setup-capf)
 
 ;;; Code:
-(require 'external-completion)
+(require 'cl-lib)
 (require 'telega-core)
 (require 'telega-tdlib)
 (require 'telega-util)
@@ -66,6 +66,9 @@
 (declare-function telega-string-as-markup "telega-markup"
                   (text markup markup-func))
 (declare-function telega--full-info "telega-info" (tlobj))
+(declare-function external-completion-table "external-completion"
+                  (category lookup &optional metadata
+                            try-completion-function))
 
 
 ;;; Customization
@@ -120,6 +123,75 @@ Set to nil to disable."
 
 
 ;;; Internal: interruptible TDLib lookup
+
+(defun telega-completions--ensure-external-completion ()
+  "Ensure `external-completion' is available.
+Load the built-in/ELPA package when present.  On older Emacs
+versions, install a local polyfill with the same protocol."
+  (or (featurep 'external-completion)
+      (require 'external-completion nil t)
+      (progn
+        (add-to-list 'completion-styles-alist
+                     '(external
+                       external-completion--try-completion
+                       external-completion--all-completions
+                       "Ad-hoc completion style provided by the completion table."))
+
+        (defun external-completion-table (category lookup
+                                                   &optional metadata
+                                                   try-completion-function)
+          "Make completion table using the `external' completion style."
+          (let ((probe (alist-get category completion-category-defaults)))
+            (if probe
+                (cl-assert (equal '(external) (alist-get 'styles probe))
+                           nil "Category `%s' must only use `external' style"
+                           category)
+              (push `(,category (styles external))
+                    completion-category-defaults)))
+          (let ((cache (make-hash-table :test #'equal)))
+            (cl-flet ((lookup-internal (string point)
+                        (let* ((key (cons string point))
+                               (probe (gethash key cache 'external--notfound)))
+                          (if (eq probe 'external--notfound)
+                              (puthash key (funcall lookup string point) cache)
+                            probe))))
+              (lambda (string pred action)
+                (pcase action
+                  (`metadata
+                   `(metadata (category . ,category) . ,metadata))
+                  (`(external-completion--tryc . ,point)
+                   `(external-completion--tryc
+                     . ,(if try-completion-function
+                            (funcall try-completion-function
+                                     string
+                                     point
+                                     (lookup-internal string point))
+                          (cons string point))))
+                  (`(external-completion--allc . ,point)
+                   (let ((all (lookup-internal string point)))
+                     `(external-completion--allc
+                       . ,(if pred (cl-remove-if-not pred all) all))))
+                  (`(boundaries . ,_) nil)
+                  (_method
+                   (let ((all (lookup-internal string (length string))))
+                     (complete-with-action action all string pred))))))))
+
+        (defun external-completion--call (op string table pred point)
+          (when (functionp table)
+            (let ((res (funcall table string pred (cons op point))))
+              (when (eq op (car-safe res))
+                (cdr res)))))
+
+        (defun external-completion--try-completion (string table pred point)
+          (external-completion--call 'external-completion--tryc
+                                     string table pred point))
+
+        (defun external-completion--all-completions (string table pred point)
+          (external-completion--call 'external-completion--allc
+                                     string table pred point))
+
+        (provide 'external-completion)
+        t)))
 
 (defvar-local telega-completions--cache (make-hash-table :test #'equal)
   "Buffer-local cache: (TYPE . QUERY-STRING) -> candidate list.
@@ -325,8 +397,9 @@ Use COMPLETE-NONMEMBER-FOR to filter chats eligible for fallback usernames."
            (cl-remove-if-not
             (lambda (username)
               (and username
-                   (string-prefix-p input (concat "@" username) 'ignore-case)))
-            (mapcar #'telega-msg-sender-username
+                   (string-prefix-p input username 'ignore-case)))
+            (mapcar (lambda (chat-user)
+                      (telega-msg-sender-username chat-user 'with-@))
                     (telega-filter-chats
                      (telega-chats-list)
                      complete-nonmember-for)))))
@@ -379,7 +452,8 @@ If SHOW-AVATARS is non-nil, include sender avatars in the annotation."
 
 (defun telega-completions--username-post-completion (arg prefer-name markup)
   "Insert completed username ARG using PREFER-NAME and MARKUP options."
-  (when-let* ((member (get-text-property 0 'telega-member arg)))
+  (when-let* ((member (and (get-text-property 0 'telega-input arg)
+                           (get-text-property 0 'telega-member arg))))
     (when (telega-user-p member)
       (delete-region (- (point) (length arg)) (point))
       (when-let* ((fmt-names prefer-name)
@@ -540,6 +614,7 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
                             (match-beginning 1))))
               (prefix (buffer-substring-no-properties start end))
               ((string-prefix-p ":" prefix)))
+    (telega-completions--ensure-external-completion)
     (let ((table
             (external-completion-table
              'telega-emoji
@@ -587,6 +662,7 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
 
 (defun telega-capf--username-table (chat)
   "Return completion table for username mentions in CHAT."
+  (telega-completions--ensure-external-completion)
   (external-completion-table
    'telega-username
    (lambda (string _point)
@@ -624,6 +700,7 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
               (end (cdr bounds))
               (input (buffer-substring-no-properties start end))
               ((> (length input) 0)))
+    (telega-completions--ensure-external-completion)
     (let ((table
             (external-completion-table
              'telega-hashtag

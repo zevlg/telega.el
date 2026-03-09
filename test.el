@@ -270,6 +270,18 @@ Have Stoploss 690 Satoshi." :entities []))))
          (setq result candidates)))
       (should (equal result '("#telega" "#telega-extra"))))))
 
+(ert-deftest telega-completions-external-completion-ensure ()
+  "Test external completion compatibility layer."
+  (should (telega-completions--ensure-external-completion))
+  (should (featurep 'external-completion))
+  (should (assoc 'external completion-styles-alist))
+  (let ((table (external-completion-table
+                'telega-test-external
+                (lambda (_string _point)
+                  '("i-love-you")))))
+    (should (equal (external-completion--all-completions "you" table nil 3)
+                   '("i-love-you")))))
+
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:
