@@ -2947,11 +2947,15 @@ Binds current symbol to SYM-BIND."
 
 (defun telega-docker--volume-arg (host-path container-path &optional selinux-p)
   "Return docker volume argument for HOST-PATH mounted at CONTAINER-PATH."
-  (concat " -v "
-          (shell-quote-argument
-           (concat (expand-file-name host-path)
-                   ":" container-path
-                   (if selinux-p ":z" "")))))
+  (if (telega-docker--windows-p)
+      (concat " -v "
+              (shell-quote-argument
+               (concat (expand-file-name host-path)
+                       ":" container-path
+                       (if selinux-p ":z" ""))))
+    (format " -v %s:%s%s"
+            host-path container-path
+            (if selinux-p ":z" ""))))
 
 (defun telega-docker-run-cmd (cmd &rest volumes)
   "Dockerize command CMD."
@@ -2974,11 +2978,14 @@ Binds current symbol to SYM-BIND."
              (lambda (mapping)
                (telega-docker--volume-arg (car mapping) (cdr mapping)))
              (telega-docker--path-mappings) "")
-          (telega-docker--volume-arg telega-directory telega-directory
-                                     selinux-p))
+          (format " -v %s:%s%s"
+                  telega-directory telega-directory
+                  (if selinux-p ":z" "")))
         (when telega-docker--cidfile
-          (concat " --cidfile "
-                  (shell-quote-argument telega-docker--cidfile)))
+          (if (telega-docker--windows-p)
+              (concat " --cidfile "
+                      (shell-quote-argument telega-docker--cidfile))
+            (concat " --cidfile " telega-docker--cidfile)))
         (when-let ((docker-user-id (telega-docker--user-id)))
           (concat " -u " docker-user-id))
         (unless (telega-docker--windows-p)
@@ -3019,14 +3026,15 @@ Binds current symbol to SYM-BIND."
         ;; Additional volumes
         (mapconcat
          (lambda (volume)
-           (telega-docker--volume-arg
-            volume
-            (if (telega-docker--windows-p)
-                (telega-docker-path-to-container volume)
-              volume)
-            (and selinux-p (not (telega-docker--windows-p)))))
-         (cl-remove-if-not #'file-exists-p
-                           (or volumes telega-docker-volumes))
+           (if (telega-docker--windows-p)
+               (telega-docker--volume-arg
+                volume (telega-docker-path-to-container volume))
+             (format " -v %s:%s%s" volume volume
+                     (if selinux-p ":z" ""))))
+         (if (telega-docker--windows-p)
+             (cl-remove-if-not #'file-exists-p
+                               (or volumes telega-docker-volumes))
+           (or volumes telega-docker-volumes))
          "")
         " " (telega-docker--image-name))))
    " " cmd))

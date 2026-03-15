@@ -176,7 +176,8 @@ Set `telega-server-libs-prefix' to the TDLib installion path"
 FLAGS - additional.
 Raise error if not found."
   (let ((flags (delq nil flags)))
-    (if telega-use-docker
+    (if (and telega-use-docker
+             (telega-docker--windows-p))
         (mapconcat
          #'identity
          (cons (telega-docker-run-cmd telega-server-command)
@@ -188,10 +189,12 @@ Raise error if not found."
       (mapconcat
        #'identity
        (cons
-        (let ((exec-path (cons telega-directory exec-path)))
-          (or (executable-find telega-server-command)
-              (error "`%s' not found in exec-path"
-                     telega-server-command)))
+        (if telega-use-docker
+            (telega-docker-run-cmd telega-server-command)
+          (let ((exec-path (cons telega-directory exec-path)))
+            (or (executable-find telega-server-command)
+                (error "`%s' not found in exec-path"
+                       telega-server-command))))
         flags)
        " "))))
 

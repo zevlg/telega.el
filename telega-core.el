@@ -1344,37 +1344,39 @@ If NO-PROPERTIES is specified, then do not keep text properties."
 (defun telega-docker--tl-path-transform (obj direction)
   "Translate Docker file paths inside TL object OBJ.
 DIRECTION is either the symbol `to-container' or `to-host'."
-  (cond ((vectorp obj)
+  (if (not (and telega-use-docker (telega-docker--windows-p)))
+      obj
+    (cond ((vectorp obj)
          (cl-map 'vector
                  (lambda (elem)
                    (telega-docker--tl-path-transform elem direction))
                  obj))
-        ((consp obj)
-         (let ((obj-type (plist-get obj :@type))
-               (mapped-obj
-                (mapcar (lambda (elem)
-                          (telega-docker--tl-path-transform elem direction))
-                        obj)))
-           (cond ((and (equal obj-type "inputFileLocal")
-                       (eq direction 'to-container))
-                  (plist-put mapped-obj :path
-                             (telega-docker-path-to-container
-                              (plist-get mapped-obj :path))))
-                 ((and (equal obj-type "localFile")
-                       (eq direction 'to-host))
-                  (plist-put mapped-obj :path
-                             (telega-docker-path-to-host
-                              (plist-get mapped-obj :path))))
-                 ((and (equal obj-type "setTdlibParameters")
-                       (eq direction 'to-container))
-                  (plist-put mapped-obj :database_directory
-                             (telega-docker-path-to-container
-                              (plist-get mapped-obj :database_directory)))
-                  (plist-put mapped-obj :files_directory
-                             (telega-docker-path-to-container
-                              (plist-get mapped-obj :files_directory)))))
-           mapped-obj))
-        (t obj)))
+          ((consp obj)
+           (let ((obj-type (plist-get obj :@type))
+                 (mapped-obj
+                  (mapcar (lambda (elem)
+                            (telega-docker--tl-path-transform elem direction))
+                          obj)))
+             (cond ((and (equal obj-type "inputFileLocal")
+                         (eq direction 'to-container))
+                    (plist-put mapped-obj :path
+                               (telega-docker-path-to-container
+                                (plist-get mapped-obj :path))))
+                   ((and (equal obj-type "localFile")
+                         (eq direction 'to-host))
+                    (plist-put mapped-obj :path
+                               (telega-docker-path-to-host
+                                (plist-get mapped-obj :path))))
+                   ((and (equal obj-type "setTdlibParameters")
+                         (eq direction 'to-container))
+                    (plist-put mapped-obj :database_directory
+                               (telega-docker-path-to-container
+                                (plist-get mapped-obj :database_directory)))
+                    (plist-put mapped-obj :files_directory
+                               (telega-docker-path-to-container
+                                (plist-get mapped-obj :files_directory)))))
+             mapped-obj))
+          (t obj))))
 
 (defsubst telega--tl-unpack (obj)
   "Unpack TL object OBJ."
