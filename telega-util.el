@@ -2904,11 +2904,13 @@ Binds current symbol to SYM-BIND."
 (defvar telega-docker--user-id nil)
 (defun telega-docker--user-id ()
   "Return UID:GID suitable for docker's -u."
-  (unless telega-docker--user-id
+  (unless (or telega-docker--user-id
+              (telega-docker--windows-p))
     (setq telega-docker--user-id
           (format "%s:%s" (user-uid) (group-gid))))
 
-  (unless (string-match-p "[0-9]+:[0-9]+" telega-docker--user-id)
+  (when (and telega-docker--user-id
+             (not (string-match-p "[0-9]+:[0-9]+" telega-docker--user-id)))
     (user-error "telega: Can't get UID/GID, set `telega-docker--user-id' explicitly to \"<UID>:<GID>\""))
   telega-docker--user-id)
 
@@ -2942,6 +2944,15 @@ Binds current symbol to SYM-BIND."
 
 (defvar telega-docker--cidfile nil
   "Filename to write container id into using --cidfile docker flag.")
+
+(defun telega-docker--volume-arg (host-path container-path &optional selinux-p)
+  "Return docker volume argument for HOST-PATH mounted at CONTAINER-PATH."
+  (concat " -v "
+          (shell-quote-argument
+           (concat (expand-file-name host-path)
+                   ":" container-path
+                   (if selinux-p ":z" "")))))
+
 (defun telega-docker-run-cmd (cmd &rest volumes)
   "Dockerize command CMD."
   (declare (indent 1))
@@ -2956,53 +2967,67 @@ Binds current symbol to SYM-BIND."
         (if (stringp telega-use-docker)
             telega-use-docker
           "docker")
-        (format " run %s --rm --privileged -i -v %s:%s%s"
-                (or telega-docker-run-arguments "")
-                telega-directory telega-directory
-                (if selinux-p ":z" ""))
+        (format " run %s --rm --privileged -i"
+                (or telega-docker-run-arguments ""))
+        (if (telega-docker--windows-p)
+            (mapconcat
+             (lambda (mapping)
+               (telega-docker--volume-arg (car mapping) (cdr mapping)))
+             (telega-docker--path-mappings) "")
+          (telega-docker--volume-arg telega-directory telega-directory
+                                     selinux-p))
         (when telega-docker--cidfile
-          (concat " --cidfile " telega-docker--cidfile))
-        " -u " (telega-docker--user-id)
-        ;; Connect container to host networking
-        " --net=host"
-        ;; Add host devices to container to allow voice/video
-        ;; recording
-        (when (file-exists-p "/dev/snd")
-          " --device /dev/snd:/dev/snd")
-        (when (file-exists-p "/dev/video0")
-          " --device /dev/video0:/dev/video0")
-        (when (file-exists-p "/dev/video1")
-          " --device /dev/video1:/dev/video1")
+          (concat " --cidfile "
+                  (shell-quote-argument telega-docker--cidfile)))
+        (when-let ((docker-user-id (telega-docker--user-id)))
+          (concat " -u " docker-user-id))
+        (unless (telega-docker--windows-p)
+          (concat
+           ;; Connect container to host networking
+           " --net=host"
+           ;; Add host devices to container to allow voice/video
+           ;; recording
+           (when (file-exists-p "/dev/snd")
+             " --device /dev/snd:/dev/snd")
+           (when (file-exists-p "/dev/video0")
+             " --device /dev/video0:/dev/video0")
+           (when (file-exists-p "/dev/video1")
+             " --device /dev/video1:/dev/video1")
 
-        ;; Export resources for pulseaudio to work
-        ;; ref: https://stackoverflow.com/questions/28985714/run-apps-using-audio-in-a-docker-container
-        (concat " -v /dev/shm:/dev/shm"
-                " -v /etc/machine-id:/etc/machine-id"
-                (when-let ((xdg-runtime-dir (getenv "XDG_RUNTIME_DIR")))
-                  (concat (format " -v %s:%s" xdg-runtime-dir xdg-runtime-dir)
-                          " -e XDG_RUNTIME_DIR"))
-                " -v /var/lib/dbus"
-                " -e XDG_RUNTIME_DIR"
-                ;; TODO
-                )
-        ;; Export volumes and env vars need to run appindicator
-        (when telega-appindicator-mode
-          (concat " --security-opt apparmor=unconfined"
-                  (format " -v /tmp/.X11-unix:/tmp/.X11-unix%s"
-                          (if selinux-p ":z" ""))
-                  (when-let ((xauthority (getenv "XAUTHORITY")))
-                    (format " -v %s:%s%s" xauthority xauthority
-                            (if selinux-p ":z" "")))
-                  (when-let ((bus-addr (getenv "DBUS_SESSION_BUS_ADDRESS"))
-                             (bus-path (nth 1 (split-string bus-addr "="))))
-                    (format " -v %s:%s%s" bus-path bus-path
-                            (if selinux-p ":z" "")))
-                  " -e DISPLAY -e XAUTHORITY -e DBUS_SESSION_BUS_ADDRESS"))
+           ;; Export resources for pulseaudio to work
+           ;; ref: https://stackoverflow.com/questions/28985714/run-apps-using-audio-in-a-docker-container
+           (concat " -v /dev/shm:/dev/shm"
+                   " -v /etc/machine-id:/etc/machine-id"
+                   (when-let ((xdg-runtime-dir (getenv "XDG_RUNTIME_DIR")))
+                     (concat (format " -v %s:%s" xdg-runtime-dir xdg-runtime-dir)
+                             " -e XDG_RUNTIME_DIR"))
+                   " -v /var/lib/dbus"
+                   " -e XDG_RUNTIME_DIR")
+           ;; Export volumes and env vars need to run appindicator
+           (when telega-appindicator-mode
+             (concat " --security-opt apparmor=unconfined"
+                     (format " -v /tmp/.X11-unix:/tmp/.X11-unix%s"
+                             (if selinux-p ":z" ""))
+                     (when-let ((xauthority (getenv "XAUTHORITY")))
+                       (format " -v %s:%s%s" xauthority xauthority
+                               (if selinux-p ":z" "")))
+                     (when-let ((bus-addr (getenv "DBUS_SESSION_BUS_ADDRESS"))
+                                (bus-path (nth 1 (split-string bus-addr "="))))
+                       (format " -v %s:%s%s" bus-path bus-path
+                               (if selinux-p ":z" "")))
+                     " -e DISPLAY -e XAUTHORITY -e DBUS_SESSION_BUS_ADDRESS"))))
         ;; Additional volumes
-        (mapconcat (lambda (volume)
-                     (format " -v %s:%s%s" volume volume
-                             (if selinux-p ":z" "")))
-                   (or volumes telega-docker-volumes) "")
+        (mapconcat
+         (lambda (volume)
+           (telega-docker--volume-arg
+            volume
+            (if (telega-docker--windows-p)
+                (telega-docker-path-to-container volume)
+              volume)
+            (and selinux-p (not (telega-docker--windows-p)))))
+         (cl-remove-if-not #'file-exists-p
+                           (or volumes telega-docker-volumes))
+         "")
         " " (telega-docker--image-name))))
    " " cmd))
 
@@ -3035,13 +3060,16 @@ not signal an error and just return nil."
                      "docker")
                    " exec"
                    " " exec-flags
+                   (when (telega-docker--windows-p)
+                     " -w /")
                    ;; NOTE: `exec-flags' might specify its own "-u",
                    ;; for example to run commands under root with
                    ;; "-u 0" `exec-flags'
-                   (unless (string-prefix-p "-u " (or exec-flags ""))
+                   (unless (or (not (telega-docker--user-id))
+                               (string-prefix-p "-u " (or exec-flags "")))
                      (concat " -u " (telega-docker--user-id)))
                    " " (telega-docker--container-id)
-                   " " cmd))
+                   " " (telega-docker-cmd-to-container cmd)))
 
           (no-error nil)
           (t (error "telega: Install `%s' or set `telega-use-docker' to non-nil"
