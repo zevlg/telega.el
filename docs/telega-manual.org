@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.600)
+#+title: Telega Manual (v0.8.620)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -108,6 +108,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-play-media-sequence-mode][telega-play-media-sequence-mode]]
     - [[#telega-network-stats-mode][telega-network-stats-mode]]
     - [[#telega-ton-star-usd-rate-mode][telega-ton-star-usd-rate-mode]]
+    - [[#telega-proxy-status-mode][telega-proxy-status-mode]]
     - [[#telega-transient-keymaps-mode--use-transient-for-telega-keymaps][telega-transient-keymaps-mode -- Use transient for telega keymaps]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
@@ -237,7 +238,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.61-11e254af6.
+version equal to v1.8.62-0ae923c49.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -1269,9 +1270,6 @@ Use ~telega-chat-match-p~ to match a chat.
      Chat might not be known (i.e. in your Main or Archive list) to post
      messages into it. Use ~is-known~ chat temex to check chat is known.
 
-- is-inline-bot :: 
-     Matches if corresponding bot accepts inline requests.
-
 - (unread-reactions [ ~N~ ]) :: 
      Matches if chat has least ~N~ unread reactions.
      By default ~N~ is 1.
@@ -1351,6 +1349,9 @@ Use ~telega-msg-match-p~ to match a message.
 - (has-chosen-reaction [ ~REACTION-TYPE~ ]) :: 
      Matches if message has a reaction chosen by me.
 
+- is-pinned :: 
+     Matches if message is pinned
+
 - is-reply-to-msg :: 
      Matches if message is a reply to some message.
 
@@ -1425,6 +1426,7 @@ Use ~telega-user-match-p~ to match a user.
 
 - is-bot :: 
      Matches if user is a bot.
+     Return ~userTypeBot~ TL structure.
 
 - (status ~STATUS-LIST~...) :: 
      Matches if user status is one of ~STATUS-LIST~.
@@ -1438,7 +1440,7 @@ Use ~telega-user-match-p~ to match a user.
 
      Same as ~(status "Online")~ user temex.
 
-- (contact [ ~MUTUAL-P~ ]), @@html:<kbd>@@/ c@@html:</kbd>@@ (~telega-filter-by-contact~) :: 
+- (is-contact [ ~MUTUAL-P~ ]), @@html:<kbd>@@/ c@@html:</kbd>@@ (~telega-filter-by-contact~) :: 
      Matches if user is in my contacts list.
      If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
 
@@ -1490,9 +1492,6 @@ Use ~telega-user-match-p~ to match a user.
 - has-rating :: 
      Matches if user has rating.
      Return rating.
-
-- is-bot-with-topics :: 
-     Matches if user is a bot having topics.
 ** List of Message Sender Temexes
 :PROPERTIES:
 :CUSTOM_ID: list-of-message-sender-temexes
@@ -1640,21 +1639,14 @@ Use ~telega-story-match-p~ to match a story.
   Car is name of the chats group, cdr is a chat temex to match chats. 
 
   Default value: ~(("Important" . important))~
-- User Option: ~telega-chat-delete-skip-confirmation-for~ 
-
-  Specifies Chat Temex for chats which can be deleted without
-  typing confirmation. 
-
-  Default value: ~nil~
-- User Option: ~telega-chat-delete-skip-confirmation-for~ 
-
-  Specifies Chat Temex for chats which can be deleted without
-  typing confirmation. 
-
-  Default value: ~nil~
 - User Option: ~telega-chat-custom-order-for~ 
 
   Chat temex returning custom order for the chat. 
+
+  Default value: ~nil~
+- User Option: ~telega-avatar-workaround-gaps-for~ 
+
+  Chat temex for chats to enable workaround for gaps in the avatars. 
 
   Default value: ~nil~
 * Chat Folders
@@ -1666,11 +1658,6 @@ Use ~telega-story-match-p~ to match a story.
 feature that allows users to organise chats into Chat Folders.
 
 Each folder can have unlimited number of pinned chats.
-
-Before Telegram had support for Chat Folders, =telega= implemented
-custom chat label feature, resembling Chat Folders functionality.
-But now custom chat label feature is deprecated in favor to Chat
-Folders.  Use @@html:<kbd>@@M-x telega-folders-migrate-custom-labels RET@@html:</kbd>@@ to migrate your custom labels into Chat Folders.
 
 @@html:<kbd>@@F@@html:</kbd>@@ prefix in rootbuf is used to operate on Chat Folders:
 - @@html:<kbd>@@F +@@html:</kbd>@@ (~telega-folder-create~) :: 
@@ -2248,35 +2235,22 @@ It is possible to edit a message using markup syntax.
 
 To forward a message, put cursor under the message which you want to
 forward and press
- (~telega-msg-forward-dwim~)
-and then select a Chat to forward a message to.  To forward multiple
-messages at once, mark messages with the
+@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-transient-msg-forward~).
+To forward multiple messages at once, mark messages with the
 @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
 press
- (~telega-msg-forward-dwim~)
+@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-transient-msg-forward~)
 on one of the messages.
-
-There are few options how you can affect the way a message is forwarded:
-1. @@html:<kbd>@@C-u f@@html:</kbd>@@ to forward a message copy, it will look like *you*
-   sent a message.
-2. @@html:<kbd>@@C-u C-u f@@html:</kbd>@@ To forward a message copy deleting or
-   replacing caption it has.  Use this to forward media message with
-   your own caption.
 ** Deleting messages
 :PROPERTIES:
 :CUSTOM_ID: deleting-messages
 :END:
 
 To delete a message, put cursor under the message you want to delete and press
- (~telega-msg-delete-marked-or-at-point~).
+@@html:<kbd>@@DEL@@html:</kbd>@@, @@html:<kbd>@@d@@html:</kbd>@@ (~telega-transient-msg-delete~).
 
 As with [[#forwarding-messages][forwarding messages]], you can mark multiple messages to delete
 with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
-
-Also, you can ban/report message sender (and delete all messages from
-this sender in the chat) with
-@@html:<kbd>@@B@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <ban-sender>@@html:</kbd>@@ (~telega-msg-ban-sender~) when
-cursor is under the message.
 
 =telega= can keep deleted messages visible until chatbuf is
 killed. This is controlled using custom variable:
@@ -2805,7 +2779,7 @@ To toggle sticker being favorite, press
 @@html:<kbd>@@*@@html:</kbd>@@, @@html:<kbd>@@f@@html:</kbd>@@ (~telega-sticker-toggle-favorite~)
 while point is under sticker in the ~*Telega Sticker Set*~ buffer.
 
-Or you can press @@html:<kbd>@@S@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save-music-to> <file>@@html:</kbd>@@ (~telega-msg-save~)
+Or you can press @@html:<kbd>@@s@@html:</kbd>@@ (~telega-transient-msg-save~)
 on the sticker message to add that sticker to the favorite stickers
 list.
 ** Animations
@@ -2825,7 +2799,7 @@ To play animation message press @@html:<kbd>@@RET@@html:</kbd>@@ on the message.
 messages.
 
 To explicitly add animation to Saved Animations list, press
-@@html:<kbd>@@S@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save-music-to> <file>@@html:</kbd>@@ (~telega-msg-save~) on the
+@@html:<kbd>@@s@@html:</kbd>@@ (~telega-transient-msg-save~) on the
 corresponding animation message.
 * Stories
 :PROPERTIES:
@@ -3404,6 +3378,24 @@ Customizable options:
   %S - USD price for the 100 Telegram star to sell. 
 
   Default value: ~"%i$%t, 100%I$%B/$%S"~
+** telega-proxy-status-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-proxy-status-mode
+:END:
+
+Global minor mode to display Telegram proxy status in the rootbuf.
+
+Enable it with ~(telega-proxy-status-mode 1)~ or at =telega= load time:
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'telega-proxy-status-mode)
+#+end_src
+
+Customizable options:
+- User Option: ~telega-proxy-status-auto~ 
+
+  Automatically enable ~telega-proxy-status-mode~ when proxy is enabled. 
+
+  Default value: ~t~
 ** telega-transient-keymaps-mode -- Use transient for telega keymaps
 :PROPERTIES:
 :CUSTOM_ID: telega-transient-keymaps-mode--use-transient-for-telega-keymaps

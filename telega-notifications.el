@@ -38,7 +38,7 @@
 
 (declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
-(declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
+(declare-function telega-chat-title "telega-chat" (chat &optional fmt-type no-badges))
 (declare-function telega-chat-muted-p "telega-chat" (chat))
 
 
@@ -177,21 +177,27 @@ SCOPE-TYPE is same an in `telega-chat-notification-scope'."
       (telega-ins " " "Disable Mention Notification")
       (telega-ins "\n"))
 
-    (telega-ins (telega-i18n "lng_notification_sound") ": "
-                sound-id)
-    (telega-ins "\n")
+    (telega-ins-describe-item (telega-i18n "lng_notification_sound")
+      (telega-ins sound-id))
 
     ;; Exceptions
     (when-let ((exception-chats
                 (telega--getChatNotificationSettingsExceptions scope-type)))
-      (telega-ins-fmt "Exceptions: %d chats" (length exception-chats))
-      (telega-ins--line-wrap-prefix "  "
-        (dolist (chat exception-chats)
-          (telega-ins "\n")
-          (telega-button--insert 'telega-chat chat
-            :inserter #'telega-ins--chat
-            :action #'telega-describe-chat))))
-    ))
+      (telega-ins-describe-item "Exceptions"
+        (telega-ins-i18n "lng_filters_chats_count"
+          :count (length exception-chats))
+        (telega-ins " ")
+        (telega-ins--expandable-button
+            (telega-box-button-style 'telega-ui)
+            (telega-i18n "telega_show")
+            (telega-i18n "telega_hide")
+          (telega-ins--line-wrap-prefix "  "
+            (dolist (chat exception-chats)
+              (telega-ins "\n")
+              (telega-button--insert 'telega-chat chat
+                :inserter #'telega-ins--chat
+                :action #'telega-describe-chat)))))
+      )))
 
 (defun telega-describe-notifications--inserter (&rest _ignored)
   "Inserter for notification settings."
@@ -207,31 +213,25 @@ SCOPE-TYPE is same an in `telega-chat-notification-scope'."
 M-x telega-notifications-mode RET")))
 
   (telega-ins "\n")
-  (telega-ins--with-face 'bold
-    (telega-ins (telega-i18n "lng_notification_private_chats") "\n"))
+  (telega-ins-describe-section (telega-i18n "lng_notification_private_chats"))
   (telega-ins--line-wrap-prefix "  "
     (telega-ins--notification-scope
      "notificationSettingsScopePrivateChats"))
   (telega-ins "\n")
 
-  (telega-ins "\n")
-  (telega-ins--with-face 'bold
-    (telega-ins (telega-i18n "lng_notification_groups") "\n"))
+  (telega-ins-describe-section (telega-i18n "lng_notification_groups"))
   (telega-ins--line-wrap-prefix "  "
     (telega-ins--notification-scope
      "notificationSettingsScopeGroupChats"))
   (telega-ins "\n")
 
-  (telega-ins "\n")
-  (telega-ins--with-face 'bold
-    (telega-ins (telega-i18n "lng_notification_channels") "\n"))
+  (telega-ins-describe-section (telega-i18n "lng_notification_channels"))
   (telega-ins--line-wrap-prefix "  "
     (telega-ins--notification-scope
      "notificationSettingsScopeChannelChats"))
   (telega-ins "\n")
 
-  (telega-ins "\n")
-  (telega-ins--box-button (telega-i18n "telega_reset_notifications")
+  (telega-ins--ui-button (telega-i18n "telega_reset_notifications")
     'action (lambda (_button)
               (when (yes-or-no-p (telega-i18n "telega_query_reset_notifications"))
                 (telega--resetAllNotificationSettings))))

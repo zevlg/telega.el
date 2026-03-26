@@ -235,6 +235,16 @@ Example: 23 y.o. designer from San Francisco")
   :value "Notify all members")
  ("lng_pinned_also_for_other"
   :value "Also pin for {user}")
+ ("lng_pinned_pin_sure"
+  :value "Would you like to pin this message?")
+ ("lng_pinned_pin_sure_group"
+  :value "Pin this message in the group?")
+ ("lng_pinned_unpin_sure"
+  :value "Would you like to unpin this message?")
+ ("lng_pinned_pin"
+  :value "Pin")
+ ("lng_pinned_unpin"
+  :value "Unpin")
 
  ("lng_action_user_registered"
   :value "{from} joined Telegram")
@@ -578,6 +588,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "auto-deletes in {duration}")
  ("lng_ttl_about_tooltip_channel"
   :value "New messages in this chat will be automatically deleted after {duration}.")
+ ("lng_manage_peer_reactions"
+  :value "Reactions")
  ("lng_manage_peer_reactions_some"
   :value "Some reactions")
  ("lng_manage_peer_reactions_all"
@@ -1114,6 +1126,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "Can't be turned back into a regular group.")
 
  ;; Player controls
+ ("lng_mac_menu_player_pause"
+  :value "Pause")
+ ("lng_mac_menu_player_resume"
+  :value "Resume")
  ("lng_mac_menu_player_stop"
   :value "Stop")
 
@@ -1187,6 +1203,13 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_channel_invite_subscription_button"
   :value "Subscribe")
 
+ ("lng_payments_checkout_title"
+  :value "Checkout")
+ ("lng_payments_payment_method"
+  :value "Payment Method")
+ ("lng_payments_total_label"
+  :value "Total")
+
  ("lng_payments_date_label"
   :value "Paid")
  ("lng_payments_invoice_label_test"
@@ -1201,6 +1224,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "You successfully transferred {amount} to {user}")
  ("lng_action_payment_init_recurring"
   :value "You successfully transferred {amount} to {user} and allowed future recurring payments")
+ ("lng_action_payment_refunded"
+  :value "{peer} refunded {amount}")
 
  ;; Searching messages
  ("lng_search_messages_from"
@@ -1830,6 +1855,8 @@ You can send them an invite link as message instead.")
   :value "Strikethrough")
  ("lng_menu_formatting_link_create"
   :value "Create link")
+ ("lng_menu_formatting_date"
+  :value "Date")
  ("lng_formatting_link_url"
   :value "URL")
  ("lng_formatting_code_title"
@@ -1838,6 +1865,8 @@ You can send them an invite link as message instead.")
   :value "Language for syntax highlighting.")
  ("lng_formatting_code_auto"
   :value "Auto-Detect")
+ ("lng_formatting_date_title"
+  :value "Choose date and time")
 
  ;; Copying
  ("lng_code_copied"
@@ -2022,6 +2051,10 @@ You can send them an invite link as message instead.")
 ({count} years old)")
  ("lng_settings_birthday_about"
   :value "Choose who can see your birthday in {link}.")
+ ("lng_action_suggested_birthday"
+  :value "{user} suggested you add your birthday")
+ ("lng_action_suggested_birthday_me"
+  :value "You suggested {user} to add a birthday")
 
  ;; Business
  ("lng_business_subtitle_sponsored"
@@ -2034,6 +2067,8 @@ You can send them an invite link as message instead.")
  ;; Proxy
  ("lng_proxy_settings"
   :value "Proxy settings")
+ ("lng_proxy_about"
+  :value "Proxy servers may be helpful in accessing Telegram if there is no connection in a specific region.")
  ("lng_proxy_use"
   :value "Use proxy")
  ("lng_proxy_checking"
@@ -2058,8 +2093,20 @@ You can send them an invite link as message instead.")
   :value "Port")
  ("lng_proxy_menu_delete"
   :value "Delete")
+ ("lng_proxy_box_title"
+  :value "Enable proxy")
  ("lng_proxy_box_status"
   :value "Status")
+ ("lng_proxy_box_server"
+  :value "Server")
+ ("lng_proxy_box_port"
+  :value "Port")
+ ("lng_proxy_box_secret"
+  :value "Secret")
+ ("lng_proxy_box_username"
+  :value "Username")
+ ("lng_proxy_box_password"
+  :value "Password")
 
  ("lng_connecting"
   :value "Connecting...")
@@ -2362,4 +2409,34 @@ this channel?")
  ("lng_context_spoiler_effect"
   :value "Hide with Spoiler")
 
+ ("lng_chat_intro_reset"
+  :value "Reset to Default")
+ ("lng_auction_change_button"
+  :value "Change")
+
+ ("lng_profile_actions_section"
+  :value "Actions")
+
+ ("lng_date_relative_days_ago"
+  :one_value "{count} day ago"
+  :other_value "{count} days ago")
+ ("lng_date_relative_hours_ago"
+  :one_value "{count} hour ago"
+  :other_value "{count} hours ago")
+ ("lng_date_relative_minutes_ago"
+  :one_value "{count} minute ago"
+  :other_value "{count} minutes ago")
+
+ ("lng_enable_sharing"
+  :value "Enable Sharing")
+ ("lng_disable_sharing"
+  :value "Disable Sharing")
+ ("lng_action_no_forwards_you_disabled"
+  :value "You disabled sharing in this chat")
+ ("lng_action_no_forwards_you_enabled"
+  :value "You enabled sharing in this chat")
+ ("lng_action_no_forwards_disabled"
+  :value "{from} disabled sharing in this chat")
+ ("lng_action_no_forwards_enabled"
+  :value "{from} enabled sharing in this chat")
  )

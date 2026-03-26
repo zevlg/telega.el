@@ -281,10 +281,10 @@ If UNBLOCK-P is specified, then unblock USER."
           ((telega-user-online-p user2)
            nil)
           (t
-           (let ((mutual1 (telega-user-match-p user1 '(contact mutual)))
-                 (contact1 (telega-user-match-p user1 'contact))
-                 (mutual2 (telega-user-match-p user2 '(contact mutual)))
-                 (contact2 (telega-user-match-p user2 'contact)))
+           (let ((mutual1 (telega-user-match-p user1 '(is-contact mutual)))
+                 (contact1 (telega-user-match-p user1 'is-contact))
+                 (mutual2 (telega-user-match-p user2 '(is-contact mutual)))
+                 (contact2 (telega-user-match-p user2 'is-contact)))
              (cond ((or (and mutual1 (not mutual2))
                         (and contact1 (not contact2)))
                     t)
@@ -350,13 +350,13 @@ Return non-nil if USER1 > USER2."
       (when user-ava
         (telega-ins--image user-ava 1))
       (if (plist-get user :is_contact)
-          (telega-ins--box-button (telega-i18n "lng_info_delete_contact")
+          (telega-ins--ui-button (telega-i18n "lng_info_delete_contact")
             :value contact
             :action (lambda (contact)
                       (telega--removeContacts (plist-get contact :user_id))
                       (telega-save-cursor
                         (telega-describe-contact contact))))
-        (telega-ins--box-button (telega-i18n "lng_new_contact_add")
+        (telega-ins--ui-button (telega-i18n "lng_new_contact_add")
           :value contact
           :action (lambda (contact)
                     (telega--addContact contact)
@@ -399,13 +399,13 @@ Return non-nil if USER1 > USER2."
     (with-telega-help-win "*Telegram Close Friends*"
       (save-excursion
         (telega-ins-describe-item (telega-i18n "lng_edit_privacy_close_friends")
-          (telega-ins--box-button "Add"
+          (telega-ins--ui-button "Add"
             'action (lambda (_button)
                       (call-interactively #'telega-close-friend-add)
                       (telega-save-cursor
                         (telega-describe-close-friends))))
           (telega-ins " ")
-          (telega-ins--box-button "Remove"
+          (telega-ins--ui-button "Remove"
             'action (lambda (_button)
                       (call-interactively #'telega-close-friend-remove)
                       (telega-save-cursor

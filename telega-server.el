@@ -292,6 +292,9 @@ Return parsed command."
                    ;; 404 - webpage or message not found
                    (telega-tl-error-equal value 404)
 
+                   ;; Proxy errors
+                   (telega-tl-error-equal value 400)
+
                    ;; 400 - Special case for `downloadFile' to alsways
                    ;; call it's callback in order to delete update
                    ;; callback

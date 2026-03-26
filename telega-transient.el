@@ -46,6 +46,12 @@
   "Display-only information, aligned with suffix keys.
 Technically a suffix object with no associated command.")
 
+(defun telega-transient-args-get (args key &optional default-value)
+  "Return KEY value in the ARGS or DEFAULT-VALUE if there is no KEY in ARGS.
+If DEFAULT-VALUE is not specified, then nil is used."
+  (if-let ((arg-val (assq key args)))
+      (cdr arg-val)
+    default-value))
 
 (defvar telega-transient--variable-values nil
   "List of values used for transient.")
@@ -219,8 +225,8 @@ Technically a suffix object with no associated command.")
                           'telega-transient-msg-forward))))
   (telega-msg-forward-dwim
    messages
-   (alist-get :fwd-remove-sender args)
-   (alist-get :fwd-remove-caption args)))
+   (telega-transient-args-get args :fwd-remove-sender)
+   (telega-transient-args-get args :fwd-remove-caption)))
 
 (transient-define-suffix telega-transient-forward-to-many-chats (messages args)
   "Forward messages to many chats."
@@ -232,8 +238,8 @@ Technically a suffix object with no associated command.")
   (telega-msg-forward-dwim-to-many
    messages
    (telega-completing-read-chat-list "Forward to Chats")
-   (alist-get :fwd-remove-sender args)
-   (alist-get :fwd-remove-caption args)))
+   (telega-transient-args-get args :fwd-remove-sender)
+   (telega-transient-args-get args :fwd-remove-caption)))
 
 (transient-define-suffix telega-transient-forward-to-last (messages args)
   "Forward to the last chat you've forwarded previously."
@@ -256,8 +262,8 @@ Technically a suffix object with no associated command.")
 
   (telega-msg-forward-dwim
    messages
-   (alist-get :fwd-remove-sender args)
-   (alist-get :fwd-remove-caption args)
+   (telega-transient-args-get args :fwd-remove-sender)
+   (telega-transient-args-get args :fwd-remove-caption)
    telega-msg-forward--last-chat))
 
 (transient-define-suffix telega-transient-forward-to-saved-messages
@@ -277,8 +283,8 @@ Technically a suffix object with no associated command.")
 
     (telega--forwardMessages (telega-chat-me) from-chat messages
       nil
-      (alist-get :fwd-remove-sender args)
-      (alist-get :fwd-remove-caption args))
+      (telega-transient-args-get args :fwd-remove-sender)
+      (telega-transient-args-get args :fwd-remove-caption))
 
     (message "telega: %s"
              (telega-i18n (if (> (length messages) 1)
@@ -372,7 +378,7 @@ Technically a suffix object with no associated command.")
 
 (transient-define-infix telega-transient--infix-msg-auto-delete-about ()
   "Help for message auto deletion duration."
-  :format " %d"
+  :format "  %d"
   :description (lambda ()
                  (let ((auto-delete-in (plist-get (car (telega-transient-scope))
                                                   :auto_delete_in)))
@@ -405,7 +411,8 @@ Technically a suffix object with no associated command.")
   :if (lambda ()
         (seq-some (lambda (msg)
                     (telega-msg-match-p msg
-                      '(and (message-property :can_be_deleted_only_for_self)
+                      '(and (chat (not (type bot)))
+                            (message-property :can_be_deleted_only_for_self)
                             (message-property :can_be_deleted_for_all_users))))
                   (telega-transient-scope)))
   :class 'telega-transient--checkbox-switch
@@ -420,21 +427,21 @@ Technically a suffix object with no associated command.")
                      (transient-args
                       (or transient-current-command
                           'telega-transient-msg-delete))))
-  (telega--deleteMessages messages (alist-get :msg-revoke-p args))
+  (telega--deleteMessages
+   messages (telega-transient-args-get args :msg-revoke-p))
 
-  (when (alist-get :msg-report-spam-p args)
+  (when (telega-transient-args-get args :msg-report-spam-p)
     (apply #'telega--reportSupergroupSpam
            (telega-chat--supergroup telega-chatbuf--chat)
            messages))
 
   (seq-doseq (sender (telega-transient--msg-senders))
-    (when (alist-get :msg-sender-delete-all-p args)
-      (telega--deleteChatMessagesBySender telega-chatbuf--chat sender))
-    (when (alist-get :msg-sender-block-p args)
-      (telega--setChatMemberStatus
-       telega-chatbuf--chat sender
-       (list :@type "chatMemberStatusBanned"
-             :banned_until_date 0))))
+    (cond ((telega-transient-args-get args :msg-sender-block-p)
+           (telega--banChatMember telega-chatbuf--chat sender
+                                  (telega-transient-args-get
+                                   args :msg-sender-delete-all-p)))
+          ((telega-transient-args-get args :msg-sender-delete-all-p)
+           (telega--deleteChatMessagesBySender telega-chatbuf--chat sender))))
 
   (when telega-chatbuf--marked-messages
     (setq telega-chatbuf--marked-messages nil)
@@ -556,6 +563,93 @@ Technically a suffix object with no associated command.")
   )
 
 
+;;; Pin message
+(defun telega-msg--can-toggle-pin-p (msg)
+  "Return non-nil if MSG can be pinned or unpinned."
+  (telega-msg-match-p msg
+    '(or (and (not is-pinned)
+              (message-property :can_be_pinned))
+         (and  is-pinned
+               (or (chat (type private bot secret))
+                   (chat (and (type basicgroup supergroup)
+                              (my-permission :can_pin_messages)))
+                   (chat (type channel)
+                         (my-permission :can_edit_messages)))))))
+
+(transient-define-infix telega-transient--infix-msg-pin-also-for-other ()
+  "Pin message also for other peer."
+  :description (lambda ()
+                 (telega-i18n "lng_pinned_also_for_other"
+                   :user (telega-msg-sender-title
+                             (telega-chat-user
+                              (telega-msg-chat (telega-transient-scope)))
+                           :with-avatar-p t
+                           :with-brackets-p t
+                           :with-username-p 'telega-username)))
+  :if (lambda ()
+        (telega-msg-match-p (telega-transient-scope)
+          '(and (not is-pinned)
+                (chat (type private secret)))))
+  :class 'telega-transient--checkbox-switch
+  :variable :msg-pin-for-other-p)
+
+(transient-define-infix telega-transient--infix-msg-pin-notify-members ()
+  "Notify group members about pinned message."
+  :description (lambda ()
+                 (telega-i18n "lng_pinned_notify"))
+  :if (lambda ()
+        (telega-msg-match-p (telega-transient-scope)
+          '(and (not is-pinned)
+                (chat (type basicgroup supergroup)))))
+  :class 'telega-transient--checkbox-switch
+  :variable :msg-pin-notify-p)
+
+(transient-define-suffix telega-transient--suffix-msg-pin-toggle (msg args)
+  "Toggle pin for the message."
+  :description (lambda ()
+                 (if (telega-msg-match-p (telega-transient-scope) 'is-pinned)
+                     (telega-i18n "lng_pinned_unpin")
+                   (telega-i18n "lng_pinned_pin")))
+
+  (interactive (list (telega-transient-scope)
+                     (transient-args
+                      (or transient-current-command
+                          'telega-transient-msg-pin-toggle))))
+  (if (telega-msg-match-p msg 'is-pinned)
+      (telega--unpinChatMessage msg)
+
+    (telega--pinChatMessage
+     msg
+     (not (telega-transient-args-get args :msg-pin-notify-p))
+     (not (telega-transient-args-get args :msg-pin-for-other-p)))))
+
+(transient-define-prefix telega-transient-msg-pin-toggle (msg)
+  "Pin/unpin a message MSG."
+  [:description (lambda ()
+                  (let ((msg (telega-transient-scope)))
+                    (cond ((telega-msg-match-p msg 'is-pinned)
+                           (telega-i18n "lng_pinned_unpin_sure"))
+
+                          ((telega-msg-match-p msg
+                             '(chat (type private bot secret)))
+                           (telega-i18n "lng_pinned_pin_sure"))
+
+                          (t
+                           (telega-i18n "lng_pinned_pin_sure_group")))))
+   ("o" telega-transient--infix-msg-pin-also-for-other)
+   ("n" telega-transient--infix-msg-pin-notify-members)
+
+   " "
+   ("^" telega-transient--suffix-msg-pin-toggle)
+   ]
+
+  (interactive (list (telega-msg-for-interactive)))
+  (unless (telega-msg--can-toggle-pin-p msg)
+    (user-error "telega: No permissions to pin/unpin messages"))
+  (transient-setup 'telega-transient-msg-pin-toggle nil nil :scope msg)
+  )
+
+
 ;;; Operate on message
 (defun telega-transient-scope ()
   (oref (transient-prefix-object) scope))
@@ -618,15 +712,14 @@ Technically a suffix object with no associated command.")
      :if (lambda ()
            (telega-msg-match-p (telega-transient-scope)
              '(or is-thread is-forum-topic))))
-    ("^" telega-msg-pin-toggle
-     :description (lambda ()
-                    (if (telega-msg-match-p (telega-transient-scope)
-                          '(prop :is_pinned))
-                        (telega-i18n "lng_context_unpin_msg")
-                      (telega-i18n "lng_context_pin_msg")))
+    ("^" telega-transient-msg-pin-toggle
+     :description
+     (lambda ()
+       (if (telega-msg-match-p (telega-transient-scope) 'is-pinned)
+           (telega-i18n "lng_context_unpin_msg")
+         (telega-i18n "lng_context_pin_msg")))
      :if (lambda ()
-           (telega-msg-match-p (telega-transient-scope)
-             '(message-property :can_be_pinned))))
+           (telega-msg--can-toggle-pin-p (telega-transient-scope))))
     ("d" telega-transient-msg-delete
      :description (lambda ()
                     (propertize (telega-i18n "lng_context_delete_msg")
@@ -646,8 +739,10 @@ Technically a suffix object with no associated command.")
     ("s" telega-transient-msg-save
      :description (lambda () (telega-i18n "lng_settings_save"))
      :if (lambda ()
-           (telega-msg-match-p (telega-transient-scope)
-             '(message-property :can_be_saved))))
+           (let ((msg (telega-transient-scope)))
+             (and (telega-msg-match-p  msg
+                    '(message-property :can_be_saved))
+                  (telega-msg--content-file msg)))))
     ]
    ]
 
@@ -710,7 +805,7 @@ Technically a suffix object with no associated command.")
                                      :fill-column fill-column
                                      :fill-prefix "  ")
          (telega-ins--with-face 'telega-shadow
-           (cond ((telega-chat-match-p chat '(type private))
+           (cond ((telega-chat-match-p chat '(type private bot secret))
                   (telega-ins-i18n "lng_sure_delete_history"
                     :contact (telega-msg-sender-title (telega-chat-user chat)
                                :with-avatar-p t
@@ -743,7 +838,7 @@ Technically a suffix object with no associated command.")
   :description
   (lambda ()
     (let ((chat (telega-transient-scope)))
-      (cond ((telega-chat-match-p chat '(type private))
+      (cond ((telega-chat-match-p chat '(type private bot))
              (telega-i18n "lng_delete_for_other_check"
                :user (telega-msg-sender-title (telega-chat-user chat)
                        :with-avatar-p t
@@ -752,7 +847,8 @@ Technically a suffix object with no associated command.")
             )))
   :if (lambda ()
         (telega-chat-match-p (telega-transient-scope)
-          '(prop :can_be_deleted_for_all_users)))
+          '(and (prop :can_be_deleted_for_all_users)
+                (prop :can_be_deleted_only_for_self))))
   :class 'telega-transient--checkbox-switch
   :variable :chat-history-revoke-p)
 
@@ -766,14 +862,34 @@ Technically a suffix object with no associated command.")
   :class 'telega-transient--checkbox-switch
   :variable :chat-remove-from-folders-p)
 
-(transient-define-suffix telega-transient--suffix-chat-delete (chat)
+(transient-define-suffix telega-transient--suffix-chat-delete (chat args)
   "Delete CHAT."
   :description (lambda ()
                  (propertize (telega-i18n "lng_box_delete")
                              'face 'error))
-  (interactive (list (telega-transient-scope)))
-  (message "TODO: delete chat")
-  )
+  (interactive (list (telega-transient-scope)
+                     (transient-args
+                      (or transient-current-command
+                          'telega-transient-chat-delete))))
+
+  (telega-chat-leave chat 'keep-chatbuf)
+  (setq telega-deleted-chats
+        (cl-pushnew chat telega-deleted-chats))
+
+  (when (telega-transient-args-get args :chat-user-block-p)
+    (telega-msg-sender-block chat))
+
+  (when (telega-chat-match-p chat
+          '(or (prop :can_be_deleted_only_for_self)
+               (prop :can_be_deleted_for_all_users)))
+    (telega--deleteChatHistory
+     chat
+     (telega-transient-args-get args :chat-remove-from-folders-p t)
+     (telega-transient-args-get args :chat-history-revoke-p t)))
+
+  ;; Kill corresponding chat buffer
+  (with-telega-chatbuf chat
+    (kill-buffer (current-buffer))))
 
 (transient-define-suffix telega-transient--suffix-chat-archive (chat)
   "Move CHAT to Archive list."
@@ -809,8 +925,8 @@ Technically a suffix object with no associated command.")
    ("f" telega-transient--infix-chat-remove-from-folders)
    ("r" telega-transient--infix-chat-history-revoke)
    ("b" telega-transient--infix-chat-user-block)
-   ]
-  [
+
+   " "
    ("A" telega-transient--suffix-chat-archive)
    ("D" telega-transient--suffix-chat-delete)
    ]
@@ -870,10 +986,10 @@ Technically a suffix object with no associated command.")
                           'telega-transient-chat-action-report-block))))
   (telega-msg-sender-block (telega-chat-user chat))
 
-  (when (alist-get :chat-report-spam-p args)
+  (when (telega-transient-args-get args :chat-report-spam-p)
     (telega--reportChat chat "Spam"))
 
-  (when (alist-get :chat-delete-p args)
+  (when (telega-transient-args-get args :chat-delete-p)
     (setq telega-deleted-chats
           (cl-pushnew chat telega-deleted-chats))
     (telega--deleteChatHistory chat 'remove-from-list)
@@ -906,6 +1022,7 @@ Technically a suffix object with no associated command.")
 
 ;;; Tag Commands
 (transient-define-suffix telega-transient--suffix-sm-tag-filter ()
+  "Filter by tag."
   :key "/"
   :description (lambda () (telega-i18n "lng_context_filter_by_tag"))
   (interactive)
@@ -914,6 +1031,7 @@ Technically a suffix object with no associated command.")
     (telega-chatbuf-filter-by-saved-messages-tag tag)))
 
 (transient-define-suffix telega-transient--suffix-sm-tag-add-name ()
+  "Edit tag name."
   :key "n"
   :description
   (lambda ()
@@ -940,6 +1058,7 @@ Technically a suffix object with no associated command.")
           (telega-msg-redisplay msg))))))
 
 (transient-define-suffix telega-transient--suffix-sm-tag-remove ()
+  "Remove tag."
   :key "d"
   :description (lambda () (telega-i18n "lng_context_remove_tag"))
   (interactive)
@@ -961,11 +1080,10 @@ Technically a suffix object with no associated command.")
   [:description
    (lambda ()
      (telega-ins--as-string
-      (telega-ins--saved-messages-tag
-       (plist-get (oref (transient-prefix-object) scope) :tag))
-      (telega-ins " ")
       (telega-ins--with-face 'transient-heading
-        (telega-ins "Tag Commands"))))
+        (telega-ins--saved-messages-tag
+            (plist-get (telega-transient-scope) :tag))
+        (telega-ins " Tag"))))
    ("/" telega-transient--suffix-sm-tag-filter)
    ("n" telega-transient--suffix-sm-tag-add-name)
    ("d" telega-transient--suffix-sm-tag-remove)
@@ -1176,8 +1294,9 @@ Return fake chat suitable for `telega-ins--msg-sender'."
   :if (lambda () (telega-transient--invite-link-need-subscription-p))
 
   (interactive (list (telega-transient-scope)))
-  (message "TODO: subscribe to channel")
-  )
+  (let ((il-info (plist-get scope :invite-link-info)))
+    (message "TODO: subscribe to channel: %S" (telega-tl-str il-info :title))
+    ))
 
 (transient-define-suffix telega-transient--suffix-invite-link-join (scope)
   "Join group by invite link."
@@ -1248,7 +1367,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
   (let ((args (transient-args
                (or transient-current-command
                    'telega-transient-msg-translate))))
-    (alist-get (alist-get :translate-language args)
+    (alist-get (telega-transient-args-get args :translate-language)
                (telega-i18n-translate-languages-alist)
                nil nil #'equal)))
 
@@ -1414,6 +1533,94 @@ Return fake chat suitable for `telega-ins--msg-sender'."
                          (telega-chatbuf-input-string) 'telega-attach)))
   (transient-setup 'telega-transient-chatbuf-input-options nil nil
                    :scope attaches))
+
+
+;;; Add proxy
+(transient-define-infix telega-transient--infix-about-proxy ()
+  :format "%d"
+  :description
+  (lambda ()
+    ;; NOTE: any MTProto proxy can display sponsored channel in the chats list
+    (let ((tl-proxy (car (telega-transient-scope))))
+      (telega-ins--as-string
+       (when (eq 'proxyTypeMtproto
+                 (telega--tl-type (plist-get tl-proxy :type)))
+         (telega-ins--help-message
+          (telega-ins-i18n "lng_proxy_sponsor_warning")))
+       (telega-ins-describe-item (telega-i18n "lng_proxy_box_server")
+         (telega-ins (telega-tl-str tl-proxy :server)))
+       (telega-ins-describe-item (telega-i18n "lng_proxy_box_port")
+         (telega-ins-fmt "%d" (plist-get tl-proxy :port) "\n"))
+       )))
+  :class 'telega-transient-information)
+
+(transient-define-infix telega-transient--infix-enable-proxy ()
+  "Switch to enable proxy."
+  :description (lambda () (telega-i18n "lng_proxy_box_title"))
+  :class 'telega-transient--checkbox-switch
+  :global-p nil
+  :variable :proxy-enable-p)
+
+(transient-define-suffix telega-transient--suffix-add-proxy (tl-proxy args)
+  :description (lambda ()
+                 (telega-i18n "lng_proxy_add"))
+
+  (interactive (list (car (telega-transient-scope))
+                     (transient-args
+                      (or transient-current-command
+                          'telega-transient-add-proxy))))
+  (telega--addProxy tl-proxy (telega-transient-args-get args :proxy-enable-p)))
+
+(transient-define-suffix telega-transient--suffix-check-proxy-status (tl-proxy)
+  "Check proxy status."
+  :transient 'transient--do-stay
+  :description
+  (lambda ()
+    (let* ((scope (telega-transient-scope))
+           (tl-proxy (nth 0 scope))
+           (ping (nth 1 scope)))
+      (telega-ins--as-string
+       (telega-ins-i18n "lng_proxy_box_status")
+       (when ping
+         (telega-ins " ")
+         (cond ((eq ping 'checking)
+                (telega-ins--with-face 'telega-shadow
+                  (telega-ins-i18n "lng_proxy_checking")))
+               ((floatp ping)
+                (telega-ins--with-face 'success
+                  (telega-ins-i18n "lng_proxy_available"
+                    :ping (format "%d" (round (* ping 1000))))))
+               (t
+                (telega-ins--with-face 'error
+                  (telega-ins-i18n "lng_proxy_unavailable"))))))))
+
+  (interactive (list (car (telega-transient-scope))))
+  (telega-transient-add-proxy tl-proxy 'checking)
+  (telega--pingProxy tl-proxy
+    (lambda (ping)
+      (unless (telega--tl-error-p ping)
+        (setq ping (plist-get ping :seconds)))
+      (telega-transient-add-proxy tl-proxy ping)))
+  )
+
+(transient-define-prefix telega-transient--prefix-add-proxy ()
+  "Add proxy."
+  [:description (lambda ()
+                  (telega-i18n "lng_proxy_add"))
+   (telega-transient--infix-about-proxy)
+   ("s" telega-transient--suffix-check-proxy-status)
+   ("x" telega-transient--infix-enable-proxy)
+   " "
+   ("RET" telega-transient--suffix-add-proxy)
+   ]
+  )
+
+(defun telega-transient-add-proxy (tl-proxy &optional ping-stats)
+  "Interactively add TL-PROXY to proxy list."
+  (transient-setup 'telega-transient--prefix-add-proxy nil nil
+                   ;; NOTE: scope is a list, where first element is
+                   ;; TL-PROXY and second its ping stats
+                   :scope (list tl-proxy ping-stats)))
 
 
 ;;; ellit-org: minor-modes

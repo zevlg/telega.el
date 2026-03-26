@@ -694,7 +694,9 @@ Return auto-deletion timer value."
 ;;   {{{temexdoc(chat, is-forum, 2)}}}
 (define-telega-matcher chat is-forum (chat)
   "Matches if chat is a forum group."
-  (plist-get (telega-chat--info chat 'locally) :is_forum))
+  (or (plist-get (telega-chat--info chat 'locally) :is_forum)
+      (telega--tl-get (telega-chat-match-p chat 'bot-user)
+                      :type :has_topics)))
 
 ;;; ellit-org: chat-temex
 ;; - has-sponsored-messages ::
@@ -744,15 +746,6 @@ messages into it. Use `is-known' chat temex to check chat is known."
        ;; `chat.permissions.can_send_basic_messages' is true
        (not (telega-chat-match-p chat '(and (type bot) is-blocked)))
        ))
-
-;;; ellit-org: chat-temex
-;; - is-inline-bot ::
-;;   {{{temexdoc(chat, is-inline-bot, 2)}}}
-(define-telega-matcher chat is-inline-bot (chat)
-  "Matches if corresponding bot accepts inline requests."
-  (when (telega-chat-bot-p chat)
-    (when-let ((user (telega-chat-user chat)))
-      (telega--tl-get user :type :is_inline))))
 
 ;;; ellit-org: chat-temex
 ;; - (unread-reactions [ ~N~ ]) ::
@@ -822,20 +815,24 @@ By default N is 1."
 ;;; ellit-org: chat-temex
 ;; - (user ~USER-TEMEX~) ::
 ;;   {{{temexdoc(chat, user, 2)}}}
-(define-telega-matcher chat user (chat user-temex)
+(define-telega-matcher chat user (chat &optional user-temex)
   "Matches non-bot private chat where corresponding user matches USER-TEMEX."
-  (unless (telega-chat-bot-p chat)
-    (when-let ((user (telega-chat-user chat)))
-      (telega-user-match-p user user-temex))))
+  (when-let ((user (telega-chat-user chat)))
+    (unless (telega-user-match-p user 'is-bot)
+      (if user-temex
+          (telega-user-match-p user user-temex)
+        user))))
 
 ;;; ellit-org: chat-temex
 ;; - (bot-user ~USER-TEMEX~) ::
 ;;   {{{temexdoc(chat, bot-user, 2)}}}
-(define-telega-matcher chat bot-user (chat user-temex)
+(define-telega-matcher chat bot-user (chat &optional user-temex)
   "Matches chat where corresponding bot user matches USER-TEMEX."
-  (when (telega-chat-bot-p chat)
-    (when-let ((user (telega-chat-user chat)))
-      (telega-user-match-p user user-temex))))
+  (when-let ((user (telega-chat-user chat)))
+    (when (telega-user-match-p user 'is-bot)
+      (if user-temex
+          (telega-user-match-p user user-temex)
+        user))))
 
 ;;; ellit-org: chat-temex
 ;; - (is-blocked [ ~BLOCK-LIST~ ]) ::
@@ -900,14 +897,18 @@ Return number of stars to be paid for a message."
 ;;   {{{temexdoc(user, is-deleted, 2)}}}
 (define-telega-matcher user is-deleted (user)
   "Matches if user account is deleted."
-  (eq (telega-user--type user) 'deleted))
+  (when-let ((user-type (plist-get user :type)))
+    (eq 'userTypeDeleted (telega--tl-type user-type))))
 
 ;;; ellit-org: user-temex
 ;; - is-bot ::
 ;;   {{{temexdoc(user, is-bot, 2)}}}
 (define-telega-matcher user is-bot (user)
-  "Matches if user is a bot."
-  (telega-user-bot-p user))
+  "Matches if user is a bot.
+Return `userTypeBot' TL structure."
+  (when-let ((user-type (plist-get user :type)))
+    (when (eq 'userTypeBot (telega--tl-type user-type))
+      user-type)))
 
 ;;; ellit-org: user-temex
 ;; - (status ~STATUS-LIST~...) ::
@@ -930,9 +931,9 @@ Does not match bots, because bots are always online."
   (telega-user-match-p user '(status "Online")))
 
 ;;; ellit-org: user-temex
-;; - (contact [ ~MUTUAL-P~ ]), {{{where-is(telega-filter-by-contact,telega-root-mode-map)}}} ::
-;;   {{{temexdoc(user, contact, 2)}}}
-(define-telega-matcher user contact (user &optional mutual-p)
+;; - (is-contact [ ~MUTUAL-P~ ]), {{{where-is(telega-filter-by-contact,telega-root-mode-map)}}} ::
+;;   {{{temexdoc(user, is-contact, 2)}}}
+(define-telega-matcher user is-contact (user &optional mutual-p)
   "Matches if user is in my contacts list.
 If MUTUAL-P is non-nil, then mach only if contact is mutual."
   (plist-get user (if mutual-p :is_mutual_contact :is_contact)))
@@ -1068,16 +1069,6 @@ Return number of stars to be paid for a message."
 Return rating."
   (plist-get (telega--full-info user) :rating))
 
-;;; ellit-org: user-temex
-;; - is-bot-with-topics ::
-;;   {{{temexdoc(user, is-bot-with-topics, 2)}}}
-(define-telega-matcher user is-bot-with-topics (user)
-  "Matches if user is a bot having topics."
-  (let ((user-type (plist-get user :type)))
-    (and (eq 'userTypeBot (telega--tl-type user-type))
-         (plist-get user-type :has_topics)
-         )))
-
 
 ;;; Message Temexes
 ;;; ellit-org: msg-temex
@@ -1125,6 +1116,13 @@ By default N is 1."
     (if reaction-type
         (cl-find reaction-type chosen-reaction-types :test #'equal)
       chosen-reaction-types)))
+
+;;; ellit-org: msg-temex
+;; - is-pinned ::
+;;   {{{temexdoc(msg, is-pinned, 2)}}}
+(define-telega-matcher msg is-pinned (msg)
+  "Matches if message is pinned"
+  (plist-get msg :is_pinned))
 
 ;;; ellit-org: msg-temex
 ;; - is-reply-to-msg ::

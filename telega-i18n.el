@@ -50,6 +50,7 @@
 
 (defconst telega-i18n--alias-alist
   '(("telega_show" . "lng_usernames_activate_confirm")
+    ("telega_hide" . "lng_sponsored_hide_ads")
     ("telega_loading" . "lng_profile_loading")
     ("telega_for_n_hours" . "lng_mute_duration_hours")
     ("telega_stop" . "lng_export_stop")
@@ -61,6 +62,7 @@
     ("telega_edit" . "lng_settings_edit")
     ("telega_none" . "lng_settings_empty_bio")
     ("telega_show_more" . "lng_stories_show_more")
+    ("telega_change" . "lng_auction_change_button")
     )
   "i18n names aliases alist.")
 

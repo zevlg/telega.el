@@ -63,7 +63,7 @@ PARAMS is a plist of additional parameters to the returned link."
   (let ((chat (if (telega-chat-p chat-or-msg)
                   chat-or-msg
                 (telega-chat-get (plist-get chat-or-msg :chat_id) 'offline))))
-    (concat "tg:telega:"
+    (concat "telega:"
             (if-let ((chat-username (telega-chat-username chat)))
                 (concat "@" chat-username)
               (number-to-string (plist-get chat :id)))
@@ -74,22 +74,32 @@ PARAMS is a plist of additional parameters to the returned link."
                            (/ (plist-get msg :id) telega-msg-id-step))))
             )))
 
-(defun telega-tme-open-internal (chat-spec &optional post-spec params)
-  "Open internal link to any chat or message.
-CHAT-SPEC = @<username> | <chat-id>
-POST-SPEC = <POST-ID> | <MSG-ID> (for backward compatibility)
-PARAMS is a plist with additional parameters, supported parameters are:
-`:open_content' to open the message contents from MSG-SPEC."
-  (let* ((chat (or (if (string-prefix-p "@" chat-spec)
+(defun telega-tme-internal-link-open (telega-link-url)
+  "Open internal telega link to any chat or message."
+  ;; Internal links to any chat or message
+  ;; See: https://github.com/zevlg/telega.el/issues/139
+  ;; Internal links in form telega:<CHAT-SPEC>[?<PARAMS>][#<POST-ID>]
+  ;;   CHAT-SPEC =  @USERNAME | CHAT-ID
+  ;;   PARAMS = query params such as "open_content=t"
+  ;;   POST-ID = MSG-ID div 1048576
+  (let* ((urlobj (url-generic-parse-url telega-link-url))
+         (path-query (url-path-and-query urlobj))
+         (chat-spec (car path-query))
+         (post-spec (url-target urlobj))
+         (params (telega-tme-parse-query-string (cdr path-query)))
+         (chat (or (unless (equal "telega" (url-type urlobj))
+                     (error "telega: non-internal link: %s" telega-link))
+                   (if (string-prefix-p "@" chat-spec)
                        (telega-chat-by-username (substring chat-spec 1))
                      (telega-chat-get (string-to-number chat-spec) 'offline))
-                   (user-error "No chat with CHAT-SPEC=%S" chat-spec)))
+                   (user-error "telega: No chat with CHAT-SPEC=%S" chat-spec)))
          (post-id (when post-spec (string-to-number post-spec)))
          ;; NOTE: For backward compatibility check if POST-ID is
          ;; actually a MSG-ID
-         (msg-id (when post-id (if (zerop (% post-id telega-msg-id-step))
-                                   post-id
-                                 (* post-id telega-msg-id-step)))))
+         (msg-id (when post-id
+                   (if (zerop (% post-id telega-msg-id-step))
+                       post-id
+                     (* post-id telega-msg-id-step)))))
     (cond ((plist-get params :open_content)
            (cl-assert msg-id)
            (telega-msg-get chat msg-id
@@ -106,6 +116,7 @@ PARAMS is a plist with additional parameters, supported parameters are:
   ;; msg-id = post * 1048576
   (* (string-to-number post) telega-msg-id-step))
 
+;; TODO: move code to `telega-tme-open-tdlib-link' and remove this function
 (defun telega-tme-open-privatepost (supergroup post &optional media-timestamp)
   "Open POST in private SUPERGROUP."
   (let ((chat (telega-chat-get (string-to-number (concat "-100" supergroup))
@@ -115,6 +126,7 @@ PARAMS is a plist with additional parameters, supported parameters are:
     (telega-chat--goto-msg chat (telega-tme--post-msg-id post) 'highlight
       (telega-tme--media-timestamp-callback media-timestamp))))
 
+;; TODO: move code to `telega-tme-open-tdlib-link' and remove this function
 (defun telega-tme-open-username (username &rest params)
   "Open chat by its USERNAME.
 PARAMS are additional params."
@@ -190,51 +202,6 @@ PARAMS are additional params."
     (when chat
       (telega-chat--pop-to-buffer chat))))
 
-(defun telega-tme-open-proxy-tdlib-link (tdlib-link)
-  "Add a proxy defined by internal TDLIB-LINK."
-  (let ((help-window-select t))
-    (with-telega-help-win "*Telega Add Proxy*"
-      (telega-ins-describe-section (telega-i18n "lng_proxy_add"))
-      ;; NOTE: Only MTPROTO proxies may add sponsor channel
-      (when (eq 'proxyTypeMtproto
-                (telega--tl-type (plist-get tdlib-link :type)))
-        (telega-ins--help-message
-         (telega-ins-i18n "lng_proxy_sponsor_warning")))
-      (telega-ins-describe-item "Server"
-        (telega-ins (telega-tl-str tdlib-link :server)))
-      (telega-ins-describe-item "Port"
-        (telega-ins-fmt "%d" (plist-get tdlib-link :port)))
-      (telega-ins--box-button (telega-i18n "lng_proxy_add")
-        'action (lambda-with-current-buffer (_button)
-                  (kill-buffer-and-window)
-                  (telega--addProxy
-                   (list :server (telega-tl-str tdlib-link :server)
-                         :port (plist-get tdlib-link :port)
-                         :type (plist-get tdlib-link :type))
-                   (lambda (_proxy)
-                     (telega-describe-network)))))
-      )))
-
-(defun telega-tme-open-proxy (type proxy)
-  "Open the PROXY."
-  ;; TYPE is "socks" or "proxy"
-  ;; :server, :port, :user, :pass, :secret
-  (message "TODO: `telega-tme-open-proxy' %S / %S" type proxy)
-  (telega-tme-open-proxy-tdlib-link
-   (list :@type "internalLinkTypeProxy"
-         :server (plist-get proxy :server)
-         :port (string-to-number (plist-get proxy :port))
-         :type (cond ((string= type "proxy")
-                      (list :@type "proxyTypeMtproto"
-                            :secret (plist-get proxy :secret)))
-                     ((string= type "socks")
-                      (list :@type "proxyTypeSocks5"
-                            :username (plist-get proxy :user)
-                            :password (plist-get proxy :pass)))
-                     (t
-                      (error "Unknown proxy type: %S" type)))))
-  )
-
 (defun telega-tme-open-stickerset (setname)
   "Open sticker set with SETNAME."
   (message "telega: Searching for %S stickerset.." setname)
@@ -277,64 +244,6 @@ SEMICOLONS and KEEP-EMPTY are passed directly to `url-build-query-string'."
                      query-params)
    semicolons keep-empty))
 
-(defun telega-tme-open-tg (url)
-  "Open URL starting with `tg:'.
-Return non-nil, meaning URL has been handled."
-  (when (string-prefix-p "tg://" url)
-    ;; Convert it to `tg:' form
-    (setq url (concat "tg:" (substring url 5))))
-
-  (let* ((urlobj (url-generic-parse-url url))
-         (path-query (url-path-and-query urlobj))
-         (path (car path-query))
-         (query (telega-tme-parse-query-string (cdr path-query))))
-    (cond ((string= path "resolve")
-           (let ((username (plist-get query :domain)))
-             (setq query (telega-plist-del query :domain))
-             (apply #'telega-tme-open-username username query)))
-          ((string= path "join")
-           (let ((invite-link (concat (or (plist-get telega--options :t_me_url)
-                                          "https://t.me/")
-                                      "joinchat/" (plist-get query :invite))))
-             (telega-tme-open-invite-link invite-link)))
-          ((string= path "addstickers")
-           (telega-tme-open-stickerset (plist-get query :set)))
-          ((string= path "addemoji")
-           (telega-tme-open-stickerset (plist-get query :set)))
-          ((string= path "addtheme")
-           (telega-tme-open-theme (plist-get query :slug)))
-          ((string= path "setlanguage")
-           (telega-tme-open-lang (plist-get query :lang)))
-          ((string= path "privatepost")
-           (telega-tme-open-privatepost
-            (plist-get query :channel) (plist-get query :post)
-            (plist-get query :t)))
-          ((or (string= path "msg") (string= path "share"))
-           )
-          ((string= path "msg_url")
-           )
-          ((string= path "confirmphone")
-           )
-          ((or (string= path "passport") (string= path "secureid"))
-           )
-          ((or (string= path "socks") (string= path "proxy"))
-           (telega-tme-open-proxy path query))
-          ((string= path "login")
-           )
-          ;; Internal links to any chat or message
-          ;; See: https://github.com/zevlg/telega.el/issues/139
-          ;; Internal links are in form
-          ;; tg:telega:<CHAT-SPEC>[?<PARAMS>][#<POST-ID>]
-          ;;   CHAT-SPEC =  @USERNAME | CHAT-ID
-          ;;   PARAMS = query params such as "open_content=t"
-          ;;   POST-ID = MSG-ID div 1048576
-          ((string-match "^telega:\\([^#]+\\)" path)
-           (telega-tme-open-internal
-            (match-string 1 path) (url-target urlobj) query))
-          (t
-           (message "telega: Unsupported tg url: %s" url))))
-  t)
-
 (defconst telega-tme--url-regexp
   (rx string-start
       (? (group "http" (? "s") "://"))
@@ -344,71 +253,35 @@ Return non-nil, meaning URL has been handled."
   "Regexp to match urls to the Telegram resources.
 Matches only t.me, telegram.me and telegram.dog domains.")
 
-(defun telega-tme-open (url &optional just-convert)
-  "Open any URL with https://t.me prefix.
-If JUST-CONVERT is non-nil, return converted link value.
-JUST-CONVERT can be `offline' to avoid calls to telega-server.
-Return non-nil if url has been handled."
-  ;; Convert URL to `tg:' form and call `telega-tme-open-tg'
-  (when (string-match telega-tme--url-regexp url)
-    (let* ((path (match-string 2 url))
-           (query (match-string 3 url))
-           (case-fold-search nil)         ;ignore case
-           (tg
-            (cond ((string-match "^/joinchat/\\([a-zA-Z0-9._-]+\\)$" path)
-                   (concat "tg:join?invite=" (match-string 1 path)))
-                  ((string-match "^/addstickers/\\([a-zA-Z0-9._-]+\\)$" path)
-                   (concat "tg:addstickers?set=" (match-string 1 path)))
-                  ((string-match "^/addemoji/\\([a-zA-Z0-9._-]+\\)$" path)
-                   (concat "tg:addemoji?set=" (match-string 1 path)))
-                  ((string-match "^/addtheme/\\([a-zA-Z0-9._-]+\\)$" path)
-                   (concat "tg:addtheme?slug=" (match-string 1 path)))
-                  ((string-match "^/share/url$" path)
-                   (concat "tg:msg_url?" query))
-                  ((string-match
-                    (eval-when-compile
-                      (rx (and line-start "/c/"
-                               (group (? "-") (1+ digit))
-                               "/"
-                               (group (1+ digit)))))
-                    path)
-                   (concat "tg:privatepost?channel=" (match-string 1 path)
-                           "&post=" (match-string 2 path)
-                           (when query (concat "&" query))))
-                  ;; ((string-match "^/addlist/\\([a-zA-Z0-9._-]+\\)$" path)
-                  ;;  (concat "tg:addlist?slug=" (match-string 1 path)))
-                  ((string-match "^/\\+\\([^/]+\\)$" path)
-                   (concat "tg:join?invite=" (match-string 1 path)))
-                  ((string-match "^/\\(socks\\|proxy\\)$" path)
-                   ;; Use getInternalLinkType for proxies
-                   nil)
-
-                  ((and just-convert
-                        (string-match
-                         (eval-when-compile
-                           (rx (and line-start "/"
-                                    (group (1+ (regexp "[a-zA-Z0-9\\.\\_]")))
-                                    (? "/" (group (1+ digit)))
-                                    line-end)))
-                         path))
-                   (concat "tg:resolve?domain=" (match-string 1 path)
-                           (when (match-string 2 path)
-                             (concat "&post=" (match-string 2 path)))
-                           (when query (concat "&" query))))
-                  ))
-           (tdlib-link (unless (or tg (eq 'offline just-convert))
-                         (telega--getInternalLinkType url))))
-      (cond (just-convert (or tg tdlib-link))
-            (tg (telega-tme-open-tg tg) t)
-            (tdlib-link (telega-tme-open-tdlib-link tdlib-link) t)
-            (t (telega-debug "WARN: Can't open \"%s\" internally" url)
-               nil)))))
+(defun telega-tme-open (url)
+  "Open Telegram URL with https://t.me prefix.
+URL also can be telega internal url or tg:// url.
+Return non-nil if URL has been handled."
+  (cond ((string-prefix-p "telega:" url)
+         (telega-tme-internal-link-open url)
+         t)
+        ((or (string-prefix-p "tg://" url)
+             (string-match telega-tme--url-regexp url))
+         (when-let ((tdlib-link (telega--getInternalLinkType url)))
+           (telega-tme-open-tdlib-link tdlib-link)
+           t))
+        (t
+         (telega-debug "WARN: Can't open \"%s\" internally" url)
+         nil)))
 
 (defun telega-tme-open-tdlib-link (tdlib-link)
   "Open TDLib's internal link.
 To convert url to TDLib link, use `telega--getInternalLinkType'."
   (cl-ecase (telega--tl-type tdlib-link)
     ;; TODO: add other link types
+    (internalLinkTypeChatAffiliateProgram
+     (let ((ap-chat (telega--searchChatAffiliateProgram
+                        (telega-tl-str tdlib-link :username)
+                        (telega-tl-str tdlib-link :referrer))))
+       (unless ap-chat
+         (error "telega: Affiliate program not found"))
+       (telega-chat--pop-to-buffer ap-chat)))
+
     (internalLinkTypeUpgradedGift
      (let ((gift (telega--getUpgradedGift (telega-tl-str tdlib-link :name))))
        (message "telega: TODO, show upgraded gift \"%s\""
@@ -532,7 +405,7 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
          )))
 
     (internalLinkTypeProxy
-     (telega-tme-open-proxy-tdlib-link tdlib-link))
+     (telega-transient-add-proxy (plist-get tdlib-link :proxy)))
 
     (internalLinkTypeBackground
      (error "TODO: searchBackground"))

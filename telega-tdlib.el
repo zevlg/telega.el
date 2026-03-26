@@ -102,39 +102,44 @@ If SYNC-P is specified, then set option is sync manner."
                                                      (type-of val))))
                               :value (or val :false)))))
 
-(defun telega--addProxy (proxy-spec &optional callback)
+(defun telega--addProxy (tl-proxy &optional enable-p callback)
   "Add PROXY-SPEC to the list of proxies."
-  (let ((proxy-obj (list :@type "proxy"
-                         :server (plist-get proxy-spec :server)
-                         :port (plist-get proxy-spec :port)
-                         :type (plist-get proxy-spec :type))))
-    (telega-server--call
-     `(:@type "addProxy"
-       :proxy ,proxy-obj
-       :enable ,(if (plist-get proxy-spec :enable) t :false))
-     (or callback #'ignore))))
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "addProxy"
+         :proxy tl-proxy
+         :enable (if enable-p t :false))
+   (or callback #'ignore)))
 
-(defun telega--enableProxy (proxy &optional callback)
+(defun telega--enableProxy (proxy-id &optional callback)
+  "Enable proxy by PROXY-ID."
   (declare (indent 1))
   (telega-server--call
    (list :@type "enableProxy"
-         :proxy_id (plist-get proxy :id))
+         :proxy_id proxy-id)
    (or callback #'ignore)))
 
 (defun telega--disableProxy (&optional callback)
-  (declare (indent 1))
+  "Disable the currently enabled proxy."
   (telega-server--call
    (list :@type "disableProxy")
    (or callback #'ignore)))
 
-(defun telega--pingProxy (proxy &optional callback)
-  "Get time needed to receive a response from a Telegram server through a PROXY.
-If PROXY is nil, then ping a Telegram server without a proxy."
+(defun telega--pingProxy (tl-proxy &optional callback)
+  "Get time needed to receive a response from a Telegram server through a PROXY."
   (declare (indent 1))
   (telega-server--call
    (list :@type "pingProxy"
-         :proxy_id (or (plist-get proxy :id) 0))
+         :proxy tl-proxy)
    callback))
+
+(defun telega--removeProxy (proxy-id &optional callback)
+  "Remove proxy server by PROXY-ID."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "removeProxy"
+         :proxy_id proxy-id)
+   (or callback #'ignore)))
 
 (defun telega--searchEmojis (text &optional exact-match-p
                                   language-codes callback)
@@ -770,6 +775,18 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
          :for_clicked_animated_emoji_message (if for-clicked-p t :false))
    callback))
 
+(cl-defun telega--getStickerOutlineSvgPath (sticker-file
+                                            &key for-animated-emoji-p
+                                            for-clicked-p callback)
+  "Return outline of a sticker as an SVG path."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getStickerOutlineSvgPath"
+         :sticker_file_id (plist-get sticker-file :id)
+         :for_animated_emoji (if for-animated-emoji-p t :false)
+         :for_clicked_animated_emoji_message (if for-clicked-p t :false))
+   callback))
+
 (defun telega--changeStickerSet (stickerset install-p &optional archive-p)
   "Install/Uninstall STICKERSET."
   (telega-server--call
@@ -1078,7 +1095,7 @@ CHAT must be supergroup or channel."
 (defun telega--getProxies (&optional callback)
   "Return list of currently registered proxies."
   (with-telega-server-reply (reply)
-      (append (plist-get reply :messages) nil)
+      (append (plist-get reply :proxies) nil)
 
     (list :@type "getProxies")
     callback))
@@ -2932,16 +2949,16 @@ Requires `can_delete_messages' administrator right."
    callback))
 
 (cl-defun telega--getForumTopics (chat query &key offset-date offset-message-id
-                                       offset-message-thread-id limit callback)
+                                       offset-forum-topic-id limit callback)
   "Return found forum topics in a forum chat."
   (declare (indent 2))
   (telega-server--call
    (list :@type "getForumTopics"
          :chat_id (plist-get chat :id)
          :query query
-         :offset-date (or offset-date 0)
-         :offset-message-id (or offset-message-id 0)
-         :offset-message-thread-id (or offset-message-thread-id 0)
+         :offset_date (or offset-date 0)
+         :offset_message_id (or offset-message-id 0)
+         :offset_forum_topic_id (or offset-forum-topic-id 0)
          :limit (or limit 100))
    callback))
 
@@ -3384,6 +3401,11 @@ Saved Messages topic is specified by SM-TOPIC-ID."
          :are_tags_enabled (if enabled-p t :false))
    (or callback #'ignore)))
 
+(defun telega--hideSuggestedAction (tl-suggested-action)
+  (telega-server--send
+   (list :@type "hideSuggestedAction"
+         :action tl-suggested-action)))
+  
 (defun telega--hideContactCloseBirthdays ()
   (telega-server--send
    (list :@type "hideContactCloseBirthdays")))
@@ -3660,6 +3682,33 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
          :user_id (plist-get user :id)
          :approve (if approve-p t :false))
    (or callback #'ignore)))
+
+(defun telega--searchChatAffiliateProgram (username referrer &optional callback)
+  "Searche a chat with an affiliate program."
+  (declare (indent 2))
+  (with-telega-server-reply (reply)
+      (telega-chat-get (plist-get reply :id))
+    (list :@type "searchChatAffiliateProgram"
+          :username username
+          :referrer referrer)
+    callback))
+
+(defun telega--getChatMember (chat sender &optional callback)
+  "Return information about a single member of a chat."
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "getChatMember"
+         :chat_id (plist-get chat :id)
+         :member_id (telega--MessageSender sender))
+   callback))
+  
+(defun telega--setChatMemberTag (chat user tag)
+  "Change the tag or custom title of a chat member."
+  (telega-server--send
+   (list :@type "setChatMemberTag"
+         :chat_id (plist-get chat :id)
+         :user_id (plist-get user :id)
+         :tag tag)))
 
 (provide 'telega-tdlib)
 

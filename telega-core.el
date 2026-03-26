@@ -95,6 +95,7 @@ Use FILENAME as is if resulting file does not exist."
     (:can_send_polls . "lng_rights_chat_send_polls")
     (:can_send_other_messages . "lng_rights_chat_send_stickers")
     (:can_add_link_previews . "lng_rights_chat_send_links")
+    (:can_edit_tag . "lng_rights_edit_tag_title")
     (:can_change_info . "lng_rights_group_info")
     (:can_invite_users . "lng_rights_chat_add_members")
     (:can_pin_messages . "lng_rights_group_pin")
@@ -129,6 +130,7 @@ Use FILENAME as is if resulting file does not exist."
     ,@telega-chat--admin-stories-permissions
 
     (:can_manage_direct_messages . "lng_rights_channel_manage_direct")
+    (:can_manage_tags . "lng_rights_group_manage_ranks")
     (:is_anonymous . "lng_rights_group_anonymous")))
 
 (defconst telega-chat--admin-permissions-for-channels
@@ -402,6 +404,9 @@ Favorite message is a plist with at least `:chat_id', `:id' properties.
 (defvar telega--owned-stars 0
   "Number of owned Telegram Stars.")
 
+(defvar telega--owned-tons 0
+  "Number of owned TON coins.")
+
 (defvar telega--quick-replies nil
   "List of quick reply shortcuts.")
 
@@ -483,11 +488,14 @@ alist where key is one of:
 \"notificationSettingsScopeGroupChats\",
 \"notificationSettingsScopeChannelChats\".")
 
-(defvar telega-tdlib--chat-folders nil
-  "List of chat folders received from TDLib.")
-(defvar telega-tdlib--chat-folder-tags-p nil
+(defvar telega-tdlib--folder-name-alist nil
+  "Alist FOLDER-NAME -> chatFolderInfo of all chat folders.")
+(defvar telega-tdlib--folder-id-alist nil
+  "Alist FOLDER-ID -> chatFolderInfo of all chat folders.")
+(defvar telega-tdlib--folder-tags-enabled-p nil
   "Non-nil if chat folder tags are enabled.
 Updated with `updateChatFolders' event.")
+
 (defvar telega-chat-folders nil
   "This variable is bound to list of chat folders when formatting.")
 (defvar telega-tdlib--chat-list nil
@@ -809,8 +817,10 @@ Done when telega server is ready to receive queries."
   (setq telega--dice-emojis nil)
   (setq telega--suggested-actions nil)
 
-  (setq telega-tdlib--chat-folders nil)
-  (setq telega-tdlib--chat-folder-tags-p nil)
+  (setq telega-tdlib--folder-name-alist nil)
+  (setq telega-tdlib--folder-id-alist nil)
+  (setq telega-tdlib--folder-tags-enabled-p nil)
+
   (setq telega-tdlib--chat-list nil)
   (setq telega-tdlib--unix-time nil)
 
@@ -1079,6 +1089,11 @@ FMT and ARGS are passed directly to `format'."
    (insert (apply 'format (cons (concat "%d: " fmt "\n")
                                 (cons (telega-time-seconds) args))))))
 
+;; To use `#'telega--tl-id' instead of `(telega--tl-prop :id)'
+(defsubst telega--tl-id (tl-obj)
+  "Return `:id' property of the TL-OBJ."
+  (plist-get tl-obj :id))
+
 (defmacro telega--tl-type (tl-obj)
   `(intern (plist-get ,tl-obj :@type)))
 
@@ -1140,7 +1155,7 @@ If TL-TYPES is nil, then return first TL entity from the TL-ENTITIES list."
 (defsubst telega-file--downloaded-p (file)
   "Return non-nil if FILE has been downloaded."
   (and (telega--tl-get file :local :is_downloading_completed)
-       (file-exists-p (telega-file--path file))))
+       (telega-file-exists-p (telega-file--path file))))
 
 (defsubst telega-file--downloading-p (file)
   "Return non-nil if FILE is downloading right now."
@@ -1721,18 +1736,16 @@ Return VALUE."
         ,chat (plist-put (plist-get ,chat :uaprops) ,uaprop-name ,valsym))
        ,valsym)))
 
-(defun telega-chat-position--list-name (position &optional no-props)
-  "Return list name for the POSITION.
-If NO-PROPS is non-nil, then remove properties from the resulting string."
+(defun telega-chat-position--list-name (position)
+  "Return list name for the POSITION."
   (let* ((pos-list (plist-get position :list))
          (pos-list-type (plist-get pos-list :@type)))
     (cond ((string= "chatListMain" pos-list-type)
            'main)
           ((string= "chatListFolder" pos-list-type)
-           (telega-folder-name (cl-find (plist-get pos-list :chat_folder_id)
-                                        telega-tdlib--chat-folders
-                                        :key (telega--tl-prop :id))
-                               no-props))
+           (telega-folder-name
+            (alist-get (plist-get pos-list :chat_folder_id)
+                       telega-tdlib--folder-id-alist)))
           ((string= "chatListArchive" pos-list-type)
            'archive))))
 
@@ -1955,18 +1968,26 @@ Return t."
   `(telega-ins
     (telega-fmt-eval-attrs (telega-ins--as-string ,@body) ,attrs)))
 
-(defmacro telega-ins--with-face (face &rest body)
+(defmacro telega-ins--with-face (face &optional how &rest body)
   "Execute BODY highlighting result with FACE."
   (declare (indent 1))
   (let ((startsym (gensym "start"))
         (facesym (gensym "face"))
-        (result (gensym "result")))
+        (result (gensym "result"))
+        (prepend-p (equal how ''prepend)))
     `(let ((,startsym (point))
            (,facesym ,face)
-           (,result (progn ,@body)))
+           (,result (progn
+                      ,(unless prepend-p
+                         how)
+                      ,@body)))
        (when ,facesym
-         (add-face-text-property ,startsym (point) ,facesym 'append))
+         (add-face-text-property ,startsym (point) ,facesym
+                                 ',(if prepend-p 'prepend 'append)))
        ,result)))
+
+(defmacro telega-ins--prepend-face (face &rest body)
+  `(telega-ins--with-face ,face 'prepend ,@body))
 
 (defmacro telega-ins--column (column fill-col &rest body)
   "Execute BODY at COLUMN filling to FILL-COL.
@@ -2040,6 +2061,15 @@ If help message has been inserted, insert newline at the end."
   `(button-at (apply 'make-text-button (prog1 (point) ,@body) (point)
                      ,props)))
 
+(defun telega-box-button-style (style-sym &rest style-sym-mixins)
+  "Create a box button style from STYLE-SYM and STYLE-SYM-MIXINS."
+  (declare (indent 1))
+  (apply #'append 
+         (alist-get style-sym telega-box-button-styles)
+         (mapcar (lambda (ssym)
+                    (alist-get ssym telega-box-button-styles))
+                 style-sym-mixins)))
+
 (defun telega-box-button--style-get (style attr)
   "Return STYLE's value for the attribute ATTR."
   (if-let ((attr-val (plist-member style attr)))
@@ -2047,6 +2077,24 @@ If help message has been inserted, insert newline at the end."
     (when-let* ((inh-style-name (plist-get style :inherit))
                 (inh-style (alist-get inh-style-name telega-box-button-styles)))
       (telega-box-button--style-get inh-style attr))))
+
+(defun telega-box-button--style-outline-width (style)
+  "Return `:outline-width' in pixels format."
+  (when-let ((ow (telega-box-button--style-get style :outline-width)))
+    (if (floatp ow)
+        (round (* ow (telega-chars-xwidth 1)))
+      (cl-assert (integerp ow))
+      ow)))
+
+(defun telega-box-button--style-outline-color (style)
+  "Return normalized `:outline-color' of STYLE."
+  (when-let ((oc (telega-box-button--style-get style :outline-color)))
+    (if (listp oc)
+        (cl-ecase (nth 0 oc)
+          ;; NOTE: `cadr' used to unquote face value
+          (face-background (face-background (cadr (nth 1 oc))))
+          (face-foreground (face-foreground (cadr (nth 1 oc)))))
+      oc)))
 
 (if (version< emacs-version "28.0")
     (defun telega-box-button--body-face (style)
@@ -2056,10 +2104,11 @@ If help message has been inserted, insert newline at the end."
           (telega-stipple--box-button-body-gen style))))
 
   (defun telega-box-button--body-face (style)
-    (when-let ((ow (telega-box-button--style-get style :outline-width)))
+    (when-let ((ow (telega-box-button--style-outline-width style)))
       (list :box (nconc (list :line-width (cons 0 (- ow)))
-                        (when-let ((o-color (telega-box-button--style-get
-                                             style :outline-color)))
+                        (when-let ((o-color
+                                    (telega-box-button--style-outline-color
+                                     style)))
                           (list :color o-color)))))))
 
 (if (version< emacs-version "28.0")
@@ -2070,51 +2119,6 @@ If help message has been inserted, insert newline at the end."
       (string-width str))
   (defalias 'telega-string-width 'string-width))
 
-(defmacro telega-ins--box-button2 (style &rest body)
-  "Insert box button of STYLE."
-  (declare (indent 1))
-  (let ((style-sym (gensym "style"))
-        (brackets-sym (gensym "brackets"))
-        (aface-sym (gensym "aface"))
-        (action-sym (gensym "action"))
-        (data-sym (gensym "button-data")))
-    `(let* ((,style-sym ,style)
-            (,brackets-sym
-             (or (telega-box-button--style-get ,style-sym :brackets)
-                 telega-box-button-brackets)))
-       (telega-ins--raw-button
-           (nconc (when-let ((,aface-sym (telega-box-button--style-get
-                                          ,style-sym :active-face)))
-                    (list 'cursor-face ,aface-sym))
-                  (when-let ((,action-sym (telega-box-button--style-get
-                                           ,style-sym 'action)))
-                    (list 'action ,action-sym))
-                  (when-let ((,data-sym (telega-box-button--style-get
-                                         ,style-sym 'button-data)))
-                    (list 'button-data ,data-sym)))
-         (telega-ins--with-face
-             (telega-box-button--style-get ,style-sym :passive-face)
-           (telega-ins--with-props
-               (when telega-use-images
-                 (list 'display
-                       (or (telega-box-button--style-get
-                            ,style-sym :left-edge-image)
-                           (telega-box-button--edge-image 'left ,style-sym))))
-             (telega-ins (or (car ,brackets-sym) "[")))
-
-           (telega-ins--with-face (telega-box-button--body-face ,style-sym)
-             ,@body
-             (telega-ins (telega-box-button--style-get ,style-sym :suffix)))
-
-           (telega-ins--with-props
-               (when telega-use-images
-                 (list 'display
-                       (or (telega-box-button--style-get
-                            ,style-sym :right-edge-image)
-                           (telega-box-button--edge-image 'right ,style-sym))))
-             (telega-ins (or (cdr ,brackets-sym) "]")))
-           )))))
-
 (defmacro telega-ins--with-props (props &rest body)
   "Execute inserters applying PROPS after insertation.
 Return what BODY returns."
@@ -2124,6 +2128,100 @@ Return what BODY returns."
        (prog1
            (progn ,@body)
          (add-text-properties ,spnt-sym (point) ,props)))))
+
+(defmacro telega-ins--with-style (style &rest body)
+  "Insert BODY with STYLE."
+  (declare (indent 1))
+  (let ((style-sym (gensym "style"))
+        (left-bracket-sym (gensym "left-bracket"))
+        (right-bracket-sym (gensym "right-bracket")))
+    `(let ((,style-sym ,style))
+       (telega-ins--with-face
+           (telega-box-button--style-get ,style-sym :passive-face)
+
+         ;; Left bracket
+         (when-let ((,left-bracket-sym 
+                     (telega-box-button--style-get ,style-sym :left-bracket)))
+           (if (stringp ,left-bracket-sym)
+               (telega-ins ,left-bracket-sym)
+             (telega-ins--image
+              (telega-box-button--bracket-image
+               ,style-sym :left-bracket ,left-bracket-sym))))
+
+         ;; Button body
+         (telega-ins--with-face (telega-box-button--body-face ,style-sym)
+           (telega-ins (telega-box-button--style-get ,style-sym :prefix))
+           ,@body
+           (telega-ins (telega-box-button--style-get ,style-sym :suffix)))
+
+         ;; Right bracket
+         (when-let ((,right-bracket-sym
+                     (telega-box-button--style-get ,style-sym :right-bracket)))
+           (if (stringp ,right-bracket-sym)
+               (telega-ins ,right-bracket-sym)
+             (telega-ins--image
+              (telega-box-button--bracket-image
+               ,style-sym :right-bracket ,right-bracket-sym))))
+         t))))
+
+(defmacro telega-ins--box-button2 (label style &rest button-props)
+  "Insert box button of STYLE.
+Use `telega-box-button-style' to make a STYLE."
+  (declare (indent 2))
+  (let ((style-sym (gensym "style"))
+        (aface-sym (gensym "aface"))
+        (props-sym (gensym "props")))
+    `(let* ((,style-sym ,style)
+            (,props-sym (list ,@button-props)))
+       (telega-ins--raw-button
+           (nconc (when-let ((,aface-sym (telega-box-button--style-get
+                                          ,style-sym :active-face)))
+                    (list 'cursor-face ,aface-sym))
+;                          'mouse-face ,aface-sym))
+                  (unless (plist-get ,props-sym 'action)
+                    (list 'action 'telega-button--action))
+                  ,props-sym)
+         (telega-ins--with-style ,style-sym
+           (telega-ins
+            ;; NOTE: buttons must not be breakable by filling logic,
+            ;; so we use non-breakable spaces instead of regular
+            (replace-regexp-in-string " " telega-symbol-nbsp ,label)))))))
+
+(defmacro telega-ins--ui-button (label &rest props)
+  "Insert `telega-ui' button."
+  (declare (indent 1))
+  `(telega-ins--box-button2 ,label
+       (telega-box-button-style 'telega-ui)
+     ,@props))
+
+;; Hide/Show toggling button element
+(defmacro telega-ins--expandable-button (style expand-label collapse-label
+                                               &rest insert-body)
+  "Insert expandable button."
+  (declare (indent 3))
+  (cl-with-gensyms (style-sym elabel clabel show-p button new-button)
+    `(let ((,elabel ,expand-label)
+           (,clabel ,collapse-label)
+           (,style-sym ,style)
+           ,new-button)
+       (telega-ins--box-button2 ,elabel ,style-sym
+         'action
+         (lambda (,button)
+           (let ((,show-p (not (button-get ,button :telega-show-start))))
+             (with-telega-buffer-modify
+              (save-excursion
+                (goto-char (button-end ,button))
+                (setq ,new-button
+                      (telega-ins--ui-button (if ,show-p ,clabel ,elabel)
+                        'action (button-get ,button 'action)))
+                (if ,show-p
+                    (progn
+                      (button-put ,new-button :telega-show-start (point))
+                      ,@insert-body
+                      (button-put ,new-button :telega-show-end (point)))
+                  (delete-region (button-get ,button :telega-show-start)
+                                 (button-get ,button :telega-show-end)))
+                (telega-button--change ,button ,new-button)))))))))
 
 (defun telega-fmt-eval-eliding (str elide-props)
   "Apply eliding properties to STR."

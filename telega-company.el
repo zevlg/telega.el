@@ -232,8 +232,9 @@ Matches only if CHAR does not apper in the middle of the word."
            (cl-remove-if-not
             (lambda (username)
               (and username
-                   (string-prefix-p arg (concat "@" username) 'ignore-case)))
-            (mapcar #'telega-msg-sender-username
+                   (string-prefix-p arg username 'ignore-case)))
+            (mapcar (lambda (chat-user)
+                      (telega-msg-sender-username chat-user 'with-@))
                     (telega-filter-chats (telega-chats-list)
                       telega-company-username-complete-nonmember-for)))
            )))

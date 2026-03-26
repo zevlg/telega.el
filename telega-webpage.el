@@ -496,7 +496,7 @@ Keymap:
      (telega-ins--with-face 'telega-webpage-chat-link
        (telega-ins (telega-tl-str pb :title) " "
                    "@" (telega-tl-str pb :username) " ")
-       (telega-ins--box-button (telega-i18n "lng_open_link")
+       (telega-ins--ui-button (telega-i18n "lng_open_link")
          :value (telega-tl-str pb :username)
          :action 'telega-tme-open-username)
        (telega-ins "\n")))
@@ -650,9 +650,7 @@ Invite links and link to users can be directly opened in telega.
 If IN-WEB-BROWSER is non-nil then force opening in web browser."
   (interactive (list (telega-url-at-point) current-prefix-arg))
   (when (or in-web-browser
-            (not (cond ((string-prefix-p "tg:" url)
-                        (telega-tme-open-tg url))
-                       ((telega-tme-open url)
+            (not (cond ((telega-tme-open url)
                         t)
                        ((and (derived-mode-p 'telega-webpage-mode)
                              (telega-webpage-anchor-url-p url))

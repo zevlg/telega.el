@@ -391,19 +391,19 @@ If TITLE is not specified, ask user interactively for the new title."
         (chat (telega-group-call-get-chat group-call-id)))
     ;; Buttons section
     (if (plist-get group-call :is_joined)
-        (telega-ins--box-button (telega-i18n "lng_group_call_leave")
+        (telega-ins--ui-button (telega-i18n "lng_group_call_leave")
           :value group-call
           :action #'telega-group-call-leave)
-      (telega-ins--box-button (telega-i18n "lng_group_call_join")
+      (telega-ins--ui-button (telega-i18n "lng_group_call_join")
         :value group-call
         :action #'telega-group-call-join))
     (when (plist-get group-call :can_be_managed)
       (telega-ins " ")
-      (telega-ins--box-button (telega-i18n "lng_group_call_end")
+      (telega-ins--ui-button (telega-i18n "lng_group_call_end")
         :value group-call
         :action #'telega--endGroupCall)
       (telega-ins " ")
-      (telega-ins--box-button (telega-i18n "lng_group_call_edit_title")
+      (telega-ins--ui-button (telega-i18n "lng_group_call_edit_title")
         :value group-call
         :action #'telega-group-call-set-title))
 

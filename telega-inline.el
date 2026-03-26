@@ -270,11 +270,12 @@
             (list :offset offset)))
    callback))
 
-(defun telega-ins--inline-delim ()
+(defun telega-ins--inline-delim (&optional chars-width)
   "Inserter for the delimiter."
-  (telega-ins--with-props
-      '(face underline display ((space-width 2) (height 0.5)))
-    (telega-ins (make-string 30 ?\s) "\n")))
+  (telega-ins--with-face
+      `(:underline (:position ,(round (/ (telega-chars-xheight 1) 3))))
+    (telega-ins (make-string (or chars-width 30) ?\s)))
+  (telega-ins "\n"))
 
 (defun telega-inline-bot--action (qr)
   "Action to take when corresponding query result QR button is pressed."

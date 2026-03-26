@@ -440,7 +440,8 @@ to make use of `telega-use-tracking-for'"))
 
 (defun telega-root-aux--pp (inserter)
   "Pretty printer for rootbuf aux INSERTER from `telega-root-aux-inserters'."
-  ;; NOTE: special case for status inserter, no need in leading newline
+  ;; NOTE: special case for status inserter, no need in leading newline.
+  ;; Possibly use (bolp) instead?
   (telega-ins-prefix (unless (eq inserter #'telega-ins--status) "\n")
     (funcall inserter)))
 
@@ -1121,7 +1122,7 @@ If corresponding chat node does not exists in EWOC, then create new one."
              (telega-save-cursor
                (telega-ewoc--set-footer ewoc
                  (telega-ins--as-string
-                  (telega-ins--box-button (telega-i18n "telega_show_more")
+                  (telega-ins--ui-button (telega-i18n "telega_show_more")
                     :value next-offset
                     :action search-func)
                   (telega-ins "\n")))))))))
@@ -1172,8 +1173,8 @@ If corresponding chat node does not exists in EWOC, then create new one."
       (telega-save-cursor
         (telega-ewoc--set-footer ewoc
           (telega-ins--as-string
-           (telega-ins--box-button (telega-i18n "lng_posts_search_button"
-                                     :query query)
+           (telega-ins--ui-button (telega-i18n "lng_posts_search_button"
+                                    :query query)
              :value ""             ; `offset' arg to action func
              :action #'telega-root--public-posts-search)
            (telega-ins "\n")
@@ -1340,7 +1341,7 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
       (telega-ins--with-face 'bold
         (telega-ins (if (listp view-name) (cadr view-name) view-name)))
       (telega-ins " ")
-      (telega-ins--box-button (telega-i18n "lng_signin_reset")
+      (telega-ins--ui-button (telega-i18n "lng_chat_intro_reset")
         :action #'telega-view-reset)
       (telega-ins " "))
     (telega-ins "\n")))
@@ -1724,7 +1725,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
 (defun telega-view-grouping ()
   "Group chats by `telega-root-view-grouping-alist'."
   (interactive)
-  (let* ((folder-names (telega-folder-names))
+  (let* ((folder-names (mapcar #'car telega-tdlib--folder-name-alist))
          (ewoc-specs-for-folders
           (when telega-root-view-grouping-folders
             (mapcar (lambda (folder-name)
@@ -1742,7 +1743,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
                  telega-root-view-grouping-alist)
        ,@(when (eq telega-root-view-grouping-folders 'append)
            ewoc-specs-for-folders)
-       ,(when telega-root-view-grouping-other-chats
+       ,@(when telega-root-view-grouping-other-chats
           (let ((other-temex
                  `(not (or ,@(mapcar 'cdr telega-root-view-grouping-alist)
                            ,@(when telega-root-view-grouping-folders
@@ -1800,7 +1801,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
                (telega-ins--with-face 'bold
                  (telega-ins (telega-user-title me-user 'full-name)))
                (telega-ins " ")
-               (telega-ins--box-button "Change"
+               (telega-ins--ui-button (telega-i18n "telega_change")
                  'action (lambda (_button)
                            (let* ((names
                                    (split-string
@@ -1817,12 +1818,12 @@ If `\\[universal-argument]' is given, then view missed calls only."
                    (progn
                      (telega-ins "@" username)
                      (telega-ins " ")
-                     (telega-ins--box-button "Change"
+                     (telega-ins--ui-button (telega-i18n "telega_change")
                        'action (lambda (_button)
                                  (telega--setUsername
                                   (read-string
                                    "Set username [empty to delete]: ")))))
-                 (telega-ins--box-button "Set Username"
+                 (telega-ins--ui-button "Set Username"
                    'action (lambda (_button)
                              (telega--setUsername
                               (read-string
@@ -1837,7 +1838,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
         (when-let ((emoji-status (plist-get me-user :emoji_status)))
           (telega-ins--emoji-status emoji-status))
         (telega-ins " ")
-        (telega-ins--box-button "Set Emoji Status"
+        (telega-ins--ui-button "Set Emoji Status"
           'action (lambda (_button)
                     (let ((duration
                            (if current-prefix-arg
@@ -1852,7 +1853,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
                     ))))
 
     (telega-ins-describe-item "Profile Photos"
-      (telega-ins--box-button "Set Profile Photo"
+      (telega-ins--ui-button "Set Profile Photo"
         'action (lambda (_ignored)
                   (let ((photo (read-file-name "Profile Photo: " nil nil t)))
                     (telega--setProfilePhoto photo))))
@@ -1868,11 +1869,11 @@ If `\\[universal-argument]' is given, then view missed calls only."
           (progn
             (telega-ins bio)
             (telega-ins " ")
-            (telega-ins--box-button "Change Bio"
+            (telega-ins--ui-button "Change Bio"
               'action (lambda (_button)
                         (telega--setBio
                          (read-string "Change bio [empty to delete]: " bio)))))
-        (telega-ins--box-button "Set Bio"
+        (telega-ins--ui-button "Set Bio"
           'action (lambda (_button)
                     (telega--setBio
                      (read-string "Set bio [empty to delete]: ")))))
@@ -2024,7 +2025,7 @@ Default Disable Notification setting"))
       (telega-root--any-on-chat-update ewoc-name ewoc chat))))
 
 (defun telega-view-folders--ewoc-spec (folder-spec)
-  (let ((folder-name (telega-folder-name folder-spec)))
+  (let ((folder-name (car folder-spec)))
     (list :name folder-name
           :pretty-printer (telega-view-folders--gen-pp folder-name)
           :header (telega-folder-format "%i%f" folder-name)
@@ -2037,9 +2038,9 @@ Default Disable Notification setting"))
   "View Telegram folders."
   (interactive)
   (telega-root-view--apply
-   (nconc (list 'telega-view-folders "Folders")
+   (nconc (list 'telega-view-folders (telega-i18n "lng_filters_title"))
           (mapcar #'telega-view-folders--ewoc-spec
-                  telega-tdlib--chat-folders))))
+                  telega-tdlib--folder-name-alist))))
 
 ;; "Recently Deleted Chats" root view
 (defun telega-root--deleted-chat-pp (chat)
@@ -2129,7 +2130,7 @@ Default Disable Notification setting"))
              :action #'telega-file--cancel-download))
           ((eq 'telega-file--partially-downloaded-p predicate)
            (telega-ins "  ")
-           (telega-ins--box-button (telega-i18n "lng_media_download")
+           (telega-ins--ui-button (telega-i18n "lng_media_download")
              :value file
              :action #'telega-file--download)))
     (when telega-debug
@@ -2420,7 +2421,7 @@ If LINK is nil, then link is loading."
          (telega-ins "2. " (telega-i18n "lng_intro_qr_step2") "\n")
          (telega-ins "3. " (telega-i18n "lng_intro_qr_step3") "\n")
          (telega-ins "\n")
-         (telega-ins--box-button (telega-i18n "lng_intro_qr_skip")
+         (telega-ins--ui-button (telega-i18n "lng_intro_qr_skip")
            'action (lambda (_button)
                      ;; Skip QR auth and fallback to phone number as
                      ;; auth method, see

@@ -77,13 +77,13 @@ Have Stoploss 690 Satoshi." :entities []))))
 (dolist (chat telega--filtered-chats)
   (puthash (plist-get chat :id) chat telega--chats))
 
-(setq telega-tdlib--chat-folders
-      '((:@type "chatFolderInfo" :id 2
-                :name (:@type "chatFolderName" :text (:@type "formattedText" :text "Emacs" :entities []))
-                :icon (list :@type "chatFolderIcon" :name ""))
-        (:@type "chatFolderInfo" :id 3
-                :name (:@type "chatFolderName" :text (:@type "formattedText" :text #("í ½í¸¹í ½í¸¹í ½í¸¹" 0 2 (telega-emoji-p t telega-display "ðŸ˜¹") 2 4 (telega-emoji-p t telega-display "ðŸ˜¹") 4 6 (telega-emoji-p t telega-display "ðŸ˜¹")) :entities []) :animate_custom_emoji t)
-                :icon (list :@type "chatFolderIcon" :name ""))))
+(setq telega-tdlib--folder-name-alist
+      '(("Emacs" :@type "chatFolderInfo" :id 2
+         :name (:@type "chatFolderName" :text (:@type "formattedText" :text "Emacs" :entities []))
+         :icon (list :@type "chatFolderIcon" :name ""))
+        ("ðŸ˜¹ðŸ˜¹ðŸ˜¹" :@type "chatFolderInfo" :id 3
+         :name (:@type "chatFolderName" :text (:@type "formattedText" :text #("í ½í¸¹í ½í¸¹í ½í¸¹" 0 2 (telega-emoji-p t telega-display "ðŸ˜¹") 2 4 (telega-emoji-p t telega-display "ðŸ˜¹") 4 6 (telega-emoji-p t telega-display "ðŸ˜¹")) :entities []) :animate_custom_emoji t)
+         :icon (list :@type "chatFolderIcon" :name ""))))
 
 
 ;; Tests
@@ -145,19 +145,6 @@ Have Stoploss 690 Satoshi." :entities []))))
 
 (ert-deftest telega-server-json-parsing ()
   "Test json->plist converter."
-  )
-
-(ert-deftest telega-tme-open ()
-  "Test info related functionality."
-  (should (string= (telega-tme-open "https://t.me/joinchat/itshitout" 'offline)
-                   "tg:join?invite=itshitout"))
-  (should (string= (telega-tme-open "https://t.me/itshit/23423" 'offline)
-                   "tg:resolve?domain=itshit&post=23423"))
-  (should (string= (telega-tme-open "https://t.me/c/101110111/286125" 'offline)
-                   "tg:privatepost?channel=101110111&post=286125"))
-  ;; Non telegram urls
-  (should (null (telega-tme-open "www.domain.ru" 'offline)))
-  (should (null (telega-tme-open "https://www.domain.ru" 'offline)))
   )
 
 (ert-deftest telega-formatting ()

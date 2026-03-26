@@ -123,7 +123,7 @@ DIRTINESS specifies additional CHAT dirtiness."
     (telega--info-update user)
     ;; NOTE: Updating user might affect his palette, so delete cached
     ;; palette
-    (telega-plist-del user :telega-palette)
+    (plist-put user :telega-palette nil)
 
     (when-let ((v-status (plist-get user :verification_status)))
       (telega--verification-fetch-custom-emoji v-status))
@@ -257,7 +257,7 @@ DIRTINESS specifies additional CHAT dirtiness."
 
     ;; NOTE: Updating chat's title might affect its palette, so delete
     ;; cached palette
-    (telega-plist-del chat :telega-palette)
+    (plist-put chat :telega-palette nil)
 
     (telega-chat--mark-dirty chat event)
 
@@ -440,7 +440,8 @@ NOTE: we store the number as custom chat property, to use it later."
 
     ;; Update chat's input to the text in DRAFT-MSG
     (with-telega-chatbuf chat
-      (telega-chatbuf--input-draft-update))
+      (unless telega-chatbuf--topic
+        (telega-chatbuf--input-draft-update)))
     ))
 
 (defun telega--on-updateChatHasScheduledMessages (event)
@@ -524,7 +525,7 @@ NOTE: we store the number as custom chat property, to use it later."
     ;; side messages ignoring.  Also trigger reordering, since
     ;; ignoring last message might affect chat order, see
     ;; `contrib/telega-adblock.el'
-    ;; 
+    ;;
     ;; TODO: do it only for chats displayed in the rootbuf
     ;; maybe use `telega-chats-fetched-hook' in the telega-root code
     ;; to do this
@@ -550,12 +551,15 @@ NOTE: we store the number as custom chat property, to use it later."
     (run-hooks 'telega-chats-fetched-hook)))
 
 (defun telega--on-updateChatReplyMarkup (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
+        (reply-markup-msg (plist-get event :reply_markup_message)))
     (cl-assert chat)
     (plist-put chat :reply_markup_message_id
-               (plist-get event :reply_markup_message_id))
+               (or (plist-get reply-markup-msg :id) 0))
 
     (with-telega-chatbuf chat
+      (when reply-markup-msg
+        (telega-msg-cache reply-markup-msg))
       (telega-chatbuf--reply-markup-message-fetch))))
 
 (defun telega--on-updateChatVideoChat (event)
@@ -590,7 +594,7 @@ NOTE: we store the number as custom chat property, to use it later."
 ;; Chat filters
 (defun telega--on-updateChatFolders (event)
   "List of chat filters has been updated."
-  (setq telega-tdlib--chat-folder-tags-p
+  (setq telega-tdlib--folder-tags-enabled-p
         (plist-get event :are_tags_enabled))
 
   ;; NOTE: collect folders with changed names and update all chats in
@@ -598,9 +602,16 @@ NOTE: we store the number as custom chat property, to use it later."
   ;; side with chat's title in the rootbuf
   (let* ((new-tdlib-folders (append (plist-get event :chat_folders) nil))
          (new-names (seq-difference
-                     (telega-folder-names new-tdlib-folders 'no-props)
-                     (telega-folder-names telega-tdlib--chat-folders 'no-props))))
-    (setq telega-tdlib--chat-folders new-tdlib-folders)
+                     (mapcar #'telega-folder-name new-tdlib-folders)
+                     (mapcar #'car telega-tdlib--folder-name-alist))))
+    (setq telega-tdlib--folder-name-alist
+          (mapcar (lambda (fi)
+                    (cons (telega-folder-name fi) fi))
+                  new-tdlib-folders))
+    (setq telega-tdlib--folder-id-alist
+          (mapcar (lambda (fi)
+                    (cons (plist-get fi :id) fi))
+                  new-tdlib-folders))
 
     (dolist (folder-name new-names)
       ;; NOTE: Fetch all custom emojis from folder's name
@@ -671,6 +682,13 @@ NOTE: we store the number as custom chat property, to use it later."
     (run-hook-with-args 'telega-chat-pre-message-hook new-msg)
 
     (with-telega-chatbuf chat
+      ;; TDLib docs: pending message to be deleted whenever any
+      ;; incoming message from the bot in the message thread is
+      ;; received
+      (when (plist-get chat :pending-message)
+        (plist-put chat :pending-message nil)
+        (telega-chat--mark-dirty chat "updatePendingTextMessage"))
+
       (telega-msg-cache new-msg)
 
       ;; NOTE: `:last_message' could be already updated in the chat
@@ -1048,7 +1066,7 @@ messages."
   ;;     19 MiB  telega--stickersets-trending-premium
   ;;     15 MiB  telega--stickersets-trending
 
-  ;; 
+  ;;
   ;; (let* ((trending-sset (plist-get event :sticker_sets))
   ;;        (ssets-info (plist-get trending-sset :sets)))
   ;;   (set (if (plist-get trending-sset :is_premium)
@@ -1135,6 +1153,11 @@ messages."
                  (plist-get supergroup :is_forum)
                  (telega-chat-match-p chat telega-chat-load-topics-early-for))
         (telega-chat--topics-load chat))
+
+      ;; Forum mode has been disabled
+      (when (and (plist-get old-supergroup :is_forum)
+                 (not (plist-get supergroup :is_forum)))
+        (plist-put chat :telega-topics-visible nil))
 
       ;; NOTE: notify if someone transferred ownership to me
       (when (and (not me-was-owner)
@@ -1258,6 +1281,11 @@ messages."
       (setq telega--me-id value))
     (when (and (eq option :replies_bot_chat_id) value)
       (setq telega--replies-id value))
+
+    (when (and (eq option :enabled_proxy_id) value
+               telega-proxy-status-auto
+               (not telega-proxy-status-mode))
+      (telega-proxy-status-mode 1))
 
     ;; Fetch Sticker Set with animated emojis
     (when (and (eq option :animated_emoji_sticker_set_name) value)
@@ -1395,11 +1423,11 @@ Please downgrade TDLib and recompile `telega-server'"
         (telega-ins--content event))
       (when (string-prefix-p "AUTH_KEY_DROP_" (plist-get event :type))
         (telega-ins "\n")
-        (telega-ins--box-button (telega-i18n "lng_cancel")
+        (telega-ins--ui-button (telega-i18n "lng_cancel")
           'action (lambda (_ignored)
                     (quit-window)))
         (telega-ins " ")
-        (telega-ins--box-button (telega-i18n "lng_settings_logout")
+        (telega-ins--ui-button (telega-i18n "lng_settings_logout")
           'action (lambda (_ignored)
                     (when (yes-or-no-p (concat (telega-i18n "lng_sure_logout")
                                                " "))
@@ -1450,7 +1478,7 @@ Please downgrade TDLib and recompile `telega-server'"
           (append (seq-difference telega--suggested-actions removed-actions
                                   #'equal)
                   added-actions))
-    (message "TODO: telega--suggested-actions")))
+    ))
 
 (defun telega--on-updateHavePendingNotifications (_event)
   ;; We define this to avoid
@@ -1640,6 +1668,11 @@ Please downgrade TDLib and recompile `telega-server'"
   ;; TODO: Update settings
   )
 
+(defun telega--on-updateOwnedTonCount (event)
+  (setq telega--owned-tons (plist-get event :ton_amount))
+  ;; TODO: update
+  )
+
 (defun telega--on-updateSavedMessagesTopic (event)
   (let ((sm-topic (plist-get event :topic))
         (sm-chat (telega-chat-me)))
@@ -1658,6 +1691,10 @@ Please downgrade TDLib and recompile `telega-server'"
   (let* ((forum-chat (telega-chat-get (plist-get event :chat_id) 'offline))
          (forum-topic (telega-topic-get
                        forum-chat (plist-get event :forum_topic_id)))
+         (old-draft-msg
+          (plist-get forum-topic :draft_message))
+         (new-draft-msg
+          (plist-get event :draft_message))
          (old-last-read-msg-id
           (plist-get forum-topic :last_read_inbox_message_id))
          (new-last-read-msg-id
@@ -1674,6 +1711,8 @@ Please downgrade TDLib and recompile `telega-server'"
                (plist-get event :unread_reaction_count))
     (plist-put forum-topic :notification_settings
                (plist-get event :notification_settings))
+    (plist-put forum-topic :draft_message
+               new-draft-msg)
 
     ;; TODO: delete this, display total number of messages for the
     ;; topic instead
@@ -1717,6 +1756,13 @@ Please downgrade TDLib and recompile `telega-server'"
               ))))))
 
     (telega-chat--mark-dirty forum-chat event)
+
+    ;; Update topic's draft as well
+    (when (or (and old-draft-msg (not new-draft-msg))
+              new-draft-msg)
+      (with-telega-chatbuf forum-chat
+        (when (eq forum-topic telega-chatbuf--topic)
+          (telega-chatbuf--input-draft-update))))
     ))
 
 (defun telega--on-updateForumTopicInfo (event)
@@ -1777,6 +1823,24 @@ For Saved Messages and channel direct messages chat topics only."
          (messages (plist-get event :messages)))
     (plist-put qr :messages messages))
   (telega-describe-quick-replies--maybe-redisplay))
+
+(defun telega--on-updatePendingTextMessage (event)
+  "Pending message has been updated."
+  (let* ((chat (telega-chat-get (plist-get event :chat_id)))
+         (topic (telega-topic-get chat (plist-get event :forum_topic_id))))
+    (plist-put (or topic chat) :pending-message event)
+    (telega-chat--mark-dirty chat event)
+
+    ;; Fetch custom emojis used by pending text message and redisplay it
+    (when-let ((ce-ids (seq-remove #'telega-custom-emoji-get
+                                   (telega-custom-emoji--ids-for-fmt-text
+                                    (plist-get event :text)))))
+      (telega--getCustomEmojiStickers ce-ids
+        (lambda (stickers)
+          (seq-doseq (sticker stickers)
+            (telega-custom-emoji--ensure sticker))
+          (telega-chat--mark-dirty chat event))))
+    ))
 
 (provide 'telega-tdlib-events)
 

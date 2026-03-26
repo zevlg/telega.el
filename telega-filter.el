@@ -61,7 +61,7 @@
 (declare-function telega-chat-muted-p "telega-chat"  (chat))
 (declare-function telega-chat-channel-p "telega-chat" (chat))
 (declare-function telega-chat-bot-p "telega-chat" (chat))
-(declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
+(declare-function telega-chat-title "telega-chat" (chat &optional fmt-type no-badges))
 (declare-function telega-chat--info "telega-chat" (chat &optional local-p))
 (declare-function telega-chats-top "telega-chat" (category))
 (declare-function telega-chat-member-my-status "telega-chat" (chat))
@@ -305,7 +305,7 @@ If FILTER is nil, then active filter is used."
           ((and telega-filter-custom-one-liners
                 folder-p
                 (equal (nth 1 custom-filter)
-                       (telega-folder-name (car telega-tdlib--chat-folders))))
+                       (caar telega-tdlib--folder-name-alist)))
            (insert "\n"))
           ((zerop ccolumn)
            ;; no-op
@@ -382,11 +382,12 @@ Actually return active chat filter corresponding to CUSTOM filter."
              (member (list 'custom (telega-filter--custom-name custom))
                      active-filter)))))
 
-(defun telega-filter--custom-folder-spec (tdlib-chat-filter)
+(defun telega-filter--custom-folder-spec (folder-entry)
   "Return custom filter spec for the TDLIB-CHAT-FILTER folder."
-  (let ((fn (telega-folder-name tdlib-chat-filter)))
-    (cons (telega-folder-format "%i%f" fn tdlib-chat-filter)
-          (list 'folder (substring-no-properties fn)))))
+  (let ((folder-name (car folder-entry))
+        (folder-info (cdr folder-entry)))
+    (cons (telega-folder-format "%i%f" folder-name folder-info)
+          (list 'folder (substring-no-properties folder-name)))))
 
 (defun telega-filter--custom-chats (custom)
   "Return chats matching CUSTOM chat filter."
@@ -403,7 +404,7 @@ Used when `updateChatFolders' is received."
   (dolist (custom (append telega-filters-custom
                           (when telega-filter-custom-show-folders
                             (mapcar #'telega-filter--custom-folder-spec
-                                    telega-tdlib--chat-folders))))
+                                    telega-tdlib--folder-name-alist))))
     (ewoc-enter-last telega-filters--ewoc
                      (cons (car custom)
                            (cons (cdr custom)
@@ -693,7 +694,7 @@ Use `telega-filter-by-name' for fuzzy searching."
 (defun telega-filter-by-pin ()
   "Filter only pinned chats."
   (interactive)
-  (telega-filter-add '(prop :is_pinned)))
+  (telega-filter-add 'is-pinned))
 
 (defun telega-filter-by-unread (n)
   "Filter chats with at least N unread messages."
@@ -774,8 +775,8 @@ To specify suffixes use `/ e' command and edit filter string directly."
 Specify MUTUAL-P to filter only mutual contacts."
   (interactive "P")
   (telega-filter-add (list 'user (if mutual-p
-                                     '(contact mutual)
-                                   'contact))))
+                                     '(is-contact mutual)
+                                   'is-contact))))
 
 (defun telega-filter-by-top ()
   "Filter top used chats by CATEGORY."

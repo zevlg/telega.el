@@ -47,7 +47,7 @@
 (declare-function telega-chatbuf--manage-point "telega-chat" (&optional point only-prompt-p))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg msg-temex &optional backward))
 (declare-function telega-chatbuf--activate-vvnote-msg "telega-chat" (msg))
-(declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
+(declare-function telega-chat-title "telega-chat" (chat &optional fmt-type no-badges))
 (declare-function telega-chatbuf--node-by-msg-id "telega-chat" (msg-id))
 (declare-function telega-chatbuf--chat-update "telega-chat" (&rest dirtiness))
 (declare-function telega-chat--type "telega-chat" (chat))
@@ -107,7 +107,7 @@
      :label (telega-i18n "lng_context_pin_msg")
      :style toggle
      :selected (telega-msg-match-p (telega-msg-for-interactive)
-                 '(prop :is_pinned))
+                 'is-pinned)
      :visible (telega-msg-match-p (telega-msg-for-interactive)
                 '(message-property :can_be_pinned))]
     ["copy" telega-msg-copy-text
@@ -194,15 +194,13 @@
 
     (define-key map (kbd "B") 'telega-msg-ban-sender)
     (define-key map (kbd "L") 'telega-msg-redisplay)
-    (define-key map (kbd "P") 'telega-msg-pin-toggle)
     (define-key map (kbd "R") 'telega-msg-resend)
-    (define-key map (kbd "S") 'telega-msg-save)
     (define-key map (kbd "T") 'telega-msg-open-thread-or-topic)
     (define-key map (kbd "U") 'telega-chatbuf-msg-marks-toggle)
 
     (define-key map (kbd "!") 'telega-msg-add-reaction)
     (define-key map (kbd "=") 'telega-msg-diff-edits)
-    (define-key map (kbd "^") 'telega-msg-pin-toggle)
+    (define-key map (kbd "^") 'telega-transient-msg-pin-toggle)
     (define-key map (kbd "DEL") 'telega-transient-msg-delete)
 
     (define-key map (kbd "*") 'telega-msg-favorite-toggle)
@@ -493,6 +491,7 @@ Return nil for deleted messages."
   ;; Considering 2k of index data per second
   (cond ((and (telega-file--downloaded-p video-file)
               (plist-get video :telega-video-pending-open))
+         (plist-put video :telega-video-pending-open nil)
          (telega-msg--play-video msg video-file))
 
         ((not (telega-file--downloading-p video-file))
@@ -507,13 +506,15 @@ Return nil for deleted messages."
          ;; 3) Time to download file to the end is less than it takes
          ;;    to play it
          (let* ((fsize (telega-file--size video-file))
-                (dsize (telega-file--downloaded-size video-file))
+                (dsize
+                 (telega--tl-get video-file :local :downloaded_prefix_size))
                 (duration (or (plist-get video :duration) 50))
                 (probe-size (plist-get video :telega-video-probe-size))
                 (open-time (plist-get video :telega-video-pending-open))
                 ;; Downloaded duration
                 (ddur (* duration (/ (float dsize) fsize))))
            (when (and
+                  (zerop (telega--tl-get video-file :local :download_offset))
                   ;; Check for 1)
                   probe-size (> dsize probe-size) (> ddur 3)
                   ;; Check for 3)
@@ -919,9 +920,12 @@ non-nil."
           ((linkPreviewTypeBackground
             linkPreviewTypeDocument)
            (telega-msg-open-document msg (plist-get lp-type :document)))
+          (linkPreviewTypeEmbeddedVideoPlayer
+           (if-let ((video (plist-get lp-type :video)))
+               (telega-msg-open-video msg video)
+             (telega-browse-url (plist-get link-preview :url))))
           ((linkPreviewTypeEmbeddedAnimationPlayer
             linkPreviewTypeEmbeddedAudioPlayer
-            linkPreviewTypeEmbeddedVideoPlayer
             linkPreviewTypeExternalAudio
             linkPreviewTypeExternalVideo
             linkPreviewTypeArticle)
@@ -991,16 +995,22 @@ non-nil."
                   (telega-i18n "lng_polls_votes_count"
                     :count (plist-get popt :voter_count))))
               (when-let* ((voters-reply (telega--getPollVoters msg popt-id))
-                          (voters (mapcar #'telega-msg-sender
-                                          (plist-get voters-reply :senders))))
+                          (voters (plist-get voters-reply :voters)))
                 (telega-ins--line-wrap-prefix "  "
                   (seq-doseq (voter voters)
-                    (telega-ins--raw-button
-                        (telega-link-props 'sender voter 'type 'telega)
-                      (telega-ins--msg-sender voter
-                        :with-avatar-p t
-                        :with-username-p 'telega-username)
-                      (telega-ins "\n")))))
+                    (let ((voter-sender (telega-msg-sender
+                                         (plist-get voter :voter_id))))
+                      (telega-ins--raw-button
+                          (telega-link-props 'sender voter-sender 'type 'telega)
+                        (telega-ins--msg-sender voter-sender
+                          :with-avatar-p t
+                          :with-brackets-p t
+                          :with-username-p 'telega-username)
+                        (when-let ((vote-date (plist-get voter :date)))
+                          (telega-ins--move-to-column (/ fill-column 2))
+                          (telega-ins " " (telega-i18n "telega_at") " ")
+                          (telega-ins--date-relative vote-date))
+                        (telega-ins "\n"))))))
               (telega-ins "\n"))))))))
 
 (defun telega-describe--giveaway-info (msg ga-info)
@@ -1195,9 +1205,13 @@ discussion group.
 Or MSG could be in supergroup, then filter messages to the
 corresponding thread or topic."
   (interactive (list (telega-msg-for-interactive)))
-  (cond ((telega-msg-match-p msg 'is-forum-topic)
-         (telega-topic-goto (telega-msg-topic msg)
-                            (plist-get msg :id)))
+  (cond ((telega-msg-match-p msg
+           '(and is-forum-topic
+                 ;; NOTE: message might belong to some topic, but chat
+                 ;; is already ordinary supergroup, in this case we
+                 ;; can't get topic
+                 (chat is-forum)))
+         (telega-topic-goto (telega-msg-topic msg) (plist-get msg :id)))
 
         ((telega-msg-match-p msg 'post-with-comments)
          (telega-chat--goto-thread (telega-msg-chat msg 'offline)
@@ -1207,7 +1221,10 @@ corresponding thread or topic."
          (telega-chat--goto-thread
           (telega-msg-chat msg 'offline)
           (telega--tl-get msg :topic_id :message_thread_id)
-          (plist-get msg :id)))))
+          (plist-get msg :id)))
+
+        (t
+         (user-error "telega: Can't open thread or topic"))))
 
 (defun telega-msg-can-open-media-timestamp-p (msg)
   "Return non-nil if MSG can be opened with custom media timestamp.
@@ -1260,10 +1277,7 @@ TL-OBJ could be a \"message\", \"chatMember\", \"messageSender\" or
 \"chatMessageSender\".
 Return a user or a chat."
   (let ((sender (cl-ecase (telega--tl-type tl-obj)
-                  (chatMessageSender
-                   (when (or (not (plist-get tl-obj :needs_premium))
-                             (plist-get telega--options :is_premium))
-                     (plist-get tl-obj :sender)))
+                  (chatMessageSender (plist-get tl-obj :sender))
                   (message (plist-get tl-obj :sender_id))
                   (chatMember (plist-get tl-obj :member_id))
                   ((messageSenderUser messageSenderChat) tl-obj))))
@@ -1353,11 +1367,14 @@ ARGS are passed directly to `telega-ins--msg-sender'."
 (defun telega-msg-sender-palette (msg-sender)
   "Return palette for the message sender MSG-SENDER."
   (unless (memq telega-palette-context telega-palette-context-ignore-list)
-    (or (plist-get msg-sender :telega-palette)
-        (let ((palette (telega-palette-by-color-id
-                        (plist-get msg-sender :accent_color_id))))
-          (plist-put msg-sender :telega-palette palette)
-          palette))))
+    (let ((bg-mode (frame-parameter nil 'background-mode)))
+      (or (alist-get bg-mode (plist-get msg-sender :telega-palette))
+          (let ((palette (telega-palette-by-color-id
+                          (plist-get msg-sender :accent_color_id)
+                          bg-mode)))
+            (setf (alist-get bg-mode (plist-get msg-sender :telega-palette))
+                  palette)
+            palette)))))
 
 (defun telega-msg-sender-title-faces (msg-sender &optional palette)
   "Compute faces list to use for MSG-SENDER title."
@@ -1502,36 +1519,6 @@ Return function by which MSG has been ignored."
       (telega-msg-next 1))
 
     (telega-chatbuf--chat-update "marked-messages")))
-
-(defun telega-msg-pin-toggle (msg)
-  "Toggle pin state of the message MSG.
-For interactive use only."
-  (interactive (list (telega-msg-for-interactive)))
-
-  (unless (telega-msg-match-p msg '(chat (my-permission :can_pin_messages)))
-    (user-error "telega: No permissions to pin/unpin messages"))
-
-  (if (plist-get msg :is_pinned)
-      (telega--unpinChatMessage msg)
-
-    (let* ((chat (telega-msg-chat msg))
-           (chat-private-p (telega-chat-private-p chat))
-           (for-self-only
-            (or (telega-me-p (telega-msg-chat msg))
-                (when chat-private-p
-                  (not (y-or-n-p (concat
-                                  (telega-i18n "lng_pinned_also_for_other"
-                                    :user (telega-ins--as-string
-                                           (telega-ins--msg-sender chat
-                                             :with-avatar-p t)))
-                                  "? "))))))
-           ;; NOTE: always notify on private chats
-           (notify (or chat-private-p
-                       (unless for-self-only
-                         (y-or-n-p (concat "Pin message.  "
-                                           (telega-i18n "lng_pinned_notify")
-                                           "? "))))))
-      (telega--pinChatMessage msg (not notify) for-self-only))))
 
 (defun telega-msg-favorite-p (msg)
   "Return non-nil if MSG is favorite in the chat."
@@ -1893,6 +1880,11 @@ If `\\[universal-argument]' is supplied, then copy without text properties."
                                   entities 'textEntityTypePreCode))
                        (telega-msg--tl-entity-text msg ent))
 
+                      ((setq ent (telega--tl-entity-get
+                                  entities 'textEntityTypeDateTime))
+                       (message "TODO: copy date")
+                       nil)
+
                       (t
                        (call-interactively #'telega-msg-copy-text)
                        ;; NOTE: `telega-msg-copy-text' does all the
@@ -2039,12 +2031,6 @@ Requires administrator rights in the chat."
           (telega-ins--raw-button (telega-link-props 'url link 'face 'link)
             (telega-ins link))))
 
-      (telega-ins-describe-item "Internal Link"
-        (let ((internal-link (telega-tme-internal-link-to msg)))
-          (telega-ins--raw-button
-              (telega-link-props 'url internal-link 'face 'link)
-            (telega-ins internal-link))))
-
       ;; Custom emoji stickersets
       (when-let* ((custom-emojis
                    (mapcar #'telega-custom-emoji-get
@@ -2056,7 +2042,7 @@ Requires administrator rights in the chat."
             (telega-stickerset-get sset-id nil
               (telega--gen-ins-continuation-callback 'loading
                 (lambda (sset)
-                  (telega-ins--box-button (telega-stickerset-title sset)
+                  (telega-ins--ui-button (telega-stickerset-title sset)
                     :value sset
                     :action #'telega-describe-stickerset))
                 msg-id))
@@ -2070,7 +2056,8 @@ Requires administrator rights in the chat."
 
       (let ((msg-reactions (telega--tl-get msg :interaction_info :reactions)))
         (cond ((plist-get msg-reactions :can_get_added_reactions)
-               (telega-ins-describe-item "Message Reactions"
+               (telega-ins-describe-item
+                   (telega-i18n "lng_manage_peer_reactions")
                  ;; Asynchronously fetch added message reactions
                  (telega--getMessageAddedReactions msg
                    :callback
@@ -2103,7 +2090,8 @@ Requires administrator rights in the chat."
                ;; available
                ;; See https://github.com/zevlg/telega.el/issues/460
                (let ((reactions (plist-get msg-reactions :reactions)))
-                 (telega-ins-describe-item "Message Reactions"
+                 (telega-ins-describe-item
+                     (telega-i18n "lng_manage_peer_reactions")
                    (telega-ins-fmt "%d"
                      (apply #'+ (mapcar (telega--tl-prop :total_count) reactions)))
                    (seq-doseq (reaction reactions)

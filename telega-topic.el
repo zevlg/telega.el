@@ -267,7 +267,7 @@ If START-MSG-ID is specified, jump to the this message in the topic."
             :with-maybe-pin-p t))
         (telega-ins " ")
         ;; TODO: [Open] button
-        ;; (telega-ins--box-button "Open"
+        ;; (telega-ins--ui-button "Open"
         ;;                     )
         )
       (telega-ins-describe-item "Chat"

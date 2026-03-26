@@ -47,7 +47,6 @@
 (declare-function telega-root--buffer "telega-root")
 (declare-function telega-chatbuf--name "telega-chat" (chat))
 (declare-function telega-describe-chat "telega-chat" (chat))
-(declare-function telega-folder-names "telega-folders")
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 
 (declare-function telega-user-list "telega-user" (&optional temex))
@@ -1006,6 +1005,49 @@ buffer) or a string."
                         (plist-get ent-type :media_timestamp))))
         object)
        (add-face-text-property beg end 'telega-link nil object))
+      (textEntityTypeDateTime
+       (let* ((timestamp (plist-get ent-type :unix_time))
+              (ts-fmt (plist-get ent-type :formatting_type))
+              (timestamp-str
+               (when ts-fmt
+               (telega-ins--as-string
+                (cl-ecase (telega--tl-type ts-fmt)
+                  (dateTimeFormattingTypeRelative
+                   (telega-ins--date-relative timestamp 'force))
+                  (dateTimeFormattingTypeAbsolute
+                   (let* ((time-how
+                           (telega--tl-type (plist-get ts-fmt :time_precision)))
+                          (date-how
+                           (telega--tl-type (plist-get ts-fmt :date_precision)))
+                          (week-fmt
+                           (when (plist-get ts-fmt :show_day_of_week)
+                             (cl-case date-how
+                               (dateTimePartPrecisionShort "%a")
+                               (t "%A"))))
+                         (date-fmt
+                          (cl-case date-how
+                            (dateTimePartPrecisionShort "%d.%m.%y")
+                            (dateTimePartPrecisionLong "%d %B %Y")))
+                         (time-fmt
+                          (cl-case time-how
+                            (dateTimePartPrecisionShort "%H:%M")
+                            (dateTimePartPrecisionLong "%H:%M:%S")))
+                         (ret-fmt
+                          (concat week-fmt
+                                  (when (and date-fmt week-fmt)
+                                    " ")
+                                  date-fmt
+                                  (when (and time-fmt (or date-fmt week-fmt))
+                                    " ")
+                                  time-fmt)))
+                     (unless (string-empty-p ret-fmt)
+                       (telega-ins--date timestamp ret-fmt)))))))))
+         (unless (string-empty-p timestamp-str)
+           (add-text-properties
+            beg end
+            (list 'telega-display timestamp-str)
+            object))
+         (add-face-text-property beg end 'telega-link nil object)))
       (textEntityTypeCustomEmoji
        (when telega-use-images
          (when-let ((sticker (telega-custom-emoji-get
@@ -1864,13 +1906,15 @@ Return a user."
 (defvar telega-folder-read-history nil)
 (defun telega-completing-read-folder (prompt &optional folder-names)
   "Read TDLib folder name completing."
-  (telega-completing-read prompt (or folder-names (telega-folder-names)) nil t
+  (unless folder-names
+    (setq folder-names (mapcar #'car telega-tdlib--folder-name-alist)))
+  (telega-completing-read prompt folder-names nil t
                           nil 'telega-folder-read-history))
 
 (defun telega-completing-read-folder-list (prompt &optional folder-names)
   "Read list of the Telegram folders prompting with PROMPT."
   (unless folder-names
-    (setq folder-names (telega-folder-names)))
+    (setq folder-names (mapcar #'car telega-tdlib--folder-name-alist)))
   (telega-gen-completing-read-list prompt folder-names #'identity
                                    #'telega-completing-read-folder))
 
@@ -2373,64 +2417,182 @@ integer values, then absolute value in pixels is used."
       :mask 'heuristic
       :telega-text "()")))
 
+(defun telega-box-button--bracket-image (style bracket-prop
+                                               &optional bracket-spec)
+  "Generate bracket image for the STYLE and BRACKET-PROP."
+  (when-let* ((bracket-spec
+               (or bracket-spec
+                   (telega-box-button--style-get style bracket-prop)))
+              (bracket-props (cdr bracket-spec)))
+    (let* ((fill-color (or (telega-box-button--style-get style :background)
+                           ;; (when-let ((pf (telega-box-button--style-get
+                           ;;                 style :passive-face)))
+                           ;;   (face-background pf))
+                           (face-background 'default)))
+           (outline-color (telega-box-button--style-outline-color style))
+           (outline-width (telega-box-button--style-outline-width style))
+           (left-p (eq bracket-prop :left-bracket))
+           (icon-symbol (unless left-p
+                          (telega-box-button--style-get style :icon-symbol)))
+           (cacheprop (format "button-bracket-%S-%S-%S-%S-%S-%S"
+                              bracket-prop bracket-spec
+                              fill-color outline-color
+                              outline-width icon-symbol)))
+      (or (and (not (plist-get (cdr bracket-spec) :no-cache))
+               (telega-emoji--image-cache-get cacheprop 1))
+          (let* ((w (round (telega-chars-xwidth
+                            (or (plist-get bracket-props :width) 1))))
+                 (h (telega-chars-xheight 1))
+                 (svg (telega-svg-create w h))
+                 (mask (dom-node 'mask `((id . "hole"))))
+                 (pos-fraction
+                  (or (plist-get bracket-props :margin) 0))
+                 (round-fraction
+                  (or (plist-get bracket-props :rx) 0.25))
+                 (xpos (round (* w (if left-p pos-fraction (- 1 pos-fraction)))))
+                 (sw (or outline-width 0))
+                 (sw2 (/ sw 2.0))
+                 image)
+            (svg--def svg mask)
+            (svg-rectangle mask 0 0 w h :fill "white")
+            (svg-rectangle mask (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
+                           (if left-p (+ w w) (+ w xpos)) (- h sw)
+                           :rx (round (* h round-fraction))
+                           :fill "black"
+                           :stroke-width sw
+                           :stroke-color "black")
+
+            (svg-rectangle svg 0 0 w h
+                           :fill (telega-color-name-as-hex-2digits fill-color)
+                           :mask "url(#hole)")
+
+            (when (> sw 0)
+              (svg-rectangle svg (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
+                             (if left-p (+ w w) (+ w xpos)) (- h sw)
+                             :rx (round (* h round-fraction))
+                             :fill "none"
+                             :stroke-width sw
+                             :stroke-color
+                             (if outline-color
+                                 (telega-color-name-as-hex-2digits outline-color)
+                               "currentColor")))
+
+            ;; Icon in the right top corner
+            (when icon-symbol
+              (svg-text svg icon-symbol
+                        :font-size w :x 0 :y w
+                        :stroke-color "currentColor"))
+
+            (let ((image (telega-svg-image svg
+                           :scale 1.0
+                           :height (telega-ch-height 1)
+                           :telega-text (car bracket-spec)
+                           :ascent 'center)))
+              (telega-emoji--image-cache-put cacheprop 1 image)
+              image))))))
+
 (defun telega-box-button--edge-image (which style)
   "Create left or right button edge image
 WHICH is one of: `left' or `right'.
 STYLE is a style plist."
   (declare (indent 1))
-  (cl-assert (memq which '(left right)))
-  (let ((cacheprop (format "button-edge-%S-%S" which style)))
-    (or (telega-emoji--image-cache-get cacheprop 1)
+  (cl-assert (memq which '(left right right-sm-tag)))
+  ;; NOTE: always use default face background and outline color in the
+  ;; cache key, so changing theme will recreate button image
+  (let* ((fill-color (or (telega-box-button--style-get style :background)
+                         (face-background 'default)))
+         (outline-color (telega-box-button--style-outline-color style))
+         (cacheprop (format "button-edge-%S-%S-%S-%S"
+                            which style fill-color outline-color)))
+    (or ;(and (not (telega-box-button--style-get style :no-cache))
+        ;     (telega-emoji--image-cache-get cacheprop 1))
         (let* ((w (telega-chars-xwidth 1))
                (h (telega-chars-xheight 1))
                (svg (telega-svg-create w h))
                (mask (dom-node 'mask `((id . "hole"))))
                (left-p (eq which 'left))
                (pos-fraction
-                (or (telega-box-button--style-get style :x-margin) 0.5))
+                (if (eq which 'right-sm-tag)
+                    0.0
+                  (or (telega-box-button--style-get style :x-margin) 0.5)))
                (round-fraction
                 (or (telega-box-button--style-get style :round-corner) 0.25))
                (xpos (round (* w (if left-p pos-fraction (- 1 pos-fraction)))))
-               (sw (or (telega-box-button--style-get style :outline-width) 0))
+               (sw (or (telega-box-button--style-outline-width style) 0))
                (sw2 (/ sw 2.0))
                image)
-          (svg--def svg mask)
-          (svg-rectangle mask 0 0 w h :fill "white")
-          (svg-rectangle mask (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
+          (svg-rectangle svg (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
                          (if left-p (+ w w) (+ w xpos)) (- h sw)
+                         :rx (round (* h round-fraction))
+                         :fill "currentColor"
                          :stroke-width sw
-                         :stroke-color "black"
-                         :fill "black" :rx (round (* h round-fraction)))
+                         :stroke-color
+                         (if outline-color
+                             (telega-color-name-as-hex-2digits outline-color)
+                           "currentColor"))
 
-          (let ((fill-color (or (telega-box-button--style-get style :background)
-                                (face-background 'default))))
-            (svg-rectangle svg 0 0 w h
-                           :fill (telega-color-name-as-hex-2digits fill-color)
-                           :mask "url(#hole)"))
-          (when sw
-            (svg-rectangle svg (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
-                           (if left-p (+ w w) (+ w xpos)) (- h sw)
-                           :rx (round (* h round-fraction))
-                           :fill "none"
-                           :stroke-width sw
-                           :stroke-color
-                           (if-let ((o-color (telega-box-button--style-get
-                                              style :outline-color)))
-                               (telega-color-name-as-hex-2digits o-color)
-                             "currentColor")))
-          ;; Icon in the right top corner
-          (unless left-p
-            (when-let ((icon (telega-box-button--style-get style :icon-symbol)))
-              (svg-text svg icon :font-size w :x 0 :y w
-                        :stroke-color "currentColor")))
+          ;; (svg--def svg mask)
+          ;; (svg-rectangle mask 0 0 w h :fill "white")
+          ;; (svg-rectangle mask (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
+          ;;                (if left-p (+ w w) (+ w xpos)) (- h sw)
+          ;;                :rx (round (* h round-fraction))
+          ;;                :fill "black"
+          ;;                :stroke-width sw
+          ;;                :stroke-color "black")
+          ;; (when (eq which 'right-sm-tag)
+          ;;   ;; TODO: draw tag curve and circle hole
+          ;;   (svg-polygon svg (list (cons 0 0)
+          ;;                          (cons w (round (/ h 2)))
+          ;;                          (cons 0 h))
+          ;;                :rx (round (* h round-fraction))
+          ;;                :stroke-width sw
+          ;;                :fill "black")
+          ;;   (svg-circle mask (round (/ w 2)) (round (/ h 2))
+          ;;               (round (/ (* h round-fraction) 3))
+          ;;               :fill "white")
+          ;;   )
+          
+          ;; (svg-rectangle svg 0 0 w h
+          ;;                :fill (telega-color-name-as-hex-2digits fill-color)
+          ;;                :mask "url(#hole)")
+          ;; (when sw
+          ;;   (svg-rectangle svg (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
+          ;;                  (if left-p (+ w w) (+ w xpos)) (- h sw)
+          ;;                  :rx (round (* h round-fraction))
+          ;;                  :fill "none"
+          ;;                  :stroke-width sw
+          ;;                  :stroke-color
+          ;;                  (if outline-color
+          ;;                      (telega-color-name-as-hex-2digits outline-color)
+          ;;                    "currentColor")
+          ;;                  ))
+          ;; ;; Icon in the right top corner
+          ;; (unless left-p
+          ;;   (when-let ((icon (telega-box-button--style-get style :icon-symbol)))
+          ;;     (svg-text svg icon :font-size w :x 0 :y w
+          ;;               :stroke-color "currentColor")))
 
           (setq image (telega-svg-image svg
                         :scale 1.0
                         :height (telega-ch-height 1)
                         :telega-text (if left-p "[" "]")
+                        :mask 'heuristic
                         :ascent 'center))
           (telega-emoji--image-cache-put cacheprop 1 image)
           image))))
+
+(defun telega-box-button--edge-image-left (style)
+  "Generate left edge image for the box button."
+  (telega-box-button--edge-image 'left style))
+
+(defun telega-box-button--edge-image-right (style)
+  "Generate right edge image for the box button."
+  (telega-box-button--edge-image 'right style))
+
+(defun telega-box-button--edge-image-right-sm-tag (style)
+  "Generate right edge image for the SavedMessages tag button."
+  ;; TODO: draw edge
+  (telega-box-button--edge-image 'right-sm-tag style))
 
 (cl-defun telega-svg-create-checkmark (checkmark-sym &key double-p
                                                      (stroke-width 1.0))
@@ -3186,14 +3348,15 @@ COLUMN is the column to aligned to."
   (let* ((completion-ignore-case t)
          (fmt-alist (mapcar (lambda (fname)
                               (cons (telega-i18n fname) fname))
-                            '("lng_menu_formatting_bold"
-                              "lng_menu_formatting_italic"
-                              "lng_menu_formatting_underline"
+                            '("lng_menu_formatting_blockquote"
                               "lng_menu_formatting_spoiler"
+                              "lng_menu_formatting_bold"
+                              "lng_menu_formatting_italic"
                               "lng_menu_formatting_monospace"
-                              "lng_menu_formatting_blockquote"
-                              "lng_menu_formatting_strike_out"
                               "lng_menu_formatting_link_create"
+                              "lng_menu_formatting_date"
+                              "lng_menu_formatting_strike_out"
+                              "lng_menu_formatting_underline"
                               "lng_menu_formatting_clear")))
          (i18n-fmt-name (telega-completing-read
                          prompt (mapcar #'car fmt-alist) nil t nil
@@ -3218,6 +3381,12 @@ COLUMN is the column to aligned to."
        (list :@type "textEntityTypeTextUrl"
              :url (read-string
                    (concat (telega-i18n "lng_formatting_link_url") ": "))))
+      ("lng_menu_formatting_date"
+       (list :@type "textEntityTypeDateTime"
+             :unix_time (telega-read-timestamp
+                         (telega-i18n "lng_formatting_date_title"))
+             ;; TODO: `:formatting_type'
+             ))
       ("lng_menu_formatting_clear"
        nil))))
 
@@ -3525,7 +3694,7 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
 
 (defun telega-stipple--box-button-body-gen (style)
   (let ((h-offset (or (telega-box-button--style-get style :h-offset) 0))
-        (sw (or (telega-box-button--style-get style :outline-width) 2)))
+        (sw (or (telega-box-button--style-outline-width style) 2)))
     (lambda (_x y _w h)
       (or (<= h-offset y (- sw 1))
           (<= (- h h-offset sw) y (- h h-offset 1))))))

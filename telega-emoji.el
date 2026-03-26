@@ -300,50 +300,68 @@ Actually return STICKER's full type info."
   (telega-sticker--image sticker #'telega-custom-emoji--create-image
                          :telega-image-ce1))
 
+(defun telega-custom-emoji--ids-for-fmt-text (fmt-text)
+  "Return list of custom emoji ids for formatted text FMT-TEXT."
+  (delq nil (mapcar (lambda (entity)
+                      (let ((entity-type (plist-get entity :type)))
+                        (when (eq 'textEntityTypeCustomEmoji
+                                  (telega--tl-type entity-type))
+                          (plist-get entity-type :custom_emoji_id))))
+                    (plist-get fmt-text :entities))))
+
 (defun telega-custom-emoji--ids-for-msg (msg &optional where)
   "Return a list of custom emoji ids extracted from the message MSG.
-Where is the list of `content', or `reactions'."
+Where is the list of `content', `reactions' or `reply-markup'."
   (let ((content (plist-get msg :content))
-        (where (or where '(content reactions))))
+        (where (or where '(content reactions reply-markup))))
     (seq-uniq
-     (delq nil
-           (nconc
-            ;; Custom emojis from message's text
-            (when-let ((need-p (memq 'content where))
-                       (fmt-text
-                        (or (plist-get content :text)
-                            (plist-get content :caption)
-                            ;; Custom emojis in a checklist tasks titles
-                            (when-let ((tasks (telega--tl-get content
-                                                              :list :tasks)))
-                              (apply #'telega-fmt-text-concat
-                                     (mapcar (telega--tl-prop :text) tasks))))))
-              (mapcar (lambda (entity)
-                        (let ((entity-type (plist-get entity :type)))
-                          (when (eq 'textEntityTypeCustomEmoji
-                                    (telega--tl-type entity-type))
-                            (plist-get entity-type :custom_emoji_id))))
-                      (plist-get fmt-text :entities)))
+     (cl-remove-if
+      (lambda (ce-id)
+        (or (null ce-id) (telega-zerop ce-id)))
+      (nconc
+       ;; Custom emojis from message's text
+       (when-let ((need-p (memq 'content where))
+                  (fmt-text
+                   (or (plist-get content :text)
+                       (plist-get content :caption)
+                       ;; Custom emojis in a checklist tasks titles
+                       (when-let ((tasks (telega--tl-get content
+                                                         :list :tasks)))
+                         (apply #'telega-fmt-text-concat
+                                (mapcar (telega--tl-prop :text) tasks))))))
+         (telega-custom-emoji--ids-for-fmt-text fmt-text))
 
-            ;; Custom emojis from message's reactions
-            (when (memq 'reactions where)
-              (mapcar (lambda (reaction)
-                        (let ((reaction-type (plist-get reaction :type)))
-                          (when (eq (telega--tl-type reaction-type)
-                                    'reactionTypeCustomEmoji)
-                            (plist-get reaction-type :custom_emoji_id))))
-                      (telega--tl-get msg :interaction_info :reactions
-                                      :reactions)))
+       ;; Custom emojis from message's reactions
+       (when (memq 'reactions where)
+         (mapcar (lambda (reaction)
+                   (let ((reaction-type (plist-get reaction :type)))
+                     (when (eq (telega--tl-type reaction-type)
+                               'reactionTypeCustomEmoji)
+                       (plist-get reaction-type :custom_emoji_id))))
+                 (telega--tl-get msg :interaction_info :reactions
+                                 :reactions)))
 
-            ;; Custom emojis for special messages
-            (when (memq 'reactions content)
-              (cl-case (telega--tl-type content)
-                (messageForumTopicCreated
-                 (list (telega--tl-get content :icon :custom_emoji_id)))
-                (messageForumTopicEdited
-                 (when (plist-get content :edit_icon_custom_emoji_id)
-                   (list (plist-get content :icon_custom_emoji_id))))))
-            )))))
+       ;; Custom emojis from keyboard buttons
+       (when-let* (((memq 'reply-markup where))
+                   (reply-markup (plist-get msg :reply_markup))
+                   (reply-markup-type (telega--tl-type reply-markup))
+                   ((memq reply-markup-type
+                          '(replyMarkupShowKeyboard
+                            replyMarkupInlineKeyboard))))
+         (apply #'nconc
+                (mapcar (lambda (row)
+                          (mapcar (telega--tl-prop :icon_custom_emoji_id) row))
+                        (plist-get reply-markup :rows))))
+
+       ;; Custom emojis for special messages
+       (when (memq 'reactions content)
+         (cl-case (telega--tl-type content)
+           (messageForumTopicCreated
+            (list (telega--tl-get content :icon :custom_emoji_id)))
+           (messageForumTopicEdited
+            (when (plist-get content :edit_icon_custom_emoji_id)
+              (list (plist-get content :icon_custom_emoji_id))))))
+       )))))
 
 (defun telega-msg--custom-emojis-fetch (msg)
   "Asynchronously fetch custom emojis for the message MSG.

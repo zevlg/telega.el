@@ -25,12 +25,6 @@
 ;; feature that allows users to organise chats into Chat Folders.
 ;;
 ;; Each folder can have unlimited number of pinned chats.
-;;
-;; Before Telegram had support for Chat Folders, =telega= implemented
-;; custom chat label feature, resembling Chat Folders functionality.
-;; But now custom chat label feature is deprecated in favor to Chat
-;; Folders.  Use {{{kbd(M-x telega-folders-migrate-custom-labels
-;; RET)}}} to migrate your custom labels into Chat Folders.
 
 ;;; Code:
 (require 'format-spec)
@@ -82,21 +76,21 @@ See `telega-folder-icons-alist'")
 
 (defun telega-folder-name (folder &optional no-properties)
   "Return FOLDER's name."
-  (telega-tl-str (plist-get folder :name) :text no-properties))
-
-(defun telega-folder-names (&optional tdlib-filters no-properties)
-  "Return list of names for all Telegram folders.
-Specify TDLIB-FILTERS list to use alternative TDLib chat filters list."
-  (mapcar (lambda (fi)
-            (telega-folder-name fi no-properties))
-          (or tdlib-filters telega-tdlib--chat-folders)))
+  ;; NOTE: Cache calculated folder name, because `telega-tl-str' might
+  ;; be slow if `telega-folder-name' massively used
+  (let ((cached-folder-name (plist-get folder :telega-name)))
+    (unless cached-folder-name
+      (plist-put folder :telega-name
+                 (setq cached-folder-name
+                       (telega-tl-str (plist-get folder :name) :text))))
+    (if no-properties
+        (substring-no-properties cached-folder-name)
+      cached-folder-name)))
 
 (defun telega-folder--chat-folder-info (folder-name)
   "Return chatFolderInfo corresponding to FOLDER-NAME."
-  (cl-find folder-name telega-tdlib--chat-folders
-           :key (lambda (fi)
-                  (telega-folder-name fi 'no-props))
-           :test #'equal))
+  (alist-get folder-name telega-tdlib--folder-name-alist nil nil
+             #'string-equal))
 
 (defun telega-folder--tdlib-chat-list (folder-name)
   "Return tdlib chat list for folder with FOLDER-NAME.
@@ -140,10 +134,11 @@ correctly extract folder name."
                                    'telega-folder folder-name))
          (icon-uniq-p
           (= (length (cl-remove-if-not
-                      (lambda (fi)
+                      (lambda (folder-spec)
                         (equal ficon-name
-                               (telega-tl-str (plist-get fi :icon) :name)))
-                      telega-tdlib--chat-folders))
+                               (telega-tl-str
+                                (plist-get (cdr folder-spec) :icon) :name)))
+                      telega-tdlib--folder-name-alist))
              1)))
     (format-spec fmt-spec
                  (format-spec-make ?i ficon-symbol
@@ -165,23 +160,26 @@ correctly extract folder name."
 
 (defun telega-folders-insert-as-tags (fmt-spec folders &optional force)
   "Inserter for the FOLDERS list in case folder tags are enabled.
-If FORCE is specified, then `telega-tdlib--chat-folder-tags-p' is ignored."
-  (when (and (or force telega-tdlib--chat-folder-tags-p) folders)
+If FORCE is specified, then `telega-tdlib--folder-tags-enabled-p' is ignored."
+  (when (and (or force telega-tdlib--folder-tags-enabled-p) folders)
     (seq-doseq (folder folders)
       (let ((finfo (telega-folder--chat-folder-info folder)))
         ;; NOTE: `:color_id' == -1 means display as tag is disabled
         ;; for this folder
         (unless (eq (plist-get finfo :color_id) -1)
-          (telega-ins--with-face (telega-folder-tag-face folder finfo)
-            (telega-ins (telega-folder-format fmt-spec folder finfo)))
-          (telega-ins " "))))
+          (let ((bb-style (telega-box-button-style 'folder-tag)))
+            (telega-ins--with-face (telega-folder-tag-face folder finfo)
+              (telega-ins--with-style bb-style
+                (telega-ins (telega-folder-format fmt-spec folder finfo))))
+            (telega-ins--box-button-delimiter bb-style :col-delimiter)
+            ))))
     t))
 
 (defun telega-folders-insert-default (&optional fmt-spec)
   "Default inserter for the folders prefixing chat's title."
   (let ((fmt-spec (or fmt-spec (eval-when-compile
                                  (propertize "%F" 'face 'bold)))))
-    (if telega-tdlib--chat-folder-tags-p
+    (if telega-tdlib--folder-tags-enabled-p
         (telega-folders-insert-as-tags fmt-spec telega-chat-folders)
       (when (cond ((> (length telega-chat-folders) 1)
                    (telega-ins (telega-symbol 'multiple-folders)))
@@ -227,8 +225,7 @@ This won't delete any chat, just a folder."
                                       ordered-folder-names)))
          (rest-ids (cl-remove-if (lambda (cl-id)
                                    (memq cl-id ordered-ids))
-                                 (mapcar (telega--tl-prop :id)
-                                         telega-tdlib--chat-folders))))
+                                 (mapcar #'car telega-tdlib--folder-id-alist))))
     (telega--reorderChatFolders (nconc ordered-ids rest-ids))))
 
 (defun telega-folder-rename (folder-name new-folder-name &optional new-icon-name)
@@ -307,52 +304,6 @@ You can add chat to multiple folders."
     (telega--editChatFolder (plist-get folder-info :id) tdlib-folder)))
 
 
-;; Migration from deprecated custom chat labels into Chat Folders
-(defun telega-folders--deprecated-custom-labels-list ()
-  "Return list of any deprecated custom labels in use."
-  (seq-uniq
-   (cl-remove-if-not #'stringp
-                     (mapcar (lambda (chat)
-                               (telega-chat-uaprop chat :label))
-                             (telega-chats-list)))))
-
-(defun telega-folders-migrate-custom-labels ()
-  "Migrate custom chat labels into Chat Folders."
-  (interactive)
-  (let ((folders (telega-folder-names)))
-    (dolist (label (telega-folders--deprecated-custom-labels-list))
-      (let ((chats (cl-remove-if-not (lambda (chat)
-                                       (equal (telega-chat-uaprop chat :label)
-                                              label))
-                                     (telega-chats-list))))
-        (if (member label folders)
-            (when (yes-or-no-p
-                   (format "Add %d chats into already existing «%s» Folder? "
-                           (length chats) label))
-              (dolist (chat chats)
-                (telega-chat-add-to-folder chat label)))
-
-          (when (yes-or-no-p
-                 (format "Create new «%s» Folder and add %d chats into it? "
-                         label (length chats)))
-            (telega-folder-create label nil chats)))
-
-        (when (yes-or-no-p
-               (format "Remove «%s» custom label from %d chats? "
-                       label (length chats)))
-          (dolist (chat chats)
-            (telega-chat--set-uaprops
-             chat (telega-plist-del (plist-get chat :uaprops) :label)))))
-      )))
-
-(defun telega-folders-warn-if-custom-labels ()
-  "Warn user about custom chat label deprecation."
-  (when-let ((custom-labels (telega-folders--deprecated-custom-labels-list)))
-    (display-warning 'telega (format "Telega custom labels are deprecated.\n\
-Consider using `M-x telega-folders-migrate-custom-labels RET' to\n\
-migrate your custom labels %S to Telegram Folders." custom-labels))))
-
-
 ;; Chat Folders Settings
 (defun telega-folders-settings--redisplay (&rest _args)
   "If CHAT info buffer exists and visible, then redisplay it."
@@ -384,13 +335,13 @@ migrate your custom labels %S to Telegram Folders." custom-labels))))
     (telega-ins-i18n "lng_filters_title"))
   (telega-ins "\n")
   (telega-ins--line-wrap-prefix "  "
-    (telega-ins--text-button (if telega-tdlib--chat-folder-tags-p
+    (telega-ins--text-button (if telega-tdlib--folder-tags-enabled-p
                                  (telega-symbol 'checkbox-on)
                                (telega-symbol 'checkbox-off))
       'face 'telega-link
       'action (lambda (_button)
                 (telega--toggleChatFolderTags
-                    (not telega-tdlib--chat-folder-tags-p)
+                    (not telega-tdlib--folder-tags-enabled-p)
                   #'telega-folders-settings--redisplay)))
     (telega-ins " Show Folder Tags\n")
     (telega-ins--help-message
@@ -401,7 +352,7 @@ migrate your custom labels %S to Telegram Folders." custom-labels))))
     (telega-ins-i18n "lng_filters_subtitle"))
   (telega-ins "\n")
   (telega-ins--line-wrap-prefix "  "
-    (seq-doseq (folder-info telega-tdlib--chat-folders)
+    (seq-doseq (folder-info (mapcar #'cdr telega-tdlib--folder-name-alist))
       (telega-folders-settings--ins-folder folder-info)
       (telega-ins "\n")))
 
@@ -416,7 +367,7 @@ migrate your custom labels %S to Telegram Folders." custom-labels))))
          (seq-doseq (rfolder recommended-folders)
            (telega-folders-settings--ins-folder (plist-get rfolder :folder))
            (telega-ins " ")
-           (telega-ins--box-button (telega-i18n "lng_filters_recommended_add")
+           (telega-ins--ui-button (telega-i18n "lng_filters_recommended_add")
              'action (lambda (_button)
                        (telega--createChatFolder
                         (plist-get rfolder :folder)
@@ -436,8 +387,5 @@ migrate your custom labels %S to Telegram Folders." custom-labels))))
     (setq telega--help-win-inserter #'telega-folders-settings--inserter)))
 
 (provide 'telega-folders)
-
-;; Barf if deprecated custom labels are used
-(add-hook 'telega-chats-fetched-hook #'telega-folders-warn-if-custom-labels)
 
 ;;; telega-folders.el ends here

@@ -73,7 +73,7 @@ void pngext_main(int ac, char** av);
 char* logfile = NULL;
 size_t logfile_size = 4 * 1024 * 1024;
 int verbosity = 5;
-const char* version = "1.0.0";
+const char* version = "1.1.0";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -149,7 +149,9 @@ output_json_prepare(const char* otype, const char* json,
             && !strncmp("{\"@type\":\"updateHavePendingNotifications\"",
                         json, 41))
         {
-                fprintf(stderr, "[telega-server] OPTIMIZE_NOTIFICATIONS\n");
+                if (verbosity > 4)
+                        fprintf(stderr,
+                                "[telega-server] OPTIMIZE_NOTIFICATIONS\n");
                 return;
                 /* NOT REACHED */
         }
@@ -419,8 +421,17 @@ main(int ac, char** av)
                 }
         }
 
-        if (logfile)
+        if (logfile) {
                 telega_set_logfile(logfile, logfile_size);
+        } else {
+                /*
+                 * If log file is disable, we disable debug output as
+                 * well, because stderr redirects only to logfile.
+                 *
+                 * Fixes https://t.me/emacs_telega/50428
+                 */
+                verbosity = 0;
+        }
 
         if (parse_mode) {
                 parse_stdin();

@@ -1,6 +1,6 @@
 ;;; ol-telega.el --- Links to telega chats and messages -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020-2021 by Zajcev Evgeny.
+;; Copyright (C) 2020-2026 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Sat Mar 28 11:15:21 2020
@@ -85,7 +85,7 @@ Format spec:
 
 (defun org-telega-follow-link (link)
   "Follow a telegram LINK to chat or message."
-  (telega-tme-open-tg (concat "tg:telega:" link)))
+  (telega-tme-internal-link-open (concat "telega:" link)))
 
 (defun org-telega-store-link ()
   "Store a link to a telegram chat or message.
@@ -106,13 +106,11 @@ message, file or photo."
                      (y-or-n-p "Store link to a message's file?")))))
          (chat-or-msg
           (or msg telega-chatbuf--chat (telega-chat-at (point))))
-         (link
+         (org-link
           (when chat-or-msg
             (apply #'telega-tme-internal-link-to chat-or-msg
                    (when msg-open-p
-                     '(:open_content "")))))
-         ;; NOTE: strip leading "tg:"
-         (org-link (when link (substring link 3))))
+                     '(:open_content ""))))))
     (when org-link
       (org-link-store-props
        :type "telega" :link org-link
@@ -143,11 +141,10 @@ message, file or photo."
                              (telega-ins--content-one-line chat-or-msg)))))))
       org-link)))
 
+;; To complete telega links when link is inserted with `C-c C-l'
 (defun org-telega-complete-link ()
   "Completing link to a chat."
-  (let ((chat (telega-completing-read-chat "Chat: ")))
-    ;; NOTE: strip leading "tg:"
-    (concat (substring (telega-tme-internal-link-to chat) 3))))
+  (telega-tme-internal-link-to (telega-completing-read-chat "Chat: ")))
 
 (org-link-set-parameters "telega"
                          :follow #'org-telega-follow-link

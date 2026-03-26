@@ -120,8 +120,8 @@ See https://core.telegram.org/tdlib/options"
 (defcustom telega-debug nil
   "*Non-nil to enable telega debugging buffer."
   :type '(choice (boolean :tag "On/Off")
-                 (list (choice (const :tag "Add debug into IV" iv)
-                               (const :tag "Add debug into info buffers" info))))
+                 (repeat (choice (const :tag "Add debug into IV" iv)
+                                 (const :tag "Add debug into info buffers" info))))
   :group 'telega)
 
 (defcustom telega-use-test-dc nil
@@ -276,34 +276,128 @@ performance might suffer."
 ;; NOTE: Avoid recursive inheritance, it might lead to infinite loop
 ;; when evaluating style's attribute value
 (defcustom telega-box-button-styles
-  `((default :passive-face telega-box-button-passive
-             :active-face telega-box-button-active
-             :x-margin 0.0
-             :round-corner 0.25)
-    (external :passive-face telega-box-button-external-passive
-              :active-face telega-box-button-external-active
-              :delimiter ,(propertize "\n" 'face '(:height 0.15))
-              :x-margin 0.0
-              :round-corner 0.15
-              :suffix " "
-              :icon-symbol "↗")
-    (reaction :passive-face telega-palette-builtin-blue
-              :round-corner 0.5
-              :x-margin 0.0)
-    (paid-reaction :inherit reaction
-                   :passive-face telega-palette-builtin-orange)
-    (my-reaction :inherit reaction
-                 :passive-face telega-box-button-active)
-    (keyboard-button :passive-face telega-msg-heading
-                     :round-corner 0.15
-                     :x-margin 0.0
-                     :delimiter ,(propertize "\n" 'face '(:height 0.15)))
+  `((default
+     :left-bracket ("[" :width 0.5 :rx 0.25)
+     :right-bracket ("]" :width 0.5 :rx 0.25)
+     :passive-face telega-box-button2-passive
+     :active-face telega-box-button2-active)
+    ;; NOTE: Folder tag default settings to resemble old look/feel
+    (folder-tag
+     ;; :left-bracket ("[" :width 0.25 :rx 0.15 :margin 0.1)
+     ;; :right-bracket ("]" :width 0.75 :rx 0.15 :margin 0.6)
+     :left-bracket nil
+     :right-bracket nil
+     :col-delimiter " ")
+    (owner-sender-tag
+     :left-bracket "("
+     :right-bracket ")"
+     :passive-face telega-palette-builtin-purple
+     )
+    (admin-sender-tag
+     :inherit owner-sender-tag
+     :passive-face telega-palette-builtin-green
+     )
+    (sender-tag
+     :left-bracket "("
+     :right-bracket ")"
+     :passive-face telega-shadow
+     )
+
+    (reaction
+     :left-bracket ("(" :width 0.75 :rx 0.5)
+     :right-bracket (")" :width 1.0 :rx 0.5 :margin 0.25)
+     :passive-face telega-reaction
+     :outline-width 1
+     :outline-color (face-background 'default))
+    (reaction-chosen
+     :inherit reaction
+     :passive-face telega-reaction-chosen)
+    (reaction-paid
+     :inherit reaction
+     :passive-face telega-reaction-paid)
+    (reaction-paid-chosen
+     :inherit paid-reaction
+     :passive-face telega-reaction-paid-chosen)
+    (bot-menu
+     :inherit default
+     :outline-width 0.16
+     :outline-color (face-foreground 'telega-box-button2-passive))
+    (chat-join
+     :inherit default
+     :prefix "   "
+     :suffix "   "
+     :outline-width 1
+     :outline-color (face-foreground 'telega-blue))
+    (saved-messages-tag
+     :inherit default
+     :left-bracket ("(" :width 0.75 :rx 0.5)
+     :right-bracket ("〉" :width 1.5 :margin 0.5 :rx 0.15
+                     :svg-function #'telega-box-button--svg-right-sm-tag))
+
+    (telega-ui
+     :inherit default
+     :passive-face telega-box-button-ui-passive
+     :active-face telega-box-button-ui-active
+     :outline-width 0.1
+     :outline-color (face-foreground 'telega-box-button-ui-passive)
+     )
+    (checkbox
+     :left-bracket ""
+     :right-bracket ""
+     :passive-face telega-link)
+
+    (iv
+     :inherit telega-ui
+     :left-bracket ("[" :width 1 :rx 0)
+     :right-bracket ("]" :width 1 :rx 0)
+     :prefix "  "
+     :suffix "  ")
+    (comments
+     :inherit telega-ui
+     :suffix " ›")
+
+    ;; Keyboard buttons with TL ButtonStyle
+    (keyboard-default
+     :left-bracket ("[" :width 1.0 :rx 0.15 :margin 0)
+     :right-bracket ("]" :width 1.0 :rx 0.15 :margin 0)
+     :passive-face telega-box-button-default-passive
+     :active-face telega-box-button-default-active
+     :col-delimiter " "
+     :outline-width 1
+     :outline-color (face-background 'default))
+    (keyboard-primary
+     :inherit keyboard-default
+     :passive-face telega-box-button-primary-passive
+     :active-face telega-box-button-primary-active)
+    (keyboard-danger
+     :inherit keyboard-default
+     :passive-face telega-box-button-danger-passive
+     :active-face telega-box-button-danger-active)
+    (keyboard-success
+     :inherit keyboard-default
+     :passive-face telega-box-button-success-passive
+     :active-face telega-box-button-success-active)
+
+    ;; Icons for keyboard buttons, use only in style mixins
+    ;; TODO: drawing corner icons using svg
+    (url-symbol
+     :suffix "\u00a0"
+     :icon-symbol "↗")
+    (buy-symbol
+     :suffix "\u00a0"
+     :icon-symbol "💳")
+    (webapp-symbol
+     :suffix "\u00a0"
+     :icon-symbol "🗖")
     )
   "Alist of box button styles.
 Supported style properties are:
 `:passive-face', `:active-face', `:x-margin', `:round-corner',
-`:icon-symbol', `:outline-width', `:h-offset',
-`:brackets', `:left-edge-image', `:right-edge-image'."
+`:icon-symbol', `:outline-width', `:outline-color', `:h-offset',
+`:brackets', `:left-edge-image-func', `:right-edge-image-func'.
+
+`:outline-width' might be integer, specifying width in pixels.  Or
+float, relative value to char width."
   :package-version '(telega . "0.8.460")
   :type '(alist :key-type symbol
                 :value-type plist)
@@ -320,7 +414,7 @@ cell of endings for the button with LABEL."
 
 (defcustom telega-builtin-palettes-alist
   ;; Palettes for builtin colors:
-  ;;  red, orange, purple/voilet, green, cyan, blue, pink
+  ;;  red, orange, purple/violet, green, cyan, blue, pink
   '((light
      ((:outline "#990000") (:foreground "#aa0000")     (:background "#d1c7c7"))
      ((:outline "#994c00") (:foreground "DarkOrange3") (:background "#d1ccc7"))
@@ -335,7 +429,7 @@ cell of endings for the button with LABEL."
      ((:outline "#f6c2f6") (:foreground "violet")      (:background "#2e1e2e"))
      ((:outline "#0aff0a") (:foreground "#00dd00")     (:background "#1e2e1e"))
      ((:outline "#00f5f6") (:foreground "cyan3")       (:background "#234242"))
-     ((:outline "#3e9efd") (:foreground "#168afd")     (:background "#1e262e"))
+     ((:outline "#3e9efd") (:foreground "#168afd")     (:background "#1e362e"))
      ((:outline "#fabddd") (:foreground "#f688c3")     (:background "#470528"))
      ))
   "Alist of builtin colors for light and dark themes."
@@ -343,7 +437,7 @@ cell of endings for the button with LABEL."
   :type '(alist :key-type
                 (choice (const :tag "Colors for light theme" light)
                         (const :tag "Colors for dark theme" dark))
-                :value-type (repeat (list string)))
+                :value-type (repeat (list symbol color)))
   :group 'telega)
 
 (defcustom telega-palette-context-ignore-list '(msg-header)
@@ -648,7 +742,8 @@ NOT USED."
   "Command used to play video files.
 Can be a sexp to evaluate to get a command."
   :package-version '(telega . "0.7.57")
-  :type '(choice string (list string))
+  :type '(choice (string :tag "Player command")
+                 (sexp :tag "S-Expression to evaluate to get player command"))
   :options '("mpv" "ffplay -autoexit -fs")
   :group 'telega)
 
@@ -782,7 +877,12 @@ Set it to nil to disable telega-server logging."
                  (const :tag "logfile size in bytes" int))
   :group 'telega-server)
 
-(defcustom telega-server-verbosity (if telega-debug 5 3)
+(defcustom telega-server-verbosity
+  ;; NOTE: under Windows stderr redirect does not work, so we disable
+  ;; telega-server verbosity to avoid garbage in the output
+  (cond ((memq system-type '(windows-nt cygwin)) 0)
+        (telega-debug 5)
+        (t 3))
   "*Verbosity level for server process.
 Verbosity levels are from 0 (disabled) to 5 (debug)."
   :type 'integer
@@ -790,7 +890,7 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
 
 (defcustom telega-server-optimize 15
   "Optimizations to use in `telega-server'.
-Requires telega-server 1.0.0.
+Requires at least telega-server 1.0.0.
 Optimization flags:
 1 - Do not send updateHavePendingNotifications events.
 2 - Remove nil values from resulting values.
@@ -1028,7 +1128,7 @@ If list, where first element is float, then use 1 and 2 list values as
 min and max values for a width calculation using
  `telega-canonicalize-number'."
   :package-version '(telega . "0.7.41")
-  :type '(choice number (list number))
+  :type '(choice number (repeat number))
   :group 'telega-chat)
 
 (defcustom telega-chat-button-format-plist
@@ -1040,13 +1140,15 @@ min and max values for a width calculation using
 Possible arguments:
 `:with-bot-verification-p' - Insert bot verification icon.
 `:with-folders-insexp'  - Use inserter sexp for chat folders.
+`:with-title'           - Title formatting, can be one of `username',
+                          `first-name',`last-name', `full-name', or a string.
 `:with-username-p'      - To show username along with title.
                           Could be a face to be used for username.
 `:with-title-faces-p'   - To use chat specific colors for title.
 `:with-unread-trail-p'  - To show unread messages status inside brackets.
 `:with-members-trail-p' - To show members trail inside brackets.
 `:with-status-icons-trail-p' - To show status icons outside brackets."
-  :package-version '(telega . "0.8.121")
+  :package-version '(telega . "0.8.610")
   :type 'plist
   :group 'telega-chat)
 
@@ -1075,7 +1177,7 @@ different chats could have different formatting."
   "*Width for the topic buttons in the root buffer.
 Same semantics as for `telega-chat-button-width'."
   :package-version '(telega . "0.8.520")
-  :type '(choice number (list number))
+  :type '(choice number (repeat number))
   :group 'telega-topic)
 
 (defcustom telega-topic-button-format-plist
@@ -1235,7 +1337,7 @@ If list, where first element is float, then use 1 and 2 list values as
 min and max values for a width calculation using
 `telega-canonicalize-number'."
   :package-version '(telega . "0.7.41")
-  :type '(choice number (list number))
+  :type '(choice number (repeat number))
   :group 'telega-filter)
 
 
@@ -1295,7 +1397,7 @@ See `telega-ins--message' for NO-HEADER argument."
   "Inserter for the story button."
   :type 'function
   :group 'telega-inserter)
-  
+
 
 (defgroup telega-webpage nil
   "Customization for instant view webpage rendering."
@@ -1510,7 +1612,7 @@ Setting it to non-nil might introduce additional flickering in chatbuf."
      (when (or (telega-chatbuf-match-p 'has-default-sender)
                (telega-chatbuf-match-p 'can-send-or-post))
        (telega-chatbuf-prompt-ins-chat-avatar))
-     (telega-chatbuf-prompt-ins-topic 25)
+     (telega-chatbuf-prompt-ins-topic 15 t)
      (telega-auto-translate--chatbuf-prompt-ins-translation)
      (telega-ins ">>> "))
   "*Inserter sexp for the chatbuf's input prompt.
@@ -1828,6 +1930,7 @@ See `mode-line-buffer-identification'."
   '(progn
      (when telega-chatbuf--messages-compact-view
        (telega-ins "\n"))
+     (telega-chatbuf-footer-ins-pending-message)
      (telega-chatbuf-footer-ins-sponsored-messages)
      (telega-chatbuf-footer-ins-prompt-delim t t)
      (telega-chatbuf-footer-ins-pending-join-requests)
@@ -1858,7 +1961,7 @@ See `mode-line-buffer-identification'."
      ;; Input options, such as Link Preview Options and others
      (telega-chatbuf-footer-ins-input-options)
     )
-  "*Inserter sexp for the chatbuf's footer." 
+  "*Inserter sexp for the chatbuf's footer."
   :package-version '(telega . "0.8.600")
   :type 'sexp
   :group 'telega-chat)
@@ -2184,6 +2287,12 @@ example @gif `TAB' will popup buffer with inlined photos. "
   :type '(list integer integer integer integer)
   :group 'telega)
 
+(defcustom telega-sponsored-photo-size-limits '(4 2 30 6)
+  "*Limits image size for the photos in the sponsored messages."
+  :package-version '(telega . "0.8.620")
+  :type '(list integer integer integer integer)
+  :group 'telega)
+  
 (defcustom telega-album-size-limits '(16 6 70 24)
   "*Limits overall size for the media album.
 Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
@@ -2764,9 +2873,9 @@ Used in one line message inserter."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-saved-messages-tag-end "▶"
+(defcustom telega-symbol-saved-messages-tag-end "〉"
   "End for the tag in the Saved Messages."
-  :package-version '(telega . "0.8.253")
+  :package-version '(telega . "0.8.610")
   :type 'string
   :group 'telega-symbol)
 
@@ -2838,9 +2947,15 @@ Used in one line message inserter."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-menu "🗖"
-  "*Symbol used to outline bot menu."
+(defcustom telega-symbol-menu "☰"
+  "*Symbol used to in bot menu."
   :package-version '(telega . "0.8.460")
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-bot-menu "🗖"
+  "*Symbol used to in webapp menu."
+  :package-version '(telega . "0.8.610")
   :type 'string
   :group 'telega-symbol)
 
@@ -2897,7 +3012,7 @@ Used in one line message inserter."
     alarm
     attachment audio
     author-hidden
-    bell boost bulp
+    bell boost bot-menu bulp
     (button-close
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "symbols/button-close.svg" 1)))
@@ -3013,7 +3128,7 @@ Used in one line message inserter."
     (telegram-star (when (and telega-use-images (image-type-available-p 'svg))
                      (telega-etc-file-create-image "symbols/premium.svg" 2)))
     timer-clock
-    (ton 
+    (ton
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "symbols/ton_symbol.svg" 2)))
     (translate
@@ -3062,34 +3177,6 @@ non-nil if symbol gets emojification."
   "Face to display various links."
   :group 'telega-faces)
 
-(defface telega-box-button-passive
-  `((((class color) (min-colors 88) (background light))
-     :foreground "RoyalBlue3")
-    (((class color) (min-colors 88) (background dark))
-     :foreground "cyan1")
-    (t :inherit highlight))
-  "Face to display passive buttons."
-  :group 'telega-faces)
-
-(defface telega-box-button-active
-  `((((class color) (min-colors 88) (background light))
-     :background "RoyalBlue3" :foreground "white")
-    (((class color) (min-colors 88) (background dark))
-     :background "cyan1" :foreground "white")
-    (t :inverse-video t))
-  "Face to display passive buttons."
-  :group 'telega-faces)
-
-(defface telega-box-button-external-passive
-  `((t :background "gray50" :foreground "white"))
-  "Face to display passive buttons leading to external resources."
-  :group 'telega-faces)
-
-(defface telega-box-button-external-active
-  `((t :background "gray60"))
-  "Face to display active buttons leading to external resources."
-  :group 'telega-faces)
-
 ;; NOTE: better to use :line-width (-2 . -2), but this is only in newer Emacs
 ;; see https://t.me/emacs_telega/22129
 (defface telega-box-button
@@ -3115,38 +3202,43 @@ non-nil if symbol gets emojification."
   :group 'telega-faces)
 
 (defface telega-reaction
-  `((t :inherit telega-shadow))
-  "Face used to display reaction."
-  :group 'telega-faces)
-
-(defface telega-reaction-paid
-  '((((class color) (min-colors 88) (background light))
-     :foreground "dark goldenrod")
-    (((class color) (min-colors 88) (background dark))
-     :foreground "light goldenrod"))
+  '((((class color) (background dark))
+     (:foreground "white" :background "#35353c"))
+    (((class color) (background light))
+     (:foreground "#014d98" :background "#c6cbd1"))
+    (t :inherit telega-palette-builtin-blue))
   "Face used to display reaction."
   :group 'telega-faces)
 
 (defface telega-reaction-chosen
-  '((((class color) (min-colors 88) (background light))
-     :foreground "white" :background "RoyalBlue3")
-    (((class color) (min-colors 88) (background dark))
-     :foreground "black" :background "cyan1")
-    (t :inverse-video t))
+  '((((class color) (min-colors 88))
+     :inherit telega-reaction :foreground "white" :background "RoyalBlue3")
+    (t :inherit telega-reaction :inverse-video t))
   "Face used to display chosen reaction."
+  :group 'telega-faces)
+
+(defface telega-reaction-paid
+  '((t :inherit telega-palette-builtin-orange))
+  "Face used to display reaction."
   :group 'telega-faces)
 
 (defface telega-reaction-paid-chosen
   '((((class color) (min-colors 88) (background light))
+     :inherit telega-reaction-paid
      :foreground "white" :background "light goldenrod")
     (((class color) (min-colors 88) (background dark))
+     :inherit telega-reaction-paid
      :foreground "black" :background "dark goldenrod")
-    (t :inverse-video t))
+    (t :inherit telega-reaction-paid :inverse-video t))
   "Face used to display chosen paid reaction"
   :group 'telega-faces)
 
 (defface telega-blue
-  '((t :foreground "#2ca5e0"))
+  '((((class color) (min-colors 88) (background light))
+     :foreground "#2ca5e0")
+    (((class color) (min-colors 88) (background dark))
+     :foreground "cyan")
+    )
   "*Official blue color of telegram."
   :group 'telega-faces)
 
@@ -3225,7 +3317,7 @@ non-nil if symbol gets emojification."
 
 (defface telega-unmuted-count
   '((((class color) (background dark))
-     :foreground "RoyalBlue1")
+     :foreground "DeepSkyBlue")
     (((class color) (background light))
      :foreground "blue"))
   "Face to display count messages in unmuted chats."
@@ -3478,9 +3570,29 @@ non-nil if symbol gets emojification."
   "Face to emphasize brackets for chats having corresponding chatbuf."
   :group 'telega-faces)
 
+(defface telega-palette-builtin-purple
+  '((((class color) (background dark))
+     (:foreground "violet" :background "#2e1e2e" :outline "#f6c2f6"))
+    (((class color) (background light))
+     (:foreground "purple3" :background "#cdc7d1" :outline "#4e1781"))
+    (t
+     (:inverse-video t)))
+  "Face for builtin purple/violet."
+  :group 'telega-faces)
+
+(defface telega-palette-builtin-green
+  '((((class color) (background dark))
+     (:foreground "#00dd00" :background "#1e2e1e" :outline "#0aff0a"))
+    (((class color) (background light))
+     (:foreground "#007000" :background "#c7d1c7" :outline "#006000"))
+    (t
+     (:inverse-video t)))
+  "Face for builtin green."
+  :group 'telega-faces)
+
 (defface telega-palette-builtin-blue
   '((((class color) (background dark))
-     (:foreground "#168afd" :background "#1e262e" :outline "#3e9efd"))
+     (:foreground "#168afd" :background "#1e462e" :outline "#3e9efd"))
     (((class color) (background light))
      (:foreground "#014d98" :background "#c6cbd1" :outline "#003365"))
     (t
@@ -3506,6 +3618,87 @@ non-nil if symbol gets emojification."
 (defface telega-checklist-stats-done
   '((t :inherit org-done))
   "Face for checklist stats when all tasks are done."
+  :group 'telega-faces)
+
+;; Faces for box button (version2)
+(defface telega-box-button-ui-passive
+  `((((class color) (min-colors 88) (background light))
+     :foreground "RoyalBlue3")
+    (((class color) (min-colors 88) (background dark))
+     :foreground "LightSkyBlue")
+    (t :inherit highlight))
+  "Face used for telega UI buttons."
+  :group 'telega-faces)
+
+(defface telega-box-button-ui-active
+  '((((class color) (min-colors 88) (background light))
+     :inverse-video t :background "white")
+    (((class color) (min-colors 88) (background dark))
+     :inverse-video t :background "black")
+    (t :inverse-video t))
+  "Face used for active (cursor inside) telega UI buttons."
+  :group 'telega-faces)
+
+(defface telega-box-button2-white-foreground
+  `((((class color))
+     :foreground "white")
+    (t :inherit highlight))
+  "Face for white foreground."
+  :group 'telega-faces)
+
+(defface telega-box-button2-passive
+  `((((class color) (min-colors 88))
+     :background "RoyalBlue3" :foreground "white")
+    (t :inherit highlight))
+  "Face to display passive buttons."
+  :group 'telega-faces)
+
+(defface telega-box-button2-active
+  `((((class color) (min-colors 88))
+     :background "RoyalBlue2" :foreground "white")
+    (t :inverse-video t))
+  "Face to display passive buttons."
+  :group 'telega-faces)
+
+;; Faces for box buttons with styles
+(defface telega-box-button-default-passive
+  `((t :background "gray50" :foreground "white"))
+  "Face for passive button of TL buttonStyleDefault style."
+  :group 'telega-faces)
+
+(defface telega-box-button-default-active
+  '((t :background "gray60"))
+  "Face for active button of TL buttonStyleDefault style."
+  :group 'telega-faces)
+
+(defface telega-box-button-primary-passive
+  '((t :background "#3496ec" :foreground "white"))
+  "Face for passive button of TL buttonStylePrimary style."
+  :group 'telega-faces)
+
+(defface telega-box-button-primary-active
+  '((t :background "#3999ed"))
+  "Face for active button of TL buttonStylePrimary style."
+  :group 'telega-faces)
+
+(defface telega-box-button-danger-passive
+  '((t :background "#e45e5c" :foreground "white"))
+  "Face for passive button of TL buttonStyleDanger style."
+  :group 'telega-faces)
+
+(defface telega-box-button-danger-active
+  '((t :background "#e56361"))
+  "Face for active button of TL buttonStyleDanger style."
+  :group 'telega-faces)
+
+(defface telega-box-button-success-passive
+  '((t :background "#4c9e59" :foreground "white"))
+  "Face for passive button of TL buttonStyleSuccess style."
+  :group 'telega-faces)
+
+(defface telega-box-button-success-active
+  '((t :background "#4da15b"))
+  "Face for active button of TL buttonStyleSuccess style."
   :group 'telega-faces)
 
 

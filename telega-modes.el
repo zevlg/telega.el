@@ -740,7 +740,7 @@ squashing is not applied."
 ;; press {{{kbd(RET)}}} on the message with photo.
 (require 'image-mode)
 
-(declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
+(declare-function telega-chat-title "telega-chat" (chat &optional fmt-type no-badges))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg msg-temex &optional backward))
 (declare-function telega-chatbuf--goto-msg "telega-chat" (msg-id &optional highlight callback))
 
@@ -852,8 +852,9 @@ Could be used as condition function in `display-buffer-alist'."
   (pop-to-buffer-same-window
    (with-current-buffer (find-file-noselect (telega-file--path tl-file) nil t)
      (telega-image-mode)
-     (setq telega-image--message for-msg)
-     (telega-image-mode--update-modeline)
+     (when for-msg
+       (setq telega-image--message for-msg)
+       (telega-image-mode--update-modeline))
 
      ;; NOTE: fetch chat position only for "Photo" messages, to avoid
      ;; 400 errors
@@ -1514,7 +1515,7 @@ EVENT must be \"updateDeleteMessages\"."
         :action #'telega-msg-goto-highlight))
       (when (telega-me-p (telega-msg-sender loc-msg))
         (telega-ins " ")
-        (telega-ins--box-button (telega-i18n "telega_stop")
+        (telega-ins--ui-button (telega-i18n "telega_stop")
           'action (lambda (_button)
                     (telega--editMessageLiveLocation loc-msg nil)))))
     t))
@@ -2414,9 +2415,10 @@ FMT-STRING is format string to be used instead of
   (telega-ins--text-button (telega-symbol 'button-close)
     'face 'telega-link
     'action (lambda (_button)
-              (setq telega--suggested-actions
-                    (delq sact telega--suggested-actions))
-              (telega-root-aux-redisplay #'telega-ins--suggested-actions)))
+              (telega--hideSuggestedAction sact)))
+              ;; (setq telega--suggested-actions
+              ;;       (delq sact telega--suggested-actions))
+              ;; (telega-root-aux-redisplay #'telega-ins--suggested-actions)))
   (telega-ins " ")
 
   (cl-case (telega--tl-type sact)
@@ -2425,19 +2427,35 @@ FMT-STRING is format string to be used instead of
        (telega-ins--with-face 'bold
          (telega-ins (telega-tl-str sact :title) "\n"))
        (telega-ins (telega-tl-str sact :description))))
-     (t
-      (telega-ins-fmt "TODO: %S" (telega--tl-type sact))))
+    (suggestedActionCheckPhoneNumber
+     (telega-ins-i18n "lng_settings_suggestion_phone_number_title"
+       :phone (concat "+" (telega-tl-str (telega-user-me) :phone_number)))
+     (telega-ins " ")
+     (telega-ins--ui-button (telega-i18n "lng_box_yes")
+       'action (lambda (_ignored)
+                 (telega--hideSuggestedAction sact)))
+     (telega-ins " ")
+     (telega-ins--ui-button (telega-i18n "lng_box_no")
+       'action (lambda (_ignored)
+                 (message "TODO: change phono number")))
+     (telega-ins "\n")
+     (telega-ins--help-message
+      (telega-ins-i18n "lng_settings_suggestion_phone_number_about"
+        :link "")))
+    (t
+     (telega-ins-fmt "TODO: %S" (telega--tl-type sact))))
   t)
 
 (defun telega-ins--suggested-actions ()
   "Inserter for suggested actions."
-  (when t;telega-suggested-actions-mode
+  (when telega--suggested-actions
     (telega-ins "Suggested Actions: ")
     (seq-doseq (sact telega--suggested-actions)
       (telega-ins "\n")
       (telega-ins--line-wrap-prefix "  "
         (telega-ins--suggested-action sact))
-      )))
+      )
+    t))
 
 (defun telega-suggested-actions--on-update (_event)
   "List of actions to take suggested by Telegram has been changed."
@@ -2474,6 +2492,141 @@ FMT-STRING is format string to be used instead of
                   :around #'telega-chat-phone-numbers--fmt-text-faces)
     (advice-remove 'telega--fmt-text-faces
                    #'telega-chat-phone-numbers--fmt-text-faces)))
+
+
+;;; ellit-org: minor-modes
+;; ** telega-proxy-status-mode
+;;
+;; Global minor mode to display Telegram proxy status in the rootbuf.
+;;
+;; Enable it with ~(telega-proxy-status-mode 1)~ or at =telega= load time:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'telega-proxy-status-mode)
+;; #+end_src
+;; 
+;; Customizable options:
+;; - {{{user-option(telega-proxy-status-auto, 2)}}}
+(defcustom telega-proxy-status-auto t
+  "Automatically enable `telega-proxy-status-mode' when proxy is enabled."
+  :type 'boolean
+  :group 'telega-modes)
+
+(defvar telega-proxy-status--added-proxies nil
+  "List of TL AddedProxy structures.")
+
+(defun telega-proxy-status--current-proxy ()
+  "Return enabled or recent proxy to show in status."
+  (when telega-proxy-status--added-proxies
+    (or (telega-proxy-enabled telega-proxy-status--added-proxies)
+        (telega-proxy-last-used telega-proxy-status--added-proxies))))
+
+(defun telega-proxy-status--current-proxy-ping ()
+  "Ping proxy displayed in proxy status."
+  (when-let* ((added-proxy (telega-proxy-status--current-proxy))
+              (proxy-id (plist-get added-proxy :id)))
+    (unless (eq 'checking (cdr (alist-get proxy-id telega--proxy-pings)))
+      (setf (alist-get proxy-id telega--proxy-pings)
+            (cons (time-to-seconds) 'checking))
+      (telega-root-aux-redisplay #'telega-ins--proxy-status)
+
+      (telega--pingProxy (plist-get added-proxy :proxy)
+        (lambda (reply)
+          (setf (alist-get proxy-id telega--proxy-pings)
+                (cons (time-to-seconds)
+                      (if (telega--tl-error-p reply)
+                          reply
+                        (plist-get reply :seconds))))
+          (telega-root-aux-redisplay #'telega-ins--proxy-status)
+          )))))
+
+(defun telega-proxy-status--fetch-proxies ()
+  "Asynchronously fetch added proxies."
+  (telega--getProxies
+   (lambda (added-proxies)
+     (setq telega-proxy-status--added-proxies added-proxies)
+     (telega-proxy-status--current-proxy-ping)
+
+     (telega-root-aux-redisplay #'telega-ins--proxy-status))))
+
+(defun telega-ins--proxy-status ()
+  "Inserter for the proxy status."
+  (let ((enabled-proxy-id (plist-get telega--options :enabled_proxy_id))
+        (recent-proxy
+         (when telega-proxy-status--added-proxies
+           (telega-proxy-last-used telega-proxy-status--added-proxies))))
+    (telega-ins (telega-i18n "lng_proxy_use") ": ")
+    (telega-ins--text-button (if enabled-proxy-id
+                                 (telega-symbol 'checkbox-on)
+                               (telega-symbol 'checkbox-off))
+      'face 'telega-link
+      'action (lambda (_button)
+                (cond (enabled-proxy-id
+                       (telega--disableProxy))
+                      (recent-proxy
+                       (telega--enableProxy (plist-get recent-proxy :id)))
+                      (t
+                       (telega-describe-proxies)))))
+
+    ;; Insert currently enabled or recently used proxy
+    (when-let ((added-proxy (telega-proxy-status--current-proxy)))
+      (telega-ins " ")
+      (let* ((proxy (plist-get added-proxy :proxy))
+             (ptype (telega--tl-get proxy :type :@type)))
+        (telega-ins--with-face 'telega-shadow
+          (telega-ins-fmt "%s:%d %s"
+            (plist-get proxy :server) (plist-get proxy :port)
+            (substring ptype (eval-when-compile
+                               (length "proxyType"))))
+          ))
+
+      ;; Ping stats
+      (when-let ((proxy-ping (alist-get (plist-get added-proxy :id)
+                                        telega--proxy-pings )))
+        (telega-ins--with-face 'telega-shadow
+          (when-let ((ping (cdr proxy-ping)))
+            (telega-ins ", ")
+            (cond ((eq ping 'checking)
+                   (telega-ins-i18n "lng_proxy_checking"))
+                  ((floatp ping)
+                   (telega-ins-i18n "lng_proxy_available"
+                     :ping (format "%d" (round (* ping 1000)))))
+                  (t
+                   (telega-ins-i18n "lng_proxy_unavailable"))))))
+      )
+    t))
+
+(defun telega-proxy-status--on-update (event)
+  "List of actions to take suggested by Telegram has been changed."
+  (telega-root-aux-redisplay #'telega-ins--proxy-status)
+
+  (when (and (eq (telega--tl-type event) 'updateOption)
+             (equal (plist-get event :name) "enabled_proxy_id"))
+    (telega-proxy-status--fetch-proxies))
+
+  (when (and (eq (telega--tl-type event) 'updateConnectionState)
+             (telega-proxy-status--current-proxy))
+    ;; Ping current proxy to update its ping stats
+    (telega-proxy-status--current-proxy-ping))
+  )
+
+(define-minor-mode telega-proxy-status-mode
+  "Global mode to display proxy status in the rootbuf."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-proxy-status-mode
+      (progn
+        (advice-add 'telega--on-updateOption
+                    :after #'telega-proxy-status--on-update)
+        (advice-add 'telega--on-updateConnectionState
+                    :after #'telega-proxy-status--on-update)
+        (telega-root-aux-append #'telega-ins--proxy-status)
+        (telega-proxy-status--fetch-proxies))
+
+    (telega-root-aux-remove #'telega-ins--proxy-status)
+    (advice-remove 'telega--on-updateOption
+                   #'telega-proxy-status--on-update)
+    (advice-remove 'telega--on-updateConnectionState
+                   #'telega-proxy-status--on-update)
+    ))
 
 (provide 'telega-modes)
 

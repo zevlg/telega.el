@@ -426,9 +426,9 @@ If SLICES-P is non-nil, then insert STICKER using slices."
              (telega-sticker--image sticker))))
 
 (defun telega-ins--stickerset-change-button (sset)
-  (telega-ins--box-button (if (telega-stickerset-installed-p sset)
-                              (telega-i18n "lng_stickers_remove_pack_button")
-                            (telega-i18n "lng_stickers_add_pack"))
+  (telega-ins--ui-button (if (telega-stickerset-installed-p sset)
+                             (telega-i18n "lng_stickers_remove_pack_button")
+                           (telega-i18n "lng_stickers_add_pack"))
     :value sset
     'action 'telega-button--stickerset-change-action))
 
