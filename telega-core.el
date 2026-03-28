@@ -2199,7 +2199,12 @@ Use `telega-box-button-style' to make a STYLE."
                                                &rest insert-body)
   "Insert expandable button."
   (declare (indent 3))
-  (cl-with-gensyms (style-sym elabel clabel show-p button new-button)
+  (let ((style-sym (gensym "style"))
+        (elabel (gensym "elabel"))
+        (clabel (gensym "clabel"))
+        (show-p (gensym "show-p"))
+        (button (gensym "button"))
+        (new-button (gensym "new-button")))
     `(let ((,elabel ,expand-label)
            (,clabel ,collapse-label)
            (,style-sym ,style)
