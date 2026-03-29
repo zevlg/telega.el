@@ -1262,17 +1262,150 @@ If NO-PROPERTIES is specified, then do not keep text properties."
                #'telega--desurrogate-apply-part-keep-properties)
              (telega--split-by-text-prop str 'telega-display) ""))
 
+(defconst telega-docker--windows-container-root "/telega"
+  "Container root used for Windows Docker bind mounts.")
+
+(defsubst telega-docker--windows-p ()
+  "Return non-nil if telega runs on Windows."
+  (eq system-type 'windows-nt))
+
+(defun telega-docker--normalize-path (path)
+  "Return PATH expanded with forward slashes and no trailing slash."
+  (directory-file-name
+   (replace-regexp-in-string "\\\\" "/" (expand-file-name path))))
+
+(defun telega-docker--normalize-container-path (path)
+  "Return container PATH normalized for comparisons."
+  (directory-file-name
+   (replace-regexp-in-string "\\\\" "/" path)))
+
+(defun telega-docker--path-prefix-p (path prefix)
+  "Return non-nil if PATH is equal to PREFIX or is inside it."
+  (let ((norm-path (downcase (telega-docker--normalize-path path)))
+        (norm-prefix (downcase (telega-docker--normalize-path prefix))))
+    (or (string= norm-path norm-prefix)
+        (string-prefix-p (concat norm-prefix "/") norm-path))))
+
+(defun telega-docker--container-path-prefix-p (path prefix)
+  "Return non-nil if container PATH is equal to PREFIX or is inside it."
+  (let ((norm-path (telega-docker--normalize-container-path path))
+        (norm-prefix (telega-docker--normalize-container-path prefix)))
+    (or (string= norm-path norm-prefix)
+        (string-prefix-p (concat norm-prefix "/") norm-path))))
+
+(defun telega-docker--path-mappings ()
+  "Return Docker bind mount mappings for current telega runtime."
+  (when (and telega-use-docker (telega-docker--windows-p))
+    (let ((mappings
+           (list (cons (telega-docker--normalize-path telega-directory)
+                       telega-docker--windows-container-root))))
+      (dolist (path-spec
+               `((,telega-database-dir . "db")
+                 (,telega-cache-dir . "cache")
+                 (,telega-temp-dir . "temp")
+                 (,(when telega-server-logfile
+                     (file-name-directory telega-server-logfile))
+                  . "logs")))
+        (when-let ((host-path (car path-spec)))
+          (setq host-path (telega-docker--normalize-path host-path))
+          (unless (seq-some
+                   (lambda (mapping)
+                     (telega-docker--path-prefix-p host-path (car mapping)))
+                   mappings)
+            (push (cons host-path
+                        (concat telega-docker--windows-container-root
+                                "/" (cdr path-spec)))
+                  mappings))))
+      (sort mappings (lambda (lhs rhs)
+                       (> (length (car lhs)) (length (car rhs))))))))
+
+(defun telega-docker-path-to-container (path)
+  "Translate host PATH into its container path."
+  (if (not (and path telega-use-docker (telega-docker--windows-p)))
+      path
+    (let ((norm-path (telega-docker--normalize-path path)))
+      (or (seq-some
+           (lambda (mapping)
+             (when (telega-docker--path-prefix-p norm-path (car mapping))
+               (concat (cdr mapping)
+                       (substring norm-path (length (car mapping))))))
+           (telega-docker--path-mappings))
+          path))))
+
+(defun telega-docker-path-to-host (path)
+  "Translate container PATH back to its host path."
+  (if (not (and path telega-use-docker (telega-docker--windows-p)))
+      path
+    (let ((norm-path (telega-docker--normalize-container-path path)))
+      (or (seq-some
+           (lambda (mapping)
+             (when (telega-docker--container-path-prefix-p norm-path (cdr mapping))
+               (concat (car mapping)
+                       (substring norm-path (length (cdr mapping))))))
+           (telega-docker--path-mappings))
+          path))))
+
+(defun telega-docker-cmd-to-container (cmd)
+  "Translate known host paths inside shell CMD into container paths."
+  (if (not (and cmd telega-use-docker (telega-docker--windows-p)))
+      cmd
+    (let ((mapped-cmd cmd))
+      (dolist (mapping (telega-docker--path-mappings) mapped-cmd)
+        (setq mapped-cmd
+              (replace-regexp-in-string
+               (regexp-quote (car mapping)) (cdr mapping)
+               mapped-cmd 'fixedcase 'literal))))))
+
+(defun telega-docker--tl-path-transform (obj direction)
+  "Translate Docker file paths inside TL object OBJ.
+DIRECTION is either the symbol `to-container' or `to-host'."
+  (if (not (and telega-use-docker (telega-docker--windows-p)))
+      obj
+    (cond ((vectorp obj)
+         (cl-map 'vector
+                 (lambda (elem)
+                   (telega-docker--tl-path-transform elem direction))
+                 obj))
+          ((consp obj)
+           (let ((obj-type (plist-get obj :@type))
+                 (mapped-obj
+                  (mapcar (lambda (elem)
+                            (telega-docker--tl-path-transform elem direction))
+                          obj)))
+             (cond ((and (equal obj-type "inputFileLocal")
+                         (eq direction 'to-container))
+                    (plist-put mapped-obj :path
+                               (telega-docker-path-to-container
+                                (plist-get mapped-obj :path))))
+                   ((and (equal obj-type "localFile")
+                         (eq direction 'to-host))
+                    (plist-put mapped-obj :path
+                               (telega-docker-path-to-host
+                                (plist-get mapped-obj :path))))
+                   ((and (equal obj-type "setTdlibParameters")
+                         (eq direction 'to-container))
+                    (plist-put mapped-obj :database_directory
+                               (telega-docker-path-to-container
+                                (plist-get mapped-obj :database_directory)))
+                    (plist-put mapped-obj :files_directory
+                               (telega-docker-path-to-container
+                                (plist-get mapped-obj :files_directory)))))
+             mapped-obj))
+          (t obj))))
+
 (defsubst telega--tl-unpack (obj)
   "Unpack TL object OBJ."
-  obj)
+  (telega-docker--tl-path-transform obj 'to-host))
 
 (defsubst telega--tl-pack (obj)
   "Pack object OBJ."
   ;; Remove text props from strings, etc
-  (cond ((stringp obj) (substring-no-properties obj))
-        ((vectorp obj) (cl-map 'vector #'telega--tl-pack obj))
-        ((listp obj) (mapcar #'telega--tl-pack obj))
-        (t obj)))
+  (telega-docker--tl-path-transform
+   (cond ((stringp obj) (substring-no-properties obj))
+         ((vectorp obj) (cl-map 'vector #'telega--tl-pack obj))
+         ((listp obj) (mapcar #'telega--tl-pack obj))
+         (t obj))
+   'to-container))
 
 (defun telega-tl-str (obj &optional prop no-properties)
   "Get property PROP from OBJ, desurrogating resulting string.
