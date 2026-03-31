@@ -3043,7 +3043,6 @@ has `replyMarkupShowKeyboard' type."
                      (plist-get reply-markup :is_personal)))
         (let ((rows (append (plist-get reply-markup :rows) nil)))
           (while rows
-            (telega-ins--move-to-column 4)
             (let* ((buttons-row (car rows))
                    (forced-width
                     (when (plist-get reply-markup :resize_keyboard)

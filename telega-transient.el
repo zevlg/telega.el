@@ -621,7 +621,8 @@ If DEFAULT-VALUE is not specified, then nil is used."
     (telega--pinChatMessage
      msg
      (not (telega-transient-args-get args :msg-pin-notify-p))
-     (not (telega-transient-args-get args :msg-pin-for-other-p)))))
+     (when (telega-msg-match-p msg '(chat (type private secret)))
+       (not (telega-transient-args-get args :msg-pin-for-other-p))))))
 
 (transient-define-prefix telega-transient-msg-pin-toggle (msg)
   "Pin/unpin a message MSG."

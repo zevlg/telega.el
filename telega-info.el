@@ -1152,29 +1152,53 @@ and chat permission restrictions"
         (telega-ins "\n")))))
 
 
-;; Proxies code
+;;; ellit-org: proxies
+;;
+;; =telega= supports Telegram proxies.  Use {{{kbd(M-x
+;; telega-describe-proxies RET)}}} to list already added proxies.
+;; Added proxies and enabled proxy is retained across =telega=
+;; sessions.
+;;
+;; Use [[#telega-proxy-status-mode][telega-proxy-status-mode]] to show
+;; proxy status in the rootbuf.
+;;
+;; Use ~telega-before-auth-hook~ to add (and probably enable) a proxy
+;; before authorizing in the Telegram.  This is helpful if you can't
+;; connect to the Telegram directly and you have no added proxies.
+;;
+;; For example:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-before-auth-hook
+;;           (lambda ()
+;;              (telega--addProxy <PROXY> 'enable)))
+;; #+end_src
+;;
+;; Where ~PROXY~ has following format:
+;; ~(:server "<ADDRESS>" :port <PORT> :type <PROXY-TYPE>)~
+;;
+;; Where ~PROXY-TYPE~ is one of:
+;; - ~(:@type "proxyTypeSocks5" :username "<USER>" :password "<PASSWORD>")~, all fields except for ~:@type~ are optional.
+;; - ~(:@type "proxyTypeHttp" :username "<USER>" :password "<PASSWORD>" :http_only t|:false)~, all fields except for ~:@type~ are optional.
+;; - ~(:@type "proxyTypeMtproto" :secret "<SECRET-STRING>")~
 (defun telega-proxies-ping (added-proxies &optional callback)
   "Update ping stats for the ADDED-PROXIES.
 Call CALLBACK on updates."
-  (let ((track-timeout nil))
-    (dolist (added-proxy added-proxies)
-      (let* ((proxy-id (plist-get added-proxy :id))
-             (ping (assq proxy-id telega--proxy-pings))
-             (currts (time-to-seconds)))
-        (when (> currts (+ (or (cadr ping) 0) 60))
-          (setq track-timeout t)
-          (setf (alist-get proxy-id telega--proxy-pings) (cons currts nil))
-          (telega-server--call
-           (list :@type "pingProxy" :proxy_id proxy-id)
-           (lambda (seconds)
-             (setf (alist-get proxy-id telega--proxy-pings)
-                   (cons (time-to-seconds) (plist-get seconds :seconds)))
-             (when callback
-               (funcall callback)))))))
-
-    (when (and track-timeout callback)
-      ;; to track ping timeouts
-      (run-with-timer 10 nil callback))))
+  (dolist (added-proxy added-proxies)
+    (let* ((proxy-id (plist-get added-proxy :id))
+           (ping (assq proxy-id telega--proxy-pings))
+           (currts (time-to-seconds)))
+      (when (> currts (+ (or (cadr ping) 0) 60))
+        (setf (alist-get proxy-id telega--proxy-pings)
+              (cons currts 'checking))
+        (telega--pingProxy (plist-get added-proxy :proxy)
+          (lambda (reply)
+            (setf (alist-get proxy-id telega--proxy-pings)
+                  (cons (time-to-seconds)
+                        (if (telega--tl-error-p reply)
+                            reply
+                          (plist-get reply :seconds))))
+            (when callback
+              (funcall callback))))))))
 
 (defun telega-proxy-last-used (&optional added-proxies)
   "Return last time used proxy."
@@ -1187,13 +1211,37 @@ Call CALLBACK on updates."
     (cl-find enabled-proxy-id (or added-proxies (telega--getProxies))
              :key (telega--tl-prop :id))))
 
+(defun telega-ins--proxy (proxy)
+  "Inserter for the TL PROXY."
+  (telega-ins-fmt "%s:%d %s"
+    (plist-get proxy :server) (plist-get proxy :port)
+    (substring (telega--tl-get proxy :type :@type)
+               (eval-when-compile
+                 (length "proxyType"))))
+  t)
+
+(defun telega-ins--proxy-ping (proxy-id)
+  "Insert ping results for the PROXY-ID."
+  (when-let* ((proxy-ping (alist-get proxy-id telega--proxy-pings ))
+              (ping (cdr proxy-ping)))
+    (cond ((eq ping 'checking)
+           (telega-ins--with-face 'telega-shadow
+             (telega-ins-i18n "lng_proxy_checking")))
+          ((floatp ping)
+           (telega-ins--with-face 'success
+             (telega-ins-i18n "lng_proxy_available"
+               :ping (format "%d" (round (* ping 1000))))))
+          (t
+           (telega-ins--with-face 'error
+             (telega-ins-i18n "lng_proxy_unavailable"))))
+    t))
+
 (defun telega-ins--proxies (&optional added-proxies)
   "Insert proxy settings."
   (unless added-proxies
     (setq added-proxies (telega--getProxies)))
 
   (telega-ins-describe-section (telega-i18n "lng_proxy_settings"))
-
   (let ((recent (telega-proxy-last-used added-proxies))
         (enabled (telega-proxy-enabled added-proxies)))
     (telega-ins-describe-item (telega-i18n "lng_proxy_use")
@@ -1201,24 +1249,47 @@ Call CALLBACK on updates."
                                    (telega-symbol 'checkbox-on)
                                  (telega-symbol 'checkbox-off))
         'face 'telega-link
-        :value (and (not enabled) recent)
+        :value (unless enabled recent)
         :action (lambda (aproxy)
                   (if aproxy
-                      (and (telega--enableProxy (plist-get aproxy :id))
-                           (setq telega--conn-state 'ConnectingToProxy))
-                    (telega--disableProxy))
-                  (telega-describe-proxies))))
+                      (telega--enableProxy (plist-get aproxy :id)
+                        #'telega-describe-proxies)
+                    (telega--disableProxy #'telega-describe-proxies)))))
+    (telega-ins "\n")
 
-    (telega-ins "TODO: insert proxies list\n")
-    ;; TODO: proxy list
+    (seq-doseq (added-proxy added-proxies)
+      (if (eq added-proxy enabled)
+          (telega-ins (telega-symbol 'checkbox-on))
+
+        (telega-ins--text-button
+            (if (and (eq added-proxy recent) (eq added-proxy enabled))
+                (telega-symbol 'checkbox-on)
+              (telega-symbol 'checkbox-off))
+          'face 'telega-link
+          :value added-proxy
+          :action (lambda (aproxy)
+                    (telega--enableProxy (plist-get aproxy :id)
+                      #'telega-describe-proxies))))
+      (telega-ins " ")
+      (telega-ins--line-wrap-prefix "   "
+        (telega-ins--proxy (plist-get added-proxy :proxy))
+        (telega-ins "\n")
+        (telega-ins--proxy-ping (plist-get added-proxy :id)))
+      (telega-ins "\n"))
     t))
 
-(defun telega-describe-proxies ()
+(defun telega-describe-proxies (&rest _ignored)
   "Describe proxies status."
   (interactive)
+
   (if (called-interactively-p 'interactive)
-      (with-telega-help-win "*Telega Proxies*"
-        (telega-ins--proxies))
+      (let ((help-window-select t)
+            (added-proxies (telega--getProxies)))
+        ;; Start pinging all added proxies
+        (telega-proxies-ping added-proxies #'telega-describe-proxies)
+
+        (with-telega-help-win "*Telega Proxies*"
+          (telega-ins--proxies added-proxies)))
 
     (let ((buffer (get-buffer "*Telega Proxies*")))
       (when (buffer-live-p buffer)
@@ -1400,7 +1471,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
         (telega-ins--with-face 'telega-shadow
           (telega-ins "\n")
           (telega-ins-i18n "lng_group_requests_none"))
-      
+
       (telega-ins-describe-item (telega-i18n "lng_manage_peer_requests")
         (telega-ins-fmt "%d" nrequests))
       (seq-doseq (jr (plist-get join-requests :requests))
@@ -1408,7 +1479,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
           (telega-ins--raw-button
               (telega-link-props 'sender user 'type 'telega)
             (telega-ins--msg-sender user
-              :with-avatar-p 2   
+              :with-avatar-p 2
               :with-username-p 'telega-username
               :trail-inserter (lambda (_sender)
                                 (telega-ins--move-to-column 40)
@@ -1431,7 +1502,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
             (telega-ins "\n"))
           ))
       )))
-  
+
 (defun telega-describe-chat-join-requests (chat)
   "Describe list of pending requests."
   (interactive

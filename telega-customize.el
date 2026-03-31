@@ -146,21 +146,6 @@ Implies `telega-use-chat-info-database' set to non-nil."
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-proxies nil
-  "*List of proxies.
-Format is:
-  (:server \"<ADDRESS>\" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
-
-where PROXY-TYPE is one of:
-- (:@type \"proxyTypeSocks5\" :username <USER> :password <PASSWORD>)
-- (:@type \"proxyTypeHttp\" :username <USER> :password <PASSWORD>
-   :http_only <BOOL>)
-- (:@type \"proxyTypeMtproto\" :secret <SECRET-STRING>)
-
-<BOOL> is either t or `:false', nil is not valid value."
-  :type '(repeat plist)
-  :group 'telega)
-
 (defcustom telega-idle-delay 0.5
   "*Delay before taking actions when Emacs gets idle."
   :type 'number
@@ -3720,6 +3705,12 @@ non-nil if symbol gets emojification."
   "Hook to run on rootbuf updateds.
 This hook is run with rootbuf being current."
   :package-version '(telega . "0.6.23")
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-before-auth-hook nil
+  "Hook called before authentication.
+Can be used to setup add/enable Telegram proxy."
   :type 'hook
   :group 'telega-hooks)
 

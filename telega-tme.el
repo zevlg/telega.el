@@ -405,7 +405,10 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
          )))
 
     (internalLinkTypeProxy
-     (telega-transient-add-proxy (plist-get tdlib-link :proxy)))
+     (let ((proxy (plist-get tdlib-link :proxy)))
+       (unless proxy
+         (error "telega: %s" (telega-i18n "lng_proxy_invalid")))
+       (telega-transient-add-proxy proxy)))
 
     (internalLinkTypeBackground
      (error "TODO: searchBackground"))

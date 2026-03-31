@@ -6974,7 +6974,8 @@ If there is no previous link in the current message, move point to the
 previous message.
 Use `C-h .' to show URL at point after moving point to a link."
   (interactive "p")
-  (when (<= telega-chatbuf--input-marker (point))
+  (when (and (derived-mode-p 'telega-chat-mode)
+             (<= telega-chatbuf--input-marker (point)))
     (goto-char (ewoc-location (ewoc--footer telega-chatbuf--ewoc))))
   (telega-chatbuf-next-link (- n)))
 

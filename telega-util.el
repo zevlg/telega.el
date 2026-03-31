@@ -2462,8 +2462,15 @@ integer values, then absolute value in pixels is used."
                            :stroke-width sw
                            :stroke-color "black")
 
+            ;; NOTE from `face-background' docstring:
+            ;;   On TTY frames, the returned color name can be
+            ;;   "unspecified-bg", which stands for the unknown default
+            ;;   background color of the display where the frame is
+            ;;   displayed.
             (svg-rectangle svg 0 0 w h
-                           :fill (telega-color-name-as-hex-2digits fill-color)
+                           :fill (if (equal fill-color "unspecified-bg")
+                                     "black"
+                                   (telega-color-name-as-hex-2digits fill-color))
                            :mask "url(#hole)")
 
             (when (> sw 0)

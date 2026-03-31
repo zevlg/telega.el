@@ -376,15 +376,17 @@ Return nil for deleted messages."
     (and last-msg-id last-read-msg-id (not (zerop last-read-msg-id))
          (< last-read-msg-id last-msg-id))))
 
-(defun telega-msg-goto (msg &optional highlight-p)
+(defun telega-msg-goto (msg &optional highlight-p callback)
   "Goto message MSG."
+  (declare (indent 2))
   ;; Ensure MSG is in the cache, to show it in the chatbuf as fast as
   ;; possible
   (let ((msg-cache-key (cons (plist-get msg :chat_id) (plist-get msg :id))))
     (unless (gethash msg-cache-key telega--cached-messages)
       (puthash msg-cache-key msg telega--cached-messages)))
 
-  (telega-chat--goto-msg (telega-msg-chat msg) (plist-get msg :id) highlight-p))
+  (telega-chat--goto-msg (telega-msg-chat msg) (plist-get msg :id) highlight-p
+    callback))
 
 (defun telega-msg-goto-highlight (msg)
   "Goto message MSG, highlight it."
@@ -397,17 +399,34 @@ Return nil for deleted messages."
          (msg-id (plist-get reply-to :message_id))
          (reply-quote (plist-get reply-to :quote)))
     (unless (or (telega-zerop chat-id) (telega-zerop msg-id))
-      (telega-chat--goto-msg (telega-chat-get chat-id) msg-id
-                             (unless reply-to 'highlight)
-        ;; Possibly jump to the beginning of the reply quote
-        (when reply-quote
-          (lambda ()
-            (when (telega-chatbuf--goto-msg-content
-                   (plist-get reply-quote :position))
-              (with-no-warnings
-                (pulse-momentary-highlight-region
-                 (point) (+ (point) (length (telega-tl-str reply-quote :text))))))
-            ))))))
+      (unless (gethash (cons chat-id msg-id) telega--cached-messages)
+        (message "telega: %s" (telega-i18n "telega_loading")))
+      (telega-msg-get (telega-chat-get chat-id) msg-id
+        (lambda (reply-msg &optional offline-p)
+          (unless offline-p
+            (message ""))
+          (if (telega--tl-error-p reply-msg)
+              (cond ((telega-tl-error-equal reply-msg 400)
+                     (message "telega: %s"
+                              (telega-i18n "lng_reply_from_private_chat")))
+                    ((telega-tl-error-equal reply-msg 404)
+                     (message "telega: %s"
+                              (telega-i18n "lng_message_not_found")))
+                    (t
+                     (message "telega: Can't fetch message")))
+
+            ;; Got the message
+            (telega-msg-goto reply-msg (unless reply-to 'highlight)
+              ;; Possibly jump to the beginning of the reply quote
+              (when reply-quote
+                (lambda ()
+                  (when (telega-chatbuf--goto-msg-content
+                         (plist-get reply-quote :position))
+                    (with-no-warnings
+                      (pulse-momentary-highlight-region
+                       (point)
+                       (+ (point) (length (telega-tl-str reply-quote :text))))))
+                  )))))))))
 
 (defun telega-msg-open-sticker (msg &optional sticker)
   "Open content for sticker message MSG."

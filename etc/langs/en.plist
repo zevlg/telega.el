@@ -2107,6 +2107,10 @@ You can send them an invite link as message instead.")
   :value "Username")
  ("lng_proxy_box_password"
   :value "Password")
+ ("lng_proxy_edit"
+  :value "Edit proxy")
+ ("lng_proxy_invalid"
+  :value "The proxy link is invalid.")
 
  ("lng_connecting"
   :value "Connecting...")
@@ -2439,4 +2443,7 @@ this channel?")
   :value "{from} disabled sharing in this chat")
  ("lng_action_no_forwards_enabled"
   :value "{from} enabled sharing in this chat")
+
+ ("lng_reply_from_private_chat"
+  :value "This reply is from a private chat.")
  )

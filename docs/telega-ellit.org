@@ -301,8 +301,7 @@ notes, etc.
 * Getting started
 
 Start =telega= with {{{kbd(M-x telega RET)}}}. The first time it will
-ask for the phone number you have associated with the Telegram
-network.
+ask you to authorize via QR-code using official Telegram application.
 
 Some options affecting =TDLib= runtime:
 - {{{user-option-ndv(telega-directory, 2)}}}
@@ -310,7 +309,6 @@ Some options affecting =TDLib= runtime:
   Default value: "~/.telega"
 
 - {{{user-option(telega-options-plist, 2)}}}
-- {{{user-option(telega-proxies, 2)}}}
 - {{{user-option(telega-my-location, 2)}}}
 
   See also [[#telega-my-location-mode][telega-my-location-mode]] to automatically update
@@ -319,6 +317,10 @@ Some options affecting =TDLib= runtime:
 
 To list all available customizable user options use ~M-x
 customize-group RET telega RET~ command.
+
+** Using proxy to access Telegram
+
+#+ELLIT-INCLUDE: ../telega-info.el :label proxies
 
 * Settings for Emacs As Daemon
 

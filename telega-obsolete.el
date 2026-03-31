@@ -324,6 +324,10 @@
                            'telega-translate-show-original-content
                            "0.8.600")
 
+(telega-obsolete--variable 'telega-proxies
+                           'telega-before-auth-hook
+                            "0.8.621")
+
 ;; Uncomment once `telega-ins--box-button2' is everywhere in use
 ;; (telega-obsolete--variable 'telega-box-button-endings
 ;;                            'telega-box-button-brackets

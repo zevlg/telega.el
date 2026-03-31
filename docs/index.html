@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2026-03-26 Чт 12:52 -->
+<!-- 2026-03-31 Вт 23:37 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.620)</title>
+<title>Telega Manual (v0.8.621)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -68,7 +68,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.620)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.621)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -86,7 +86,11 @@
 <li><a href="#running-telega-server-in-docker">Running telega-server in docker</a></li>
 </ul>
 </li>
-<li><a href="#getting-started">Getting started</a></li>
+<li><a href="#getting-started">Getting started</a>
+<ul>
+<li><a href="#using-proxy-to-access-telegram">Using proxy to access Telegram</a></li>
+</ul>
+</li>
 <li><a href="#settings-for-emacs-as-daemon">Settings for Emacs As Daemon</a></li>
 <li><a href="#telega-glossary">Telega glossary</a></li>
 <li><a href="#telega-prefix-map">Telega prefix map</a></li>
@@ -650,8 +654,7 @@ notes, etc.
 <div class="outline-text-2" id="text-getting-started">
 <p>
 Start <code>telega</code> with <kbd>M-x telega RET</kbd>. The first time it will
-ask for the phone number you have associated with the Telegram
-network.
+ask you to authorize via QR-code using official Telegram application.
 </p>
 
 <p>
@@ -695,33 +698,6 @@ Default value:
 </div></li>
 
 <li><p>
-User Option: <code>telega-proxies</code> 
-</p>
-
-<p>
-List of proxies.
-Format is:
-  (:server "&lt;ADDRESS&gt;" :port &lt;PORT&gt; :enable &lt;BOOL&gt; :type &lt;PROXY-TYPE&gt;)
-</p>
-
-<p>
-where PROXY-TYPE is one of:
-</p>
-<ul class="org-ul">
-<li>(:@type "proxyTypeSocks5" :username &lt;USER&gt; :password &lt;PASSWORD&gt;)</li>
-<li>(:@type "proxyTypeHttp" :username &lt;USER&gt; :password &lt;PASSWORD&gt;
-:http<sub>only</sub> &lt;BOOL&gt;)</li>
-<li>(:@type "proxyTypeMtproto" :secret &lt;SECRET-STRING&gt;)</li>
-</ul>
-
-<p>
-&lt;BOOL&gt; is either t or <code>:false</code>, nil is not valid value. 
-</p>
-
-<p>
-Default value: <code>nil</code>
-</p></li>
-<li><p>
 User Option: <code>telega-my-location</code> 
 </p>
 
@@ -748,6 +724,51 @@ See also <a href="#telega-my-location-mode">telega-my-location-mode</a> to autom
 To list all available customizable user options use <code>M-x
 customize-group RET telega RET</code> command.
 </p>
+</div>
+<div id="outline-container-using-proxy-to-access-telegram" class="outline-3">
+<h3 id="using-proxy-to-access-telegram"><a class="self-link" href="#using-proxy-to-access-telegram"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Using proxy to access Telegram</h3>
+<div class="outline-text-3" id="text-using-proxy-to-access-telegram">
+<p>
+<code>telega</code> supports Telegram proxies.  Use <kbd>M-x telega-describe-proxies RET</kbd> to list already added proxies.
+Added proxies and enabled proxy is retained across <code>telega</code>
+sessions.
+</p>
+
+<p>
+Use <a href="#telega-proxy-status-mode">telega-proxy-status-mode</a> to show
+proxy status in the rootbuf.
+</p>
+
+<p>
+Use <code>telega-before-auth-hook</code> to add (and probably enable) a proxy
+before authorizing in the Telegram.  This is helpful if you can't
+connect to the Telegram directly and you have no added proxies.
+</p>
+
+<p>
+For example:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(add-hook 'telega-before-auth-hook
+          (<span style="font-weight: bold;">lambda</span> ()
+             (telega--addProxy &lt;PROXY&gt; 'enable)))
+</pre>
+</div>
+
+<p>
+Where <code>PROXY</code> has following format:
+<code>(:server "&lt;ADDRESS&gt;" :port &lt;PORT&gt; :type &lt;PROXY-TYPE&gt;)</code>
+</p>
+
+<p>
+Where <code>PROXY-TYPE</code> is one of:
+</p>
+<ul class="org-ul">
+<li><code>(:@type "proxyTypeSocks5" :username "&lt;USER&gt;" :password "&lt;PASSWORD&gt;")</code>, all fields except for <code>:@type</code> are optional.</li>
+<li><code>(:@type "proxyTypeHttp" :username "&lt;USER&gt;" :password "&lt;PASSWORD&gt;" :http_only t|:false)</code>, all fields except for <code>:@type</code> are optional.</li>
+<li><code>(:@type "proxyTypeMtproto" :secret "&lt;SECRET-STRING&gt;")</code></li>
+</ul>
+</div>
 </div>
 </div>
 <div id="outline-container-settings-for-emacs-as-daemon" class="outline-2">
@@ -852,7 +873,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgb671afd">
+<pre class="example" id="orgd0a416d">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -870,7 +891,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org4aa8590">
+<pre class="example" id="orgba8b8c3">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -959,7 +980,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org476ee06">
+<pre class="example" id="org77d197e">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -997,7 +1018,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org5c20cb5">
+<pre class="example" id="org71e16da">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -2424,7 +2445,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org2847cf7">
+<pre class="example" id="orgb72ef02">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2628,7 +2649,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org1e9b55b">
+<pre class="example" id="org863bb36">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2660,7 +2681,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orgb67fe47">
+<pre class="example" id="orgc71e42f">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3556,7 +3577,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org0877e19">
+<pre class="example" id="org838b109">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3567,8 +3588,8 @@ For fast access to media controls you can you next bindings:
 <dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd>Stop playing media message.</dd>
 <dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd>Rewind 10 seconds backward.</dd>
 <dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd>Rewind 10 seconds forward.</dd>
-<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Toggle playback speed for the media message.
-Only two modes are available: normal speed and x2 speed.</dd>
+<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Cycle playback speed for the media message.
+Cycles through speeds defined in <code>telega-vvnote-play-speeds</code>.</dd>
 <dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd>Rewind to the N's 10 part of the message duration.
 I.e. if you press 7, then you will jump to 70% of the message
 duration.</dd>
@@ -4906,7 +4927,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org6051f85">
+<pre class="example" id="orgc8eaf13">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

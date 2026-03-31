@@ -337,16 +337,13 @@ all messages must have same user sender."
 (defun telega--getMessage (chat-id msg-id &optional callback)
   "Get message by CHAT-ID and MSG-ID.
 If CALLBACK is specified, then get message asynchronously.
-If message is not found, then return `nil'."
+Return TL error if can't get the message."
   (declare (indent 2))
-  (with-telega-server-reply (reply)
-      (unless (telega--tl-error-p reply)
-        reply)
-
-    (list :@type "getMessage"
-          :chat_id chat-id
-          :message_id msg-id)
-    callback))
+  (telega-server--call
+   (list :@type "getMessage"
+         :chat_id chat-id
+         :message_id msg-id)
+   callback))
 
 (defun telega--getRepliedMessage (msg &optional callback)
   "Returns information about a message that is replied by a given message.

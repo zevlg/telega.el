@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.620)
+#+title: Telega Manual (v0.8.621)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -38,6 +38,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#installing-telega-directly-from-github][Installing telega directly from GitHub]]
     - [[#running-telega-server-in-docker][Running telega-server in docker]]
   - [[#getting-started][Getting started]]
+    - [[#using-proxy-to-access-telegram][Using proxy to access Telegram]]
   - [[#settings-for-emacs-as-daemon][Settings for Emacs As Daemon]]
   - [[#telega-glossary][Telega glossary]]
   - [[#telega-prefix-map][Telega prefix map]]
@@ -434,8 +435,7 @@ notes, etc.
 :END:
 
 Start =telega= with @@html:<kbd>@@M-x telega RET@@html:</kbd>@@. The first time it will
-ask for the phone number you have associated with the Telegram
-network.
+ask you to authorize via QR-code using official Telegram application.
 
 Some options affecting =TDLib= runtime:
 - User Option: ~telega-directory~ 
@@ -459,21 +459,6 @@ Default value: "~/.telega"
              :use_storage_optimizer :false :ignore_file_names :false)
   #+end_src
 
-- User Option: ~telega-proxies~ 
-
-  List of proxies.
-  Format is:
-    (:server "<ADDRESS>" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
-
-  where PROXY-TYPE is one of:
-  - (:@type "proxyTypeSocks5" :username <USER> :password <PASSWORD>)
-  - (:@type "proxyTypeHttp" :username <USER> :password <PASSWORD>
-    :http_only <BOOL>)
-  - (:@type "proxyTypeMtproto" :secret <SECRET-STRING>)
-
-  <BOOL> is either t or ~:false~, nil is not valid value. 
-
-  Default value: ~nil~
 - User Option: ~telega-my-location~ 
 
   Set to non-nil to use this as location of me.
@@ -490,6 +475,36 @@ Default value: "~/.telega"
 
 To list all available customizable user options use ~M-x
 customize-group RET telega RET~ command.
+** Using proxy to access Telegram
+:PROPERTIES:
+:CUSTOM_ID: using-proxy-to-access-telegram
+:END:
+
+=telega= supports Telegram proxies.  Use @@html:<kbd>@@M-x telega-describe-proxies RET@@html:</kbd>@@ to list already added proxies.
+Added proxies and enabled proxy is retained across =telega=
+sessions.
+
+Use [[#telega-proxy-status-mode][telega-proxy-status-mode]] to show
+proxy status in the rootbuf.
+
+Use ~telega-before-auth-hook~ to add (and probably enable) a proxy
+before authorizing in the Telegram.  This is helpful if you can't
+connect to the Telegram directly and you have no added proxies.
+
+For example:
+#+begin_src emacs-lisp
+  (add-hook 'telega-before-auth-hook
+            (lambda ()
+               (telega--addProxy <PROXY> 'enable)))
+#+end_src
+
+Where ~PROXY~ has following format:
+~(:server "<ADDRESS>" :port <PORT> :type <PROXY-TYPE>)~
+
+Where ~PROXY-TYPE~ is one of:
+- ~(:@type "proxyTypeSocks5" :username "<USER>" :password "<PASSWORD>")~, all fields except for ~:@type~ are optional.
+- ~(:@type "proxyTypeHttp" :username "<USER>" :password "<PASSWORD>" :http_only t|:false)~, all fields except for ~:@type~ are optional.
+- ~(:@type "proxyTypeMtproto" :secret "<SECRET-STRING>")~
 * Settings for Emacs As Daemon
 :PROPERTIES:
 :CUSTOM_ID: settings-for-emacs-as-daemon
@@ -2665,8 +2680,8 @@ For fast access to media controls you can you next bindings:
 - @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
      Rewind 10 seconds forward.
 - @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
-     Toggle playback speed for the media message.
-     Only two modes are available: normal speed and x2 speed.
+     Cycle playback speed for the media message.
+     Cycles through speeds defined in ~telega-vvnote-play-speeds~.
 - @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
      Rewind to the N's 10 part of the message duration.
      I.e. if you press 7, then you will jump to 70% of the message

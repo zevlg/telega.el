@@ -1345,12 +1345,7 @@ Please downgrade TDLib and recompile `telega-server'"
          (telega-debug "docker RUN: %s" devices-chown-cmd)
          (shell-command-to-string devices-chown-cmd))
 
-       ;; NOTE: Setup proxies.  Only `telega-proxies' setup enables
-       ;; some proxy.  See
-       ;; https://github.com/zevlg/telega.el/issues/233
-       (telega--disableProxy)
-       (dolist (proxy telega-proxies)
-         (telega--addProxy proxy))
+       (run-hook 'telega-before-auth-hook)
 
        (telega--setTdlibParameters))
 
