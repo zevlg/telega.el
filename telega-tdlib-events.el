@@ -1345,7 +1345,7 @@ Please downgrade TDLib and recompile `telega-server'"
          (telega-debug "docker RUN: %s" devices-chown-cmd)
          (shell-command-to-string devices-chown-cmd))
 
-       (run-hook 'telega-before-auth-hook)
+       (run-hooks 'telega-before-auth-hook)
 
        (telega--setTdlibParameters))
 
