@@ -425,6 +425,13 @@ Make =telega= know you want to use docker by adding this to your =init.el=:
   (setq telega-use-docker t)
 #+end_src
 
+On Windows, =telega= rewrites Docker bind mounts and TDLib file paths
+for Docker Desktop automatically.  If you need to start the image
+manually from PowerShell, use a Linux container path, for example:
+#+begin_src powershell
+  docker run --rm -it -v ${HOME}/.telega:/telega zevlg/telega-server:latest /usr/bin/telega-server
+#+end_src
+
 That's it, you are ready to get starting.  However, you might anyway
 need to have local =ffmpeg= installation to utilize some =telega=
 features, such as playing audio/voice messages, capturing video/voice
