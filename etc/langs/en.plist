@@ -552,6 +552,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Manage topics")
  ("lng_rights_group_add_topics"
   :value "Create topics")
+ ("lng_rights_edit_tag_title"
+  :value "Edit tag")
  ("lng_rights_group_info"
   :value "Change group info")
 
@@ -624,6 +626,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Manage Video chats")
  ("lng_rights_group_anonymous"
   :value "Remain Anonymous")
+ ("lng_rights_group_manage_ranks"
+  :value "Edit member tags")
  ("lng_rights_edit_admin"
   :value "Edit permissions")
  ("telega_rights_restrict_members"
