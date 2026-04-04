@@ -256,6 +256,10 @@
   :value "头衔")
  ("lng_rights_edit_admin_rank_about"
   :value "所有成员将会显示头衔，而不是'{title}'。")
+ ("lng_rights_edit_tag_title"
+  :value "编辑标签")
+ ("lng_rights_group_manage_ranks"
+  :value "编辑成员标签")
 
  ;; Help messages
  ("telega_scheduled_help"
@@ -374,8 +378,6 @@
   :value "分组名")
  ("lng_filters_edit"
   :value "编辑分组")
- ("lng_filters_recommended"
-  :value "推荐分组")
  ("lng_filters_limit"
   :value "抱歉，您的分组数量已达上限。")
  ("lng_filters_default"
@@ -390,4 +392,2739 @@
   :value "置顶消息")
  ("telega_view_deleted_chats"
   :value "最近删除的聊天")
- )
+
+ ;; Auto-translated missing entries
+ ("lng_action_add_user"
+  :value "{from} 添加了 {user}")
+
+ ("lng_action_attach_menu_bot_allowed"
+  :value "您在将此机器人添加到附件菜单时，允许了它向您发送消息。")
+
+ ("lng_action_boost_apply"
+  :one_value "{from} 加成了该群组"
+  :other_value "{from} 加成了该群组 {count} 次")
+
+ ("lng_action_bot_allowed_from_app"
+  :value "您在打开 {app} 时，允许了此机器人向您发送消息。")
+
+ ("lng_action_bot_allowed_from_domain"
+  :value "您在 {domain} 上登录时，允许了此机器人向您发送消息。")
+
+ ("lng_action_direct_messages_disabled"
+  :value "频道已关闭私信功能。")
+
+ ("lng_action_direct_messages_enabled"
+  :value "频道已开启私信功能。")
+
+ ("lng_action_direct_messages_paid"
+  :one_value "频道已开启付费私信，每条 {count} 星星。"
+  :other_value "频道已开启付费私信，每条 {count} 星星。")
+
+ ("lng_action_gift_for_stars"
+  :one_value "{count} 星星"
+  :other_value "{count} 星星")
+
+ ("lng_action_gift_got_stars_text"
+  :one_value "在您的主页展示此礼物，或将其转换为 **{count}** 星星。"
+  :other_value "在您的主页展示此礼物，或将其转换为 **{count}** 星星。")
+
+ ("lng_action_gift_got_subtitle"
+  :value "来自 {user} 的礼物")
+
+ ("lng_action_gift_received"
+  :value "{user} 向您发送了一份价值 {cost} 的礼物")
+
+ ("lng_action_gift_received_me"
+  :value "您向 {user} 发送了一份价值 {cost} 的礼物")
+
+ ("lng_action_gift_sent"
+  :value "您发送了一份价值 {cost} 的礼物")
+
+ ("lng_action_gift_sent_text"
+  :one_value "{user} 可以在其主页展示此礼物，或将其转换为 {count} 星星。"
+  :other_value "{user} 可以在其主页展示此礼物，或将其转换为 {count} 星星。")
+
+ ("lng_action_giveaway_results"
+  :one_value "Telegram 随机选取了 {count} 位获奖者，并通过私信发送了兑换码。"
+  :other_value "Telegram 随机选取了 {count} 位获奖者，并通过私信发送了兑换码。")
+
+ ("lng_action_giveaway_started"
+  :value "{from} 发起了一场面向其关注者的 Telegram Premium 订阅抽奖活动。")
+
+ ("lng_action_group_call_finished_group"
+  :value "{from} 结束了视频聊天 ({duration})")
+
+ ("lng_action_group_call_scheduled_channel"
+  :value "直播已安排于 {date}")
+
+ ("lng_action_group_call_scheduled_group"
+  :value "{from} 安排了 {date} 的视频聊天")
+
+ ("lng_action_group_call_started_group"
+  :value "{from} 开始了视频聊天")
+
+ ("lng_action_invite_user_chat"
+  :value "视频聊天")
+
+ ("lng_action_invite_users_many"
+  :value "{from} 邀请 {users} 加入 {chat}")
+
+ ("lng_action_no_forwards_disabled"
+  :value "{from} 关闭了此聊天中的转发功能")
+
+ ("lng_action_no_forwards_enabled"
+  :value "{from} 开启了此聊天中的转发功能")
+
+ ("lng_action_no_forwards_you_disabled"
+  :value "您关闭了此聊天中的转发功能")
+
+ ("lng_action_no_forwards_you_enabled"
+  :value "您开启了此聊天中的转发功能")
+
+ ("lng_action_payment_done"
+  :value "您已成功向 {user} 转账 {amount}")
+
+ ("lng_action_payment_init_recurring"
+  :value "您已成功向 {user} 转账 {amount}，并授权了未来的定期扣款")
+
+ ("lng_action_payment_refunded"
+  :value "{peer} 已退款 {amount}")
+
+ ("lng_action_proximity_distance_km"
+  :one_value "{count} 公里"
+  :other_value "{count} 公里")
+
+ ("lng_action_proximity_distance_m"
+  :one_value "{count} 米"
+  :other_value "{count} 米")
+
+ ("lng_action_proximity_reached"
+  :value "{from} 现在距离 {user} 在 {distance} 以内")
+
+ ("lng_action_proximity_reached_you"
+  :value "{from} 现在距离您在 {distance} 以内")
+
+ ("lng_action_removed_photo"
+  :value "{from} 移除了群组头像")
+
+ ("lng_action_removed_photo_channel"
+  :value "频道头像已移除")
+
+ ("lng_action_set_same_wallpaper"
+  :value "{user} 为此聊天设置了相同的背景")
+
+ ("lng_action_set_wallpaper"
+  :value "{user} 为此聊天设置了新背景")
+
+ ("lng_action_set_wallpaper_both_me"
+  :value "您为 {user} 和您设置了新背景。")
+
+ ("lng_action_set_wallpaper_me"
+  :value "您为此聊天设置了新背景")
+
+ ("lng_action_shared_chat_with_bot"
+  :value "您将 {chat} 分享给了 {bot}")
+
+ ("lng_action_suggested_birthday"
+  :value "{user} 建议您添加生日信息")
+
+ ("lng_action_suggested_birthday_me"
+  :value "您建议 {user} 添加生日信息")
+
+ ("lng_action_theme_changed"
+  :value "{from} 将聊天主题更改为 {emoji}")
+
+ ("lng_action_theme_disabled"
+  :value "{from} 关闭了聊天主题")
+
+ ("lng_action_took_screenshot"
+  :value "{from} 进行了截图！")
+
+ ("lng_action_topic_closed"
+  :value "「{topic}」已关闭")
+
+ ("lng_action_topic_created"
+  :value "「{topic}」已创建")
+
+ ("lng_action_topic_hidden"
+  :value "「{topic}」已隐藏")
+
+ ("lng_action_topic_icon_changed"
+  :value "{from} 将 {link} 的图标更改为 {emoji}")
+
+ ("lng_action_topic_placeholder"
+  :value "话题")
+
+ ("lng_action_topic_renamed"
+  :value "{from} 将 {link} 重命名为「{title}」")
+
+ ("lng_action_topic_reopened"
+  :value "「{topic}」已重新开启")
+
+ ("lng_action_topic_unhidden"
+  :value "「{topic}」已取消隐藏")
+
+ ("lng_action_ttl_changed"
+  :value "{from} 设置消息在 {duration} 后自动删除")
+
+ ("lng_action_ttl_changed_you"
+  :value "您设置消息在 {duration} 后自动删除")
+
+ ("lng_action_ttl_removed"
+  :value "{from} 关闭了自动删除计时器")
+
+ ("lng_action_ttl_removed_you"
+  :value "您关闭了自动删除计时器")
+
+ ("lng_action_user_joined_by_request"
+  :value "{from} 已被批准加入群组")
+
+ ("lng_action_you_joined_by_request"
+  :value "您加入群组的请求已被批准")
+
+ ("lng_action_you_joined_by_request_channel"
+  :value "您加入频道的请求已被批准")
+
+ ("lng_action_you_proximity_reached"
+  :value "您现在距离 {user} 在 {distance} 以内")
+
+ ("lng_action_you_theme_changed"
+  :value "您将聊天主题更改为 {emoji}")
+
+ ("lng_action_you_theme_disabled"
+  :value "您关闭了聊天主题")
+
+ ("lng_action_you_took_screenshot"
+  :value "您进行了截图！")
+
+ ("lng_add_tag_button"
+  :value "添加标签")
+
+ ("lng_admin_log_topics_hidden"
+  :value "{from} 隐藏了话题 {topic}")
+
+ ("lng_admin_log_topics_unhidden"
+  :value "{from} 取消隐藏了话题 {topic}")
+
+ ("lng_all_files"
+  :value "文件")
+
+ ("lng_all_links"
+  :value "链接")
+
+ ("lng_all_music"
+  :value "音乐")
+
+ ("lng_all_photos"
+  :value "图片")
+
+ ("lng_all_videos"
+  :value "视频")
+
+ ("lng_all_voice"
+  :value "语音")
+
+ ("lng_attach_photo"
+  :value "照片")
+
+ ("lng_auction_change_button"
+  :value "更改")
+
+ ("lng_auction_preview_view_results"
+  :value "查看结果")
+
+ ("lng_ban_user"
+  :value "封禁用户")
+
+ ("lng_ban_users"
+  :value "封禁用户")
+
+ ("lng_bio_title"
+  :value "编辑您的个人简介")
+
+ ("lng_blocked_list_about"
+  :value "被拉黑的用户无法向您发送消息或将您加入群组。他们将无法查看您的头像、动态、在线及最后上线状态。")
+
+ ("lng_blocked_list_add"
+  :value "拉黑用户")
+
+ ("lng_blocked_list_add_title"
+  :value "选择要拉黑的用户")
+
+ ("lng_blocked_list_confirm_clear"
+  :value "删除此聊天")
+
+ ("lng_blocked_list_confirm_ok"
+  :value "拉黑")
+
+ ("lng_blocked_list_confirm_title"
+  :value "拉黑 {name}")
+
+ ("lng_boost_channel_button"
+  :value "加成频道")
+
+ ("lng_boost_channel_you_title"
+  :value "您加成了 {channel}！")
+
+ ("lng_boost_level"
+  :one_value "等级 {count}"
+  :other_value "等级 {count}")
+
+ ("lng_boosts_level"
+  :value "等级")
+
+ ("lng_boosts_title"
+  :value "加成")
+
+ ("lng_bot_apps_popular"
+  :value "热门应用")
+
+ ("lng_bot_choose_chat"
+  :value "选择一个聊天")
+
+ ("lng_bot_description"
+  :value "这个机器人能做什么？")
+
+ ("lng_bot_earn_title"
+  :value "星星余额")
+
+ ("lng_bot_menu_button"
+  :value "菜单")
+
+ ("lng_bot_start"
+  :value "开始")
+
+ ("lng_bot_status_users"
+  :one_value "{count} 位月活用户"
+  :other_value "{count} 位月活用户")
+
+ ("lng_box_delete"
+  :value "删除")
+
+ ("lng_box_done"
+  :value "完成")
+
+ ("lng_box_leave"
+  :value "离开")
+
+ ("lng_box_no"
+  :value "否")
+
+ ("lng_box_ok"
+  :value "确定")
+
+ ("lng_box_remove"
+  :value "移除")
+
+ ("lng_box_yes"
+  :value "是")
+
+ ("lng_broadcast_ph"
+  :value "群发消息...")
+
+ ("lng_broadcast_silent_ph"
+  :value "静默群发...")
+
+ ("lng_business_about_sponsored"
+  :value "作为 Premium 订阅者，您不会在 Telegram 上看到任何广告，但您可以开启此选项，例如查看您在 {link} 上投放的广告。")
+
+ ("lng_business_button_sponsored"
+  :value "不隐藏广告")
+
+ ("lng_business_subtitle_sponsored"
+  :value "频道中的广告")
+
+ ("lng_call_box_groupcalls_subtitle"
+  :value "活跃的视频聊天")
+
+ ("lng_call_start"
+  :value "开始通话")
+
+ ("lng_cancel"
+  :value "取消")
+
+ ("lng_caption_move_down"
+  :value "标题下移")
+
+ ("lng_caption_move_up"
+  :value "标题上移")
+
+ ("lng_channel_add_admin"
+  :value "添加管理员")
+
+ ("lng_channel_add_members"
+  :value "添加成员")
+
+ ("lng_channel_badge"
+  :value "频道")
+
+ ("lng_channel_invite_subscription_about"
+  :value "您要以每月 {price} 的价格订阅 {channel} 吗？")
+
+ ("lng_channel_invite_subscription_button"
+  :value "订阅")
+
+ ("lng_channel_invite_subscription_terms"
+  :value "订阅即表示您同意 {link}。")
+
+ ("lng_channel_invite_subscription_title"
+  :value "订阅频道")
+
+ ("lng_channel_status"
+  :value "频道")
+
+ ("lng_chat_intro_reset"
+  :value "恢复默认")
+
+ ("lng_chat_status_direct"
+  :value "私信")
+
+ ("lng_chat_status_members"
+  :one_value "{count} 位成员"
+  :other_value "{count} 位成员")
+
+ ("lng_chat_status_subscribers"
+  :one_value "{count} 位订阅者"
+  :other_value "{count} 位订阅者")
+
+ ("lng_chat_theme_none"
+  :value "无\n主题")
+
+ ("lng_chat_theme_reset"
+  :value "重置主题")
+
+ ("lng_chat_theme_title"
+  :value "选择主题")
+
+ ("lng_chat_theme_title_about"
+  :value "主题也将应用于 {user}。")
+
+ ("lng_code_copied"
+  :value "验证码已复制到剪贴板。")
+
+ ("lng_comments_header"
+  :one_value "{count} 条评论"
+  :other_value "{count} 条评论")
+
+ ("lng_comments_open_count"
+  :one_value "{count} 条评论"
+  :other_value "{count} 条评论")
+
+ ("lng_comments_open_none"
+  :value "发表评论")
+
+ ("lng_connecting"
+  :value "连接中...")
+
+ ("lng_connection_host_ph"
+  :value "主机名")
+
+ ("lng_connection_port_ph"
+  :value "端口")
+
+ ("lng_connection_try_ipv6"
+  :value "尝试通过 IPv6 连接")
+
+ ("lng_contact_add_notes"
+  :value "备注")
+
+ ("lng_contact_add_notes_about"
+  :value "备注仅对您可见。")
+
+ ("lng_contact_details_note"
+  :value "备注")
+
+ ("lng_contacts_header"
+  :value "通讯录")
+
+ ("lng_contacts_stories_status"
+  :one_value "{count} 条动态"
+  :other_value "{count} 条动态")
+
+ ("lng_context_auto_delete_in"
+  :value "{duration} 后自动删除")
+
+ ("lng_context_cancel_download"
+  :value "取消下载")
+
+ ("lng_context_cancel_upload"
+  :value "取消上传")
+
+ ("lng_context_copy_link"
+  :value "复制链接")
+
+ ("lng_context_copy_text"
+  :value "复制文本")
+
+ ("lng_context_delete_msg"
+  :value "删除")
+
+ ("lng_context_disable_spoiler"
+  :value "移除剧透遮罩")
+
+ ("lng_context_edit_msg"
+  :value "编辑")
+
+ ("lng_context_filter_by_tag"
+  :value "按标签筛选")
+
+ ("lng_context_forward_msg"
+  :value "转发")
+
+ ("lng_context_mark_read"
+  :value "标记为已读")
+
+ ("lng_context_mark_read_all_sure_2"
+  :value "**此操作无法撤销。**")
+
+ ("lng_context_mark_unread"
+  :value "标记为未读")
+
+ ("lng_context_pack_info"
+  :value "查看贴纸包")
+
+ ("lng_context_pin_msg"
+  :value "置顶")
+
+ ("lng_context_pin_to_top"
+  :value "置顶")
+
+ ("lng_context_remove_tag"
+  :value "移除标签")
+
+ ("lng_context_reply_msg"
+  :value "回复")
+
+ ("lng_context_report_msg"
+  :value "举报")
+
+ ("lng_context_save_file"
+  :value "另存为...")
+
+ ("lng_context_save_gif"
+  :value "添加到 GIF")
+
+ ("lng_context_save_music_folder"
+  :value "下载")
+
+ ("lng_context_save_music_profile"
+  :value "个人主页")
+
+ ("lng_context_save_music_saved"
+  :value "收藏的消息")
+
+ ("lng_context_save_music_to"
+  :value "保存到...")
+
+ ("lng_context_select_msg"
+  :value "选择")
+
+ ("lng_context_select_msg_bulk"
+  :value "选择至此消息")
+
+ ("lng_context_spoiler_effect"
+  :value "使用剧透遮罩隐藏")
+
+ ("lng_context_tag_add_name"
+  :value "添加名称")
+
+ ("lng_context_tag_edit_name"
+  :value "编辑名称")
+
+ ("lng_context_translate"
+  :value "翻译")
+
+ ("lng_context_unpin_from_top"
+  :value "取消置顶")
+
+ ("lng_context_unpin_msg"
+  :value "取消置顶")
+
+ ("lng_create_invite_link_title"
+  :value "邀请链接")
+
+ ("lng_credits_balance_me_count"
+  :value "您的余额：{emoji} {amount}")
+
+ ("lng_credits_box_history_entry_gift_converted"
+  :value "已转换的礼物")
+
+ ("lng_credits_box_out_media_user"
+  :one_value "是否花费 **{count} 颗星星** 解锁 {user} 的 {media}？"
+  :other_value "是否花费 **{count} 颗星星** 解锁 {user} 的 {media}？")
+
+ ("lng_credits_summary_balance"
+  :value "余额")
+
+ ("lng_date_relative_days_ago"
+  :one_value "{count} 天前"
+  :other_value "{count} 天前")
+
+ ("lng_date_relative_hours_ago"
+  :one_value "{count} 小时前"
+  :other_value "{count} 小时前")
+
+ ("lng_date_relative_minutes_ago"
+  :one_value "{count} 分钟前"
+  :other_value "{count} 分钟前")
+
+ ("lng_days"
+  :one_value "{count} 天" :other_value "{count} 天")
+
+ ("lng_days_tiny"
+  :one_value "{count}天" :other_value "{count}天")
+
+ ("lng_delete_all_from"
+  :value "删除此用户的所有消息")
+
+ ("lng_delete_all_from_user"
+  :value "删除来自 {user} 的所有消息")
+
+ ("lng_delete_all_from_users"
+  :value "删除来自用户的所有消息")
+
+ ("lng_delete_for_everyone_check"
+  :value "为所有人删除")
+
+ ("lng_delete_for_everyone_hint"
+  :one_value "这将会为此聊天中的所有人删除此消息。"
+  :other_value "这将会为此聊天中的所有人删除这些消息。")
+
+ ("lng_delete_for_me_chat_hint"
+  :one_value "这只会为你删除此消息，而不会影响聊天中的其他参与者。"
+  :other_value "这只会为你删除这些消息，而不会影响聊天中的其他参与者。")
+
+ ("lng_delete_for_me_hint"
+  :one_value "这只会为你删除此消息。"
+  :other_value "这只会为你删除这些消息。")
+
+ ("lng_delete_for_other_check"
+  :value "同时为 {user} 删除")
+
+ ("lng_deleted_story"
+  :value "已删除的故事")
+
+ ("lng_direct_badge"
+  :value "直达")
+
+ ("lng_disable_sharing"
+  :value "禁止分享")
+
+ ("lng_dlg_filter"
+  :value "搜索")
+
+ ("lng_dlg_search_from"
+  :value "来自：{user}")
+
+ ("lng_edit_error"
+  :value "你无法编辑此消息。")
+
+ ("lng_edit_message"
+  :value "编辑消息")
+
+ ("lng_edit_note"
+  :value "编辑备注")
+
+ ("lng_edit_privacy_about_header"
+  :value "谁可以查看我的简介")
+
+ ("lng_edit_privacy_about_title"
+  :value "简介")
+
+ ("lng_edit_privacy_close_friends"
+  :value "密友")
+
+ ("lng_edit_self_title"
+  :value "修改你的名称")
+
+ ("lng_edit_sign_messages"
+  :value "署名消息")
+
+ ("lng_edit_tag_about"
+  :value "你可以为你的表情标签设置一个文字名称。")
+
+ ("lng_edit_tag_name"
+  :value "名称")
+
+ ("lng_edited"
+  :value "已编辑")
+
+ ("lng_edited_date"
+  :value "已编辑：{date}")
+
+ ("lng_enable_sharing"
+  :value "允许分享")
+
+ ("lng_error_nocopy_channel"
+  :value "抱歉，管理员已禁止从此频道复制内容。")
+
+ ("lng_error_nocopy_group"
+  :value "抱歉，管理员已禁止从此群组复制内容。")
+
+ ("lng_error_noforwards_channel"
+  :value "抱歉，管理员已禁止从此频道转发内容。")
+
+ ("lng_error_noforwards_group"
+  :value "抱歉，管理员已禁止从此群组转发内容。")
+
+ ("lng_error_post_link_invalid"
+  :value "很抱歉，你无法访问此消息。你不是发布该消息的聊天成员。")
+
+ ("lng_export_stop"
+  :value "停止")
+
+ ("lng_fake_badge"
+  :value "虚假")
+
+ ("lng_filters_add_chats"
+  :value "添加聊天")
+
+ ("lng_filters_all"
+  :value "所有聊天")
+
+ ("lng_filters_all_short"
+  :value "全部")
+
+ ("lng_filters_by_link_about"
+  :value "你可以取消选择不想加入的聊天。")
+
+ ("lng_filters_by_link_add_button"
+  :value "添加 {folder}")
+
+ ("lng_filters_by_link_and_join_button"
+  :one_value "加入聊天"
+  :other_value "加入聊天")
+
+ ("lng_filters_by_link_join"
+  :one_value "{count} 个聊天待加入"
+  :other_value "{count} 个聊天待加入")
+
+ ("lng_filters_by_link_sure"
+  :value "是否要添加聊天文件夹 {folder} 并加入其中的群组和频道？")
+
+ ("lng_filters_by_link_title"
+  :value "添加文件夹")
+
+ ("lng_filters_chats_count"
+  :one_value "{count} 个聊天"
+  :other_value "{count} 个聊天")
+
+ ("lng_filters_checkbox_remove_channel"
+  :value "从所有文件夹中移除频道")
+
+ ("lng_filters_name_unread"
+  :value "未读")
+
+ ("lng_filters_recommended_add"
+  :value "添加")
+
+ ("lng_filters_shareable_status"
+  :value "可共享文件夹")
+
+ ("lng_filters_subtitle"
+  :value "我的文件夹")
+
+ ("lng_filters_tag_color_no"
+  :value "无标签")
+
+ ("lng_filters_type_bots"
+  :value "机器人")
+
+ ("lng_filters_type_channels"
+  :value "频道")
+
+ ("lng_filters_type_contacts"
+  :value "联系人")
+
+ ("lng_filters_type_groups"
+  :value "群组")
+
+ ("lng_filters_type_no_archived"
+  :value "已归档")
+
+ ("lng_filters_type_no_muted"
+  :value "已静音")
+
+ ("lng_filters_type_no_read"
+  :value "已读")
+
+ ("lng_filters_type_non_contacts"
+  :value "非联系人")
+
+ ("lng_font_default"
+  :value "默认")
+
+ ("lng_formatting_code_auto"
+  :value "自动检测")
+
+ ("lng_formatting_code_language"
+  :value "语法高亮语言。")
+
+ ("lng_formatting_code_title"
+  :value "代码语言")
+
+ ("lng_formatting_date_title"
+  :value "选择日期和时间")
+
+ ("lng_formatting_link_url"
+  :value "链接")
+
+ ("lng_forum_messages"
+  :one_value "{count} 条消息"
+  :other_value "{count} 条消息")
+
+ ("lng_forum_show_topics_list"
+  :value "显示话题列表")
+
+ ("lng_forum_topic_created_body"
+  :value "发送消息以开始此话题。")
+
+ ("lng_forum_topic_title"
+  :value "话题名称")
+
+ ("lng_forward_about"
+  :value "你可以移除发送者的名称，使此消息看起来像是由你发送的。")
+
+ ("lng_forward_action_change_recipient"
+  :value "更改收件人")
+
+ ("lng_forward_action_hide_caption"
+  :value "隐藏标题")
+
+ ("lng_forward_action_hide_captions"
+  :value "隐藏标题")
+
+ ("lng_forward_action_hide_sender"
+  :value "隐藏发送者名称")
+
+ ("lng_forward_action_hide_senders"
+  :value "隐藏发送者名称")
+
+ ("lng_forward_cant"
+  :value "抱歉，无法转发到此处 :(")
+
+ ("lng_forward_choose"
+  :value "转发到…")
+
+ ("lng_forward_many_title"
+  :one_value "转发 {count} 条消息"
+  :other_value "转发 {count} 条消息")
+
+ ("lng_forward_title"
+  :value "转发消息")
+
+ ("lng_forwarded"
+  :value "转发自 {user}")
+
+ ("lng_forwarded_channel"
+  :value "转发自 {channel}")
+
+ ("lng_forwarded_date"
+  :value "原始时间：{date}")
+
+ ("lng_forwarded_story"
+  :value "来自 {user} 的故事")
+
+ ("lng_forwarded_story_expired"
+  :value "此故事已过期。")
+
+ ("lng_from_draft"
+  :value "草稿")
+
+ ("lng_game_tag"
+  :value "游戏")
+
+ ("lng_gift_limited_of_count"
+  :value "1 / {amount}")
+
+ ("lng_gift_limited_of_one"
+  :value "唯一")
+
+ ("lng_gift_stars_limited"
+  :value "限量")
+
+ ("lng_gigagroup_convert_feature1"
+  :value "成员数量没有上限。")
+
+ ("lng_gigagroup_convert_feature2"
+  :value "仅管理员可以发送消息。")
+
+ ("lng_gigagroup_convert_feature3"
+  :value "无法恢复为普通群组。")
+
+ ("lng_group_call_display_as_header"
+  :value "显示为...")
+
+ ("lng_group_call_edit_title"
+  :value "编辑视频聊天标题")
+
+ ("lng_group_call_edit_title_header"
+  :value "视频聊天标题")
+
+ ("lng_group_call_end"
+  :value "结束视频聊天")
+
+ ("lng_group_call_invite_done_many"
+  :one_value "你已邀请 **{count} 位参与者**加入视频聊天。"
+  :other_value "你已邀请 **{count} 位参与者**加入视频聊天。")
+
+ ("lng_group_call_invite_done_user"
+  :value "你已邀请 {user} 加入视频聊天。")
+
+ ("lng_group_call_join"
+  :value "加入")
+
+ ("lng_group_call_join_as_header"
+  :value "以...身份加入视频聊天")
+
+ ("lng_group_call_leave"
+  :value "离开")
+
+ ("lng_group_call_leave_sure"
+  :value "确定要离开此视频聊天吗？")
+
+ ("lng_group_call_leave_title"
+  :value "离开视频聊天")
+
+ ("lng_group_call_members"
+  :one_value "{count} 位参与者"
+  :other_value "{count} 位参与者")
+
+ ("lng_group_call_recording_start"
+  :value "开始录制")
+
+ ("lng_group_call_schedule_title"
+  :value "预约视频聊天")
+
+ ("lng_group_call_scheduled_status"
+  :value "已预约")
+
+ ("lng_group_call_settings"
+  :value "设置")
+
+ ("lng_group_call_start_now"
+  :value "立即开始")
+
+ ("lng_group_call_starts"
+  :value "视频聊天将于 {when} 开始")
+
+ ("lng_group_call_starts_in"
+  :value "开始于")
+
+ ("lng_group_call_title"
+  :value "视频聊天")
+
+ ("lng_group_call_title_channel"
+  :value "直播")
+
+ ("lng_group_invite_add"
+  :value "创建新链接")
+
+ ("lng_group_invite_context_qr"
+  :value "获取二维码")
+
+ ("lng_group_invite_copy"
+  :value "复制链接")
+
+ ("lng_group_invite_create_new"
+  :value "撤销邀请链接")
+
+ ("lng_group_invite_join"
+  :value "加入")
+
+ ("lng_group_invite_joined"
+  :one_value "{count} 人已加入"
+  :other_value "{count} 人已加入")
+
+ ("lng_group_invite_joined_status"
+  :value "于 {date} 加入")
+
+ ("lng_group_invite_no_joined"
+  :value "暂无人加入")
+
+ ("lng_group_invite_permanent"
+  :value "永久链接")
+
+ ("lng_group_invite_qr_about"
+  :value "所有 Telegram 用户都可以扫描此二维码加入你的群组。")
+
+ ("lng_group_invite_qr_copied"
+  :value "二维码已复制到剪贴板。")
+
+ ("lng_group_invite_qr_title"
+  :value "通过二维码邀请")
+
+ ("lng_group_request_about_channel"
+  :value "此频道仅在接受管理员审核通过后才会允许新订阅者加入。")
+
+ ("lng_group_request_sent"
+  :value "管理员审核通过你的请求后，你将被添加到此群组。")
+
+ ("lng_group_request_sent_channel"
+  :value "管理员审核通过你的请求后，你将被添加到此频道。")
+
+ ("lng_group_request_to_join"
+  :value "申请加入")
+
+ ("lng_group_requests_add"
+  :value "加入群组")
+
+ ("lng_group_requests_dismiss"
+  :value "忽略")
+
+ ("lng_group_requests_none"
+  :value "暂无待处理的加入请求。")
+
+ ("lng_group_requests_pending"
+  :one_value "{count} 个加入请求"
+  :other_value "{count} 个加入请求")
+
+ ("lng_group_stickers_add"
+  :value "选择贴纸包")
+
+ ("lng_hidden_author_messages"
+  :value "作者已隐藏")
+
+ ("lng_hours"
+  :one_value "{count} 小时" :other_value "{count} 小时")
+
+ ("lng_hours_tiny"
+  :one_value "{count}时" :other_value "{count}时")
+
+ ("lng_in_dlg_audio"
+  :value "语音消息")
+
+ ("lng_in_dlg_audio_file"
+  :value "音频文件")
+
+ ("lng_in_dlg_contact"
+  :value "联系人")
+
+ ("lng_in_dlg_file"
+  :value "文件")
+
+ ("lng_in_dlg_photo"
+  :value "图片")
+
+ ("lng_in_dlg_sticker"
+  :value "贴纸")
+
+ ("lng_in_dlg_story"
+  :value "故事")
+
+ ("lng_in_dlg_story_expired"
+  :value "已过期故事")
+
+ ("lng_in_dlg_video"
+  :value "视频")
+
+ ("lng_in_dlg_video_message"
+  :value "视频消息")
+
+ ("lng_in_reply_to"
+  :value "回复")
+
+ ("lng_info_about_label"
+  :value "简介")
+
+ ("lng_info_birthday_label"
+  :value "出生日期")
+
+ ("lng_info_birthday_today"
+  :value "{emoji} {date}")
+
+ ("lng_info_birthday_today_label"
+  :value "今天生日")
+
+ ("lng_info_birthday_today_years"
+  :one_value "{date}
+({count} 岁)"
+  :other_value "{date}
+({count} 岁)")
+
+ ("lng_info_birthday_years"
+  :one_value "{date}（{count} 岁）"
+  :other_value "{date}（{count} 岁）")
+
+ ("lng_info_bot_title"
+  :value "机器人信息")
+
+ ("lng_info_channel_title"
+  :value "频道信息")
+
+ ("lng_info_delete_contact"
+  :value "删除联系人")
+
+ ("lng_info_location_label"
+  :value "位置")
+
+ ("lng_info_topic_title"
+  :value "话题信息")
+
+ ("lng_info_user_title"
+  :value "用户信息")
+
+ ("lng_info_username_label"
+  :value "用户名")
+
+ ("lng_info_usernames_label"
+  :value "其他")
+
+ ("lng_inline_bot_via"
+  :value "通过 {inline_bot}")
+
+ ("lng_intro_qr_skip"
+  :value "或使用手机号码登录")
+
+ ("lng_intro_qr_step1"
+  :value "在手机上打开 Telegram")
+
+ ("lng_intro_qr_step2"
+  :value "前往 设置 > 设备 > 扫描二维码")
+
+ ("lng_intro_qr_step3"
+  :value "扫描此二维码登录")
+
+ ("lng_intro_qr_title"
+  :value "从手机端 Telegram 扫描")
+
+ ("lng_iv_wrong_layout"
+  :value "布局有问题？")
+
+ ("lng_languages"
+  :value "语言")
+
+ ("lng_link_header_short"
+  :value "链接")
+
+ ("lng_link_move_down"
+  :value "下移")
+
+ ("lng_link_move_up"
+  :value "上移")
+
+ ("lng_link_options_header"
+  :value "链接预览设置")
+
+ ("lng_link_remove"
+  :value "不预览")
+
+ ("lng_link_shrink_photo"
+  :value "缩小图片")
+
+ ("lng_live_location"
+  :value "实时位置")
+
+ ("lng_mac_menu_player_pause"
+  :value "暂停")
+
+ ("lng_mac_menu_player_resume"
+  :value "继续")
+
+ ("lng_mac_menu_player_stop"
+  :value "停止")
+
+ ("lng_mac_touchbar_favorite_stickers"
+  :value "收藏的贴纸")
+
+ ("lng_manage_discussion_group"
+  :value "讨论")
+
+ ("lng_manage_history_visibility_hidden"
+  :value "隐藏")
+
+ ("lng_manage_history_visibility_hidden_about"
+  :value "新成员将无法看到之前的消息。")
+
+ ("lng_manage_history_visibility_shown"
+  :value "可见")
+
+ ("lng_manage_history_visibility_shown_about"
+  :value "新成员将可以看到他们加入之前发送的消息。")
+
+ ("lng_manage_history_visibility_title"
+  :value "新成员的聊天记录")
+
+ ("lng_manage_messages_ttl_after_custom"
+  :value "自定义")
+
+ ("lng_manage_messages_ttl_never"
+  :value "关闭")
+
+ ("lng_manage_messages_ttl_title"
+  :value "自动删除消息")
+
+ ("lng_manage_peer_antispam"
+  :value "激进反垃圾")
+
+ ("lng_manage_peer_antispam_about"
+  :value "Telegram 将过滤更多垃圾消息，但可能偶尔影响普通消息。您可以在最近操作中报告误判。")
+
+ ("lng_manage_peer_exceptions"
+  :value "例外")
+
+ ("lng_manage_peer_group_type"
+  :value "群组类型")
+
+ ("lng_manage_peer_members"
+  :value "成员")
+
+ ("lng_manage_peer_no_forwards"
+  :value "限制保存内容")
+
+ ("lng_manage_peer_no_forwards_about"
+  :value "成员将无法复制、保存或转发此群组中的内容。")
+
+ ("lng_manage_peer_no_forwards_about_channel"
+  :value "订阅者将无法复制、保存或转发此频道中的内容。")
+
+ ("lng_manage_peer_permissions"
+  :value "权限")
+
+ ("lng_manage_peer_reactions"
+  :value "表情回应")
+
+ ("lng_manage_peer_reactions_all"
+  :value "所有表情回应")
+
+ ("lng_manage_peer_reactions_some"
+  :value "部分表情回应")
+
+ ("lng_manage_peer_requests"
+  :value "加群申请")
+
+ ("lng_manage_peer_send_approve_members"
+  :value "批准新成员")
+
+ ("lng_manage_peer_send_approve_members_about"
+  :value "如果您希望用户只有在管理员批准后才能加入群组，请开启此选项。")
+
+ ("lng_manage_private_peer_title"
+  :value "私有")
+
+ ("lng_manage_public_peer_title"
+  :value "公开")
+
+ ("lng_many_typing"
+  :one_value "{count} 人正在输入"
+  :other_value "{count} 人正在输入")
+
+ ("lng_maps_point"
+  :value "位置")
+
+ ("lng_media_cancel"
+  :value "取消")
+
+ ("lng_media_chat_background"
+  :value "聊天壁纸")
+
+ ("lng_media_download"
+  :value "下载")
+
+ ("lng_media_file_title"
+  :value "文件")
+
+ ("lng_media_music_title"
+  :value "音乐")
+
+ ("lng_media_save_progress"
+  :value "{ready} / {total} {mb}")
+
+ ("lng_mediaview_date_time"
+  :value "{date} {time}")
+
+ ("lng_mediaview_hours_ago"
+  :one_value "{count} 小时前"
+  :other_value "{count} 小时前")
+
+ ("lng_mediaview_just_now"
+  :value "刚刚")
+
+ ("lng_mediaview_minutes_ago"
+  :one_value "{count} 分钟前"
+  :other_value "{count} 分钟前")
+
+ ("lng_mediaview_profile_photo"
+  :value "个人头像")
+
+ ("lng_mediaview_saved_to"
+  :value "图片已保存到您的 {downloads} 文件夹")
+
+ ("lng_mediaview_today"
+  :value "今天 {time}")
+
+ ("lng_mediaview_yesterday"
+  :value "昨天 {time}")
+
+ ("lng_menu_formatting"
+  :value "格式")
+
+ ("lng_menu_formatting_blockquote"
+  :value "引用")
+
+ ("lng_menu_formatting_bold"
+  :value "粗体")
+
+ ("lng_menu_formatting_clear"
+  :value "清除格式")
+
+ ("lng_menu_formatting_date"
+  :value "日期")
+
+ ("lng_menu_formatting_italic"
+  :value "斜体")
+
+ ("lng_menu_formatting_link_create"
+  :value "创建链接")
+
+ ("lng_menu_formatting_link_edit"
+  :value "编辑链接")
+
+ ("lng_menu_formatting_monospace"
+  :value "等宽字体")
+
+ ("lng_menu_formatting_spoiler"
+  :value "剧透")
+
+ ("lng_menu_formatting_strike_out"
+  :value "删除线")
+
+ ("lng_menu_formatting_underline"
+  :value "下划线")
+
+ ("lng_menu_start_group_call"
+  :value "发起视频聊天")
+
+ ("lng_menu_start_group_call_scheduled"
+  :value "预约视频聊天")
+
+ ("lng_menu_start_group_call_with"
+  :value "与...一起直播")
+
+ ("lng_message_not_found"
+  :value "消息不存在。")
+
+ ("lng_message_paid_ph"
+  :value "{amount} 的付费消息")
+
+ ("lng_message_ph"
+  :value "写消息...")
+
+ ("lng_minutes"
+  :one_value "{count} 分钟" :other_value "{count} 分钟")
+
+ ("lng_minutes_tiny"
+  :one_value "{count}分钟" :other_value "{count}分钟")
+
+ ("lng_monoforum_choose_to_reply"
+  :value "选择要回复的消息。")
+
+ ("lng_month1" :value "1月")
+
+ ("lng_month10" :value "10月")
+
+ ("lng_month10_small" :value "10月")
+
+ ("lng_month11" :value "11月")
+
+ ("lng_month11_small" :value "11月")
+
+ ("lng_month12" :value "12月")
+
+ ("lng_month12_small" :value "12月")
+
+ ("lng_month1_small" :value "1月")
+
+ ("lng_month2" :value "2月")
+
+ ("lng_month2_small" :value "2月")
+
+ ("lng_month3" :value "3月")
+
+ ("lng_month3_small" :value "3月")
+
+ ("lng_month4" :value "4月")
+
+ ("lng_month4_small" :value "4月")
+
+ ("lng_month5" :value "5月")
+
+ ("lng_month5_small" :value "5月")
+
+ ("lng_month6" :value "6月")
+
+ ("lng_month6_small" :value "6月")
+
+ ("lng_month7" :value "7月")
+
+ ("lng_month7_small" :value "7月")
+
+ ("lng_month8" :value "8月")
+
+ ("lng_month8_small" :value "8月")
+
+ ("lng_month9" :value "9月")
+
+ ("lng_month9_small" :value "9月")
+
+ ("lng_months"
+  :one_value "{count} 个月" :other_value "{count} 个月")
+
+ ("lng_months_tiny"
+  :one_value "{count}个月" :other_value "{count}个月")
+
+ ("lng_mute_box_tip"
+  :value "选择要关闭以下聊天通知的时长")
+
+ ("lng_mute_duration_forever"
+  :value "永久")
+
+ ("lng_mute_duration_hours"
+  :one_value "{count} 小时"
+  :other_value "{count} 小时")
+
+ ("lng_mute_menu_duration"
+  :value "静音时长...")
+
+ ("lng_mute_menu_duration_any"
+  :value "静音 {duration}")
+
+ ("lng_my_notes"
+  :value "我的笔记")
+
+ ("lng_new_contact_from_request_channel"
+  :value "{user} 是 {name}（您申请加入的频道）的管理员。")
+
+ ("lng_new_contact_from_request_group"
+  :value "{user} 是 {name}（您申请加入的群组）的管理员。")
+
+ ("lng_new_contact_not_contact"
+  :value "非联系人")
+
+ ("lng_new_contact_not_official"
+  :value "非官方账号")
+
+ ("lng_new_contact_phone_number"
+  :value "手机号码")
+
+ ("lng_new_contact_registration"
+  :value "注册时间")
+
+ ("lng_new_contact_updated_days"
+  :one_value "{count} 天前"
+  :other_value "{count} 天前")
+
+ ("lng_new_contact_updated_hours"
+  :one_value "{count} 小时前"
+  :other_value "{count} 小时前")
+
+ ("lng_new_contact_updated_name"
+  :value "用户 {when} 更新了名称")
+
+ ("lng_new_contact_updated_photo"
+  :value "用户 {when} 更新了头像")
+
+ ("lng_notification_channels"
+  :value "频道")
+
+ ("lng_notification_exceptions"
+  :one_value "{count} 个例外"
+  :other_value "{count} 个例外")
+
+ ("lng_notification_groups"
+  :value "群组")
+
+ ("lng_notification_private_chats"
+  :value "私聊")
+
+ ("lng_notification_sound"
+  :value "提示音")
+
+ ("lng_open_link"
+  :value "打开")
+
+ ("lng_paid_price"
+  :value "支付 {price} 解锁")
+
+ ("lng_paid_react_agree_link"
+  :value "服务条款")
+
+ ("lng_paid_react_title"
+  :value "星星表情")
+
+ ("lng_paid_react_toast"
+  :one_value "星星已发送！"
+  :other_value "星星已发送！")
+
+ ("lng_paid_react_toast_text"
+  :one_value "您用 **{count} 颗星星**进行了回应。"
+  :other_value "您用 **{count} 颗星星**进行了回应。")
+
+ ("lng_paid_react_undo"
+  :value "撤销")
+
+ ("lng_paid_title"
+  :value "付费内容")
+
+ ("lng_payment_confirm_amount"
+  :one_value "**{count}** 颗星星"
+  :other_value "**{count}** 颗星星")
+
+ ("lng_payment_confirm_button"
+  :one_value "支付 {count} 条消息"
+  :other_value "支付 {count} 条消息")
+
+ ("lng_payment_confirm_dont_ask"
+  :value "不再询问")
+
+ ("lng_payment_confirm_sure"
+  :one_value "您要支付 {amount} 来发送 **{count}** 条消息吗？"
+  :other_value "您要支付 {amount} 来发送 **{count}** 条消息吗？")
+
+ ("lng_payment_confirm_text"
+  :one_value "{name} 对每条消息收取 **{count}** 颗星星。"
+  :other_value "{name} 对每条消息收取 **{count}** 颗星星。")
+
+ ("lng_payment_confirm_title"
+  :value "确认付款")
+
+ ("lng_payments_checkout_title"
+  :value "结账")
+
+ ("lng_payments_date_label"
+  :value "已付款")
+
+ ("lng_payments_invoice_label"
+  :value "账单")
+
+ ("lng_payments_invoice_label_test"
+  :value "测试账单")
+
+ ("lng_payments_payment_method"
+  :value "付款方式")
+
+ ("lng_payments_receipt_button"
+  :value "收据")
+
+ ("lng_payments_receipt_label"
+  :value "收据")
+
+ ("lng_payments_total_label"
+  :value "合计")
+
+ ("lng_phone_to_qr"
+  :value "使用二维码快速登录")
+
+ ("lng_photo_caption"
+  :value "说明文字")
+
+ ("lng_photos_comment"
+  :value "评论")
+
+ ("lng_pinned_also_for_other"
+  :value "同时也为 {user} 置顶")
+
+ ("lng_pinned_pin"
+  :value "置顶")
+
+ ("lng_pinned_pin_sure"
+  :value "您要置顶这条消息吗？")
+
+ ("lng_pinned_pin_sure_group"
+  :value "在群组中置顶这条消息？")
+
+ ("lng_pinned_unpin"
+  :value "取消置顶")
+
+ ("lng_pinned_unpin_sure"
+  :value "您要取消置顶这条消息吗？")
+
+ ("lng_polls_closed"
+  :value "最终结果")
+
+ ("lng_polls_create_title"
+  :value "新投票")
+
+ ("lng_polls_solution_title"
+  :value "解析")
+
+ ("lng_polls_stop"
+  :value "停止投票")
+
+ ("lng_polls_view_results"
+  :value "查看结果")
+
+ ("lng_posts_remaining"
+  :one_value "今日剩余 {count} 次免费搜索"
+  :other_value "今日剩余 {count} 次免费搜索")
+
+ ("lng_posts_search_button"
+  :value "搜索 {query}")
+
+ ("lng_premium_gift_duration_months"
+  :one_value "{count} 个月"
+  :other_value "{count} 个月")
+
+ ("lng_preview_loading"
+  :value "获取链接信息...")
+
+ ("lng_preview_reply_to"
+  :value "回复 {name}")
+
+ ("lng_preview_reply_to_quote"
+  :value "回复 {name} 的引用")
+
+ ("lng_prize_about"
+  :value "您在 {channel} 举办的抽奖活动中赢得了奖品。")
+
+ ("lng_prize_credits_amount"
+  :one_value "{count} 颗星星"
+  :other_value "{count} 颗星星")
+
+ ("lng_prize_duration"
+  :value "您的奖品是 **Telegram Premium** 订阅 {duration}。")
+
+ ("lng_prize_open"
+  :value "打开礼物链接")
+
+ ("lng_prize_title"
+  :value "恭喜！")
+
+ ("lng_prizes_about"
+  :one_value "**{count}** 个 Telegram Premium 订阅 {duration}。"
+  :other_value "**{count}** 个 Telegram Premium 订阅 {duration}。")
+
+ ("lng_prizes_additional"
+  :one_value "**{count}** {prize}"
+  :other_value "**{count}** {prize}")
+
+ ("lng_prizes_additional_with"
+  :value "以及")
+
+ ("lng_prizes_admins"
+  :one_value "{channel} 的管理员，为其关注者获取了 **{count} 个 Telegram Premium** 订阅 {duration}"
+  :other_value "{channel} 的管理员，为其关注者获取了 **{count} 个 Telegram Premium** 订阅 {duration}")
+
+ ("lng_prizes_admins_group"
+  :one_value "{channel} 的管理员，为其成员获取了 **{count} 个 Telegram Premium** 订阅 {duration}"
+  :other_value "{channel} 的管理员，为其成员获取了 **{count} 个 Telegram Premium** 订阅 {duration}")
+
+ ("lng_prizes_badge"
+  :value "x{amount}")
+
+ ("lng_prizes_countries"
+  :value "来自 {countries}")
+
+ ("lng_prizes_credits_about"
+  :one_value "**{amount}** 将分配给 {count} 位获奖者。"
+  :other_value "**{amount}** 将分配给 {count} 位获奖者。")
+
+ ("lng_prizes_credits_about_single"
+  :value "**{amount}** 将分配给 **1** 位获奖者。")
+
+ ("lng_prizes_date"
+  :value "获奖者选择日期")
+
+ ("lng_prizes_end_activated"
+  :one_value "**{count}** 位获奖者已使用了他们的礼物链接。"
+  :other_value "**{count}** 位获奖者已使用了他们的礼物链接。")
+
+ ("lng_prizes_end_text"
+  :value "此抽奖活动由 {admins} 赞助。")
+
+ ("lng_prizes_end_title"
+  :value "抽奖已结束")
+
+ ("lng_prizes_end_when_finish"
+  :value "在 {date}，Telegram 自动选出了 {winners}。")
+
+ ("lng_prizes_how_no_admin"
+  :value "您没有资格参与此赠品活动，因为您是参与频道 ({channel}) 的管理员。")
+
+ ("lng_prizes_how_no_country"
+  :value "您没有资格参与此赠品活动，因为您的国家/地区不在赠品活动的条款范围内。")
+
+ ("lng_prizes_how_no_joined"
+  :value "您没有资格参与此赠品活动，因为您在 {date} 加入了此频道，早于赠品活动开始时间。")
+
+ ("lng_prizes_how_no_joined_group"
+  :value "您没有资格参与此赠品活动，因为您在 {date} 加入了此群组，早于活动开始时间。")
+
+ ("lng_prizes_how_text"
+  :value "此赠品活动由 {admins} 赞助。")
+
+ ("lng_prizes_how_title"
+  :value "关于此赠品活动")
+
+ ("lng_prizes_how_when_finish"
+  :value "在 {date}，Telegram 将自动选出 {winners}。")
+
+ ("lng_prizes_how_works"
+  :value "了解更多")
+
+ ("lng_prizes_how_yes_joined_many"
+  :value "您正在参与此赠品活动，因为您加入了频道 {channel}（及其他列出的群组和频道）。")
+
+ ("lng_prizes_how_yes_joined_one"
+  :value "您正在参与此赠品活动，因为您加入了频道 {channel}。")
+
+ ("lng_prizes_participants"
+  :value "参与者")
+
+ ("lng_prizes_participants_all"
+  :one_value "以下频道的所有订阅者："
+  :other_value "以下频道的所有订阅者：")
+
+ ("lng_prizes_participants_new"
+  :one_value "在此日期之后加入以下频道的所有用户："
+  :other_value "在此日期之后加入以下频道的所有用户：")
+
+ ("lng_prizes_results_about"
+  :one_value "**{count}** 位 {link} 的获奖者由 Telegram 随机选出。"
+  :other_value "**{count}** 位 {link} 的获奖者由 Telegram 随机选出。")
+
+ ("lng_prizes_results_all"
+  :value "所有获奖者已在私聊中收到礼物链接。")
+
+ ("lng_prizes_results_link"
+  :value "赠品活动")
+
+ ("lng_prizes_results_title"
+  :value "获奖者已选出！")
+
+ ("lng_prizes_results_winners"
+  :value "获奖者")
+
+ ("lng_prizes_title"
+  :one_value "赠品奖品"
+  :other_value "赠品奖品")
+
+ ("lng_prizes_winners_all_of_many"
+  :one_value "{count} 位 {channel} 及其他列出的群组和频道的随机订阅者"
+  :other_value "{count} 位 {channel} 及其他列出的群组和频道的随机订阅者")
+
+ ("lng_prizes_winners_all_of_one"
+  :one_value "{count} 位 {channel} 的随机订阅者"
+  :other_value "{count} 位 {channel} 的随机订阅者")
+
+ ("lng_prizes_winners_new_of_many"
+  :one_value "{start_date} 之后加入 {channel} 及其他列出的群组和频道的 {count} 位随机用户"
+  :other_value "{start_date} 之后加入 {channel} 及其他列出的群组和频道的 {count} 位随机用户")
+
+ ("lng_prizes_winners_new_of_one"
+  :one_value "{start_date} 之后加入 {channel} 的 {count} 位随机用户"
+  :other_value "{start_date} 之后加入 {channel} 的 {count} 位随机用户")
+
+ ("lng_prizes_you_didnt"
+  :value "您未能在此次赠品活动中获奖。")
+
+ ("lng_prizes_you_won"
+  :value "您在此次赠品活动中获奖了 {cup}")
+
+ ("lng_profile_actions_section"
+  :value "操作")
+
+ ("lng_profile_add_participant"
+  :value "添加成员")
+
+ ("lng_profile_apply_to_join_group"
+  :value "申请加入群组")
+
+ ("lng_profile_block_bot"
+  :value "停止并屏蔽机器人")
+
+ ("lng_profile_clear_and_exit"
+  :value "删除并离开")
+
+ ("lng_profile_delete_conversation"
+  :value "删除聊天")
+
+ ("lng_profile_direct_messages"
+  :value "私信")
+
+ ("lng_profile_hide_participants"
+  :value "隐藏成员")
+
+ ("lng_profile_hide_participants_about"
+  :value "开启此选项可隐藏此群组的成员列表。管理员仍将可见。")
+
+ ("lng_profile_join_channel"
+  :value "加入频道")
+
+ ("lng_profile_join_group"
+  :value "加入群组")
+
+ ("lng_profile_leave_channel"
+  :value "离开频道")
+
+ ("lng_profile_loading"
+  :value "加载中...")
+
+ ("lng_profile_participants_section"
+  :value "成员")
+
+ ("lng_profile_photos_header"
+  :value "照片")
+
+ ("lng_profile_restart_bot"
+  :value "重新启动机器人")
+
+ ("lng_profile_set_group_photo"
+  :value "设置照片")
+
+ ("lng_profile_similar_channels"
+  :one_value "{count} 个相似频道"
+  :other_value "{count} 个相似频道")
+
+ ("lng_profile_view_discussion"
+  :value "查看讨论")
+
+ ("lng_proxy_about"
+  :value "如果在特定地区无法连接 Telegram，代理服务器可能会有帮助。")
+
+ ("lng_proxy_add"
+  :value "添加代理")
+
+ ("lng_proxy_address_label"
+  :value "套接字地址")
+
+ ("lng_proxy_available"
+  :value "可用（延迟：{ping} 毫秒）")
+
+ ("lng_proxy_box_password"
+  :value "密码")
+
+ ("lng_proxy_box_port"
+  :value "端口")
+
+ ("lng_proxy_box_secret"
+  :value "密钥")
+
+ ("lng_proxy_box_server"
+  :value "服务器")
+
+ ("lng_proxy_box_status"
+  :value "状态")
+
+ ("lng_proxy_box_title"
+  :value "启用代理")
+
+ ("lng_proxy_box_username"
+  :value "用户名")
+
+ ("lng_proxy_checking"
+  :value "检查中…")
+
+ ("lng_proxy_connecting"
+  :value "连接中…")
+
+ ("lng_proxy_edit"
+  :value "编辑代理")
+
+ ("lng_proxy_invalid"
+  :value "代理链接无效。")
+
+ ("lng_proxy_menu_delete"
+  :value "删除")
+
+ ("lng_proxy_online"
+  :value "在线")
+
+ ("lng_proxy_settings"
+  :value "代理设置")
+
+ ("lng_proxy_sponsor_warning"
+  :value "此代理可能会在您的聊天列表中显示推广频道。这不会泄露您的任何 Telegram 流量。")
+
+ ("lng_proxy_unavailable"
+  :value "不可用")
+
+ ("lng_proxy_use"
+  :value "使用代理")
+
+ ("lng_recent_chats"
+  :value "聊天")
+
+ ("lng_recent_stickers"
+  :value "最近使用")
+
+ ("lng_recent_title"
+  :value "最近")
+
+ ("lng_recommended"
+  :value "推荐")
+
+ ("lng_replies_about"
+  :value "设置包含富文本和媒体的快捷回复，以更快地回复消息。")
+
+ ("lng_replies_discussion_started"
+  :value "讨论已开始")
+
+ ("lng_replies_messages"
+  :value "回复")
+
+ ("lng_replies_no_comments"
+  :value "暂无评论...")
+
+ ("lng_replies_title"
+  :value "快捷回复")
+
+ ("lng_replies_view"
+  :one_value "查看 {count} 条回复"
+  :other_value "查看 {count} 条回复")
+
+ ("lng_replies_view_thread"
+  :value "查看话题")
+
+ ("lng_replies_view_topic"
+  :value "在话题中查看")
+
+ ("lng_reply_from_private_chat"
+  :value "此回复来自私密聊天。")
+
+ ("lng_reply_header_short"
+  :value "回复")
+
+ ("lng_reply_in_another_chat"
+  :value "在其他聊天中回复")
+
+ ("lng_reply_quote_long_text"
+  :value "所选文本过长，无法引用。")
+
+ ("lng_restrict_user_full"
+  :value "完全封禁此用户 {emoji}")
+
+ ("lng_restrict_users_full"
+  :value "完全封禁用户 {emoji}")
+
+ ("lng_restricted_list_title"
+  :value "受限用户")
+
+ ("lng_restricted_send_gifs"
+  :value "此群组的管理员已限制您发送 GIF 的权限。")
+
+ ("lng_restricted_send_gifs_all"
+  :value "此群组不允许发送 GIF。")
+
+ ("lng_restricted_send_gifs_until"
+  :value "此群组的管理员已限制您发送 GIF 的权限，直到 {date} {time}。")
+
+ ("lng_restricted_send_inline"
+  :value "此群组的管理员已限制您在此发送内联内容。")
+
+ ("lng_restricted_send_inline_all"
+  :value "此群组不允许发送内联内容。")
+
+ ("lng_restricted_send_inline_until"
+  :value "此群组的管理员已限制您在此发送内联内容，直到 {date} {time}。")
+
+ ("lng_restricted_send_media"
+  :value "此群组的管理员已限制您在此发送媒体内容。")
+
+ ("lng_restricted_send_media_all"
+  :value "此群组不允许发送媒体内容。")
+
+ ("lng_restricted_send_media_until"
+  :value "此群组的管理员已限制您在此发送媒体内容，直到 {date} {time}。")
+
+ ("lng_restricted_send_message"
+  :value "此群组的管理员已限制您发送消息的权限。")
+
+ ("lng_restricted_send_message_all"
+  :value "此群组不允许发送消息。")
+
+ ("lng_restricted_send_message_until"
+  :value "此群组的管理员已限制您在此发送消息，直到 {date} {time}。")
+
+ ("lng_restricted_send_polls"
+  :value "此群组的管理员已限制您在此发起投票。")
+
+ ("lng_restricted_send_polls_all"
+  :value "此群组不允许发起投票。")
+
+ ("lng_restricted_send_polls_until"
+  :value "此群组的管理员已限制您在此发起投票，直到 {date} {time}。")
+
+ ("lng_restricted_send_public_polls"
+  :value "抱歉，公开投票的投票无法转发到频道。")
+
+ ("lng_restricted_send_stickers"
+  :value "此群组的管理员已限制您发送贴纸。")
+
+ ("lng_restricted_send_stickers_all"
+  :value "此群组不允许发送贴纸。")
+
+ ("lng_restricted_send_stickers_until"
+  :value "此群组的管理员已限制您在此发送贴纸，直到 {date} {time}。")
+
+ ("lng_rights_about_add_admins_yes"
+  :value "此管理员将能够添加具有相同（或更有限）权限的新管理员。")
+
+ ("lng_rights_about_admin_cant_edit"
+  :value "您无法编辑此管理员的权限。")
+
+ ("lng_rights_add_admins"
+  :value "添加新管理员")
+
+ ("lng_rights_channel_delete"
+  :value "删除他人消息")
+
+ ("lng_rights_channel_delete_stories"
+  :value "删除他人故事")
+
+ ("lng_rights_channel_edit"
+  :value "编辑他人消息")
+
+ ("lng_rights_channel_edit_stories"
+  :value "编辑他人故事")
+
+ ("lng_rights_channel_info"
+  :value "修改频道信息")
+
+ ("lng_rights_channel_manage"
+  :value "管理消息")
+
+ ("lng_rights_channel_manage_direct"
+  :value "管理私信")
+
+ ("lng_rights_channel_manage_stories"
+  :value "管理故事")
+
+ ("lng_rights_channel_post"
+  :value "发布消息")
+
+ ("lng_rights_channel_post_stories"
+  :value "发布故事")
+
+ ("lng_rights_chat_add_members"
+  :value "添加成员")
+
+ ("lng_rights_chat_files" :value "文件")
+
+ ("lng_rights_chat_music" :value "音乐")
+
+ ("lng_rights_chat_photos" :value "照片")
+
+ ("lng_rights_chat_send_links"
+  :value "嵌入链接")
+
+ ("lng_rights_chat_send_media"
+  :value "发送媒体")
+
+ ("lng_rights_chat_send_polls"
+  :value "发起投票")
+
+ ("lng_rights_chat_send_stickers"
+  :value "发送贴纸和 GIF")
+
+ ("lng_rights_chat_send_text"
+  :value "发送消息")
+
+ ("lng_rights_chat_video_messages" :value "视频消息")
+
+ ("lng_rights_chat_videos" :value "视频文件")
+
+ ("lng_rights_chat_voice_messages" :value "语音消息")
+
+ ("lng_rights_default_restrictions_header"
+  :value "此群组成员能做什么？")
+
+ ("lng_rights_edit_admin"
+  :value "编辑权限")
+
+ ("lng_rights_edit_admin_header"
+  :value "此管理员能做什么？")
+
+ ("lng_rights_gigagroup_about"
+  :value "广播群组可拥有超过 200,000 名成员，但只有管理员才能发送消息。")
+
+ ("lng_rights_group_add_topics"
+  :value "创建话题")
+
+ ("lng_rights_group_anonymous"
+  :value "匿名身份")
+
+ ("lng_rights_group_ban"
+  :value "封禁用户")
+
+ ("lng_rights_group_delete"
+  :value "删除消息")
+
+ ("lng_rights_group_info"
+  :value "修改群组信息")
+
+ ("lng_rights_group_invite_link"
+  :value "通过链接邀请用户")
+
+ ("lng_rights_group_manage_calls"
+  :value "管理视频聊天")
+
+ ("lng_rights_group_pin"
+  :value "置顶消息")
+
+ ("lng_rights_group_topics"
+  :value "管理话题")
+
+ ("lng_rights_slowmode_about"
+  :value "成员在此时间间隔内只能发送一条消息。")
+
+ ("lng_rights_slowmode_about_interval"
+  :value "成员每 {interval} 只能发送一条消息。")
+
+ ("lng_rights_slowmode_header"
+  :value "慢速模式")
+
+ ("lng_rights_slowmode_interval_minutes"
+  :one_value "每 {count} 分钟"
+  :other_value "每 {count} 分钟")
+
+ ("lng_rights_slowmode_off"
+  :value "关闭")
+
+ ("lng_rights_user_restrictions"
+  :value "用户权限")
+
+ ("lng_rights_user_restrictions_header"
+  :value "此成员能做什么？")
+
+ ("lng_save_file"
+  :value "保存文件")
+
+ ("lng_saved_open_chat"
+  :value "打开聊天")
+
+ ("lng_schedule_at"
+  :value "于")
+
+ ("lng_search_filter_all"
+  :value "所有聊天")
+
+ ("lng_search_filter_channel"
+  :value "频道")
+
+ ("lng_search_filter_group"
+  :value "群组聊天")
+
+ ("lng_search_filter_private"
+  :value "私密聊天")
+
+ ("lng_search_found_results"
+  :one_value "找到 {count} 条消息"
+  :other_value "找到 {count} 条消息")
+
+ ("lng_search_global_results"
+  :value "全局搜索结果")
+
+ ("lng_search_messages_from"
+  :value "显示来自的消息")
+
+ ("lng_search_no_results"
+  :value "未找到消息")
+
+ ("lng_search_tab_public_posts"
+  :value "公开帖子")
+
+ ("lng_seconds"
+  :one_value "{count} 秒" :other_value "{count} 秒")
+
+ ("lng_seconds_tiny"
+  :one_value "{count}秒" :other_value "{count}秒")
+
+ ("lng_selected_delete_sure"
+  :one_value "您要删除 {count} 条消息吗？"
+  :other_value "您要删除 {count} 条消息吗？")
+
+ ("lng_selected_delete_sure_this"
+  :value "您要删除此消息吗？")
+
+ ("lng_selected_forward"
+  :value "转发")
+
+ ("lng_send_anonymous_ph"
+  :value "匿名发送...")
+
+ ("lng_send_charges_stars_text"
+  :value "{user} 对每条消息收取 {amount}。")
+
+ ("lng_send_free_channel"
+  :value "向 {channel} 的管理员发送私信。")
+
+ ("lng_sent_date"
+  :value "发送时间：{date}")
+
+ ("lng_sessions_browser"
+  :value "浏览器")
+
+ ("lng_sessions_header"
+  :value "此设备")
+
+ ("lng_sessions_incomplete"
+  :value "未完成的登录尝试")
+
+ ("lng_sessions_incomplete_about"
+  :value "以上设备无法访问您的消息。验证码输入正确，但未提供正确的密码。")
+
+ ("lng_sessions_ip"
+  :value "IP 地址")
+
+ ("lng_sessions_location"
+  :value "位置")
+
+ ("lng_sessions_location_about"
+  :value "此位置是根据 IP 地址估算的，可能并不总是准确的。")
+
+ ("lng_sessions_system"
+  :value "系统版本")
+
+ ("lng_sessions_terminate"
+  :value "终止会话")
+
+ ("lng_settings_apply"
+  :value "应用")
+
+ ("lng_settings_auto_archive"
+  :value "归档并静音")
+
+ ("lng_settings_auto_archive_about"
+  :value "自动归档并静音非联系人发起的新私聊、群组和频道。")
+
+ ("lng_settings_birthday_about"
+  :value "选择谁可以在{link}中查看你的生日。")
+
+ ("lng_settings_change_lang"
+  :value "更改语言")
+
+ ("lng_settings_channel_label"
+  :value "个人频道")
+
+ ("lng_settings_choose_username"
+  :value "选择用户名")
+
+ ("lng_settings_connected_title"
+  :value "已连接的网站")
+
+ ("lng_settings_desktop_notify"
+  :value "桌面通知")
+
+ ("lng_settings_disconnect"
+  :value "断开连接")
+
+ ("lng_settings_disconnect_all"
+  :value "断开所有网站")
+
+ ("lng_settings_disconnect_all_sure"
+  :value "你确定要断开所有通过 Telegram 登录的网站吗？")
+
+ ("lng_settings_disconnect_sure"
+  :value "你确定要断开 {domain} 吗？")
+
+ ("lng_settings_edit"
+  :value "编辑")
+
+ ("lng_settings_empty_bio"
+  :value "无")
+
+ ("lng_settings_logged_in_description"
+  :value "你可以在支持 Telegram 登录的网站上登录。")
+
+ ("lng_settings_logged_in_title"
+  :value "通过 Telegram 登录")
+
+ ("lng_settings_logout"
+  :value "退出登录")
+
+ ("lng_settings_messages"
+  :value "消息")
+
+ ("lng_settings_new_unknown"
+  :value "来自陌生人的新聊天")
+
+ ("lng_settings_notify_title"
+  :value "聊天通知")
+
+ ("lng_settings_profile_photo_privacy"
+  :value "头像")
+
+ ("lng_settings_reset_one_sure"
+  :value "你确定要终止此会话吗？")
+
+ ("lng_settings_save"
+  :value "保存")
+
+ ("lng_settings_section_notify"
+  :value "通知")
+
+ ("lng_settings_sensitive_about"
+  :value "在所有 Telegram 设备上显示公共频道中的敏感内容。")
+
+ ("lng_settings_sensitive_disable_filtering"
+  :value "关闭过滤")
+
+ ("lng_settings_sessions_title"
+  :value "活跃会话")
+
+ ("lng_settings_show_preview"
+  :value "显示消息预览")
+
+ ("lng_settings_suggestion_phone_number_about"
+  :value "请保持你的手机号最新，以确保始终可以登录 Telegram。{link}")
+
+ ("lng_settings_suggestion_phone_number_about_link"
+  :value "https://telegram.org/faq#q-i-have-a-new-phone-number-what-do-i-do")
+
+ ("lng_settings_suggestion_phone_number_title"
+  :value "{phone} 还是你的手机号吗？")
+
+ ("lng_settings_ttl_after"
+  :value "{after_duration}后")
+
+ ("lng_settings_ttl_after_custom"
+  :value "自定义时间")
+
+ ("lng_settings_ttl_after_days"
+  :one_value "{count} 天"
+  :other_value "{count} 天")
+
+ ("lng_settings_ttl_after_off"
+  :value "关闭")
+
+ ("lng_settings_ttl_after_subtitle"
+  :value "自动删除计时器")
+
+ ("lng_settings_ttl_title"
+  :value "自动删除消息")
+
+ ("lng_settings_upload"
+  :value "设置头像")
+
+ ("lng_settings_username"
+  :value "用户名：")
+
+ ("lng_share_message_to_chat"
+  :value "消息已转发至 **{chat}**。")
+
+ ("lng_share_message_to_many_chats"
+  :one_value "消息已转发至 **{count} 个聊天**。"
+  :other_value "消息已转发至 **{count} 个聊天**。")
+
+ ("lng_share_messages_to_chat"
+  :value "多条消息已转发至 **{chat}**。")
+
+ ("lng_share_messages_to_many_chats"
+  :one_value "多条消息已转发至 **{count} 个聊天**。"
+  :other_value "多条消息已转发至 **{count} 个聊天**。")
+
+ ("lng_signin_reset"
+  :value "重置")
+
+ ("lng_similar_bots_title"
+  :value "类似机器人")
+
+ ("lng_similar_channels_title"
+  :value "类似频道")
+
+ ("lng_similar_channels_view_all"
+  :value "查看全部")
+
+ ("lng_sponsored"
+  :value "赞助")
+
+ ("lng_sponsored_hide_ads"
+  :value "隐藏")
+
+ ("lng_sponsored_info_description1"
+  :value "与其他应用不同，Telegram 绝不会使用你的私人数据来投放广告。Telegram 上的赞助消息仅基于其所在公共频道的主题进行展示。这意味着不会挖掘或分析任何用户数据来显示广告，每个在 Telegram 上查看频道的用户看到的都是相同的赞助消息。\n\n与其他应用不同，Telegram 不会跟踪你是否点击了赞助消息，也不会根据你的活动对你进行画像。我们还在赞助消息中阻止了外部链接，以确保第三方无法监视我们的用户。我们相信每个人都有隐私权，技术平台应该尊重这一点。\n\nTelegram 为数亿用户提供免费且无限的服务，这涉及巨大的服务器和流量成本。为了保持独立并忠于其价值观，Telegram 开发了一种付费的消息推广工具，并将用户隐私放在首位。我们欢迎负责任的广告主：")
+
+ ("lng_sponsored_info_description2"
+  :value "赞助消息目前处于测试模式。一旦正式推出并使 Telegram 能够覆盖基本成本，我们将开始与展示赞助消息的公共频道的所有者分享广告收入。\n\n在线广告不应再成为滥用用户隐私的代名词。让我们重新定义一家科技公司应该如何运营——一起。")
+
+ ("lng_sponsored_title"
+  :value "什么是赞助消息？")
+
+ ("lng_stars_rating_title"
+  :value "评分")
+
+ ("lng_stats_overview_message_views"
+  :value "浏览量")
+
+ ("lng_status_bot"
+  :value "机器人")
+
+ ("lng_status_last_month"
+  :value "一个月内上线过")
+
+ ("lng_status_last_week"
+  :value "一周内上线过")
+
+ ("lng_status_lastseen_date"
+  :value "最后上线 {date}")
+
+ ("lng_status_lastseen_date_time"
+  :value "最后上线 {date} {time}")
+
+ ("lng_status_lastseen_hours"
+  :one_value "最后上线 {count} 小时前"
+  :other_value "最后上线 {count} 小时前")
+
+ ("lng_status_lastseen_minutes"
+  :one_value "最后上线 {count} 分钟前"
+  :other_value "最后上线 {count} 分钟前")
+
+ ("lng_status_lastseen_now"
+  :value "刚刚上线")
+
+ ("lng_status_lastseen_today"
+  :value "今天 {time} 上线过")
+
+ ("lng_status_lastseen_yesterday"
+  :value "昨天 {time} 上线过")
+
+ ("lng_status_offline"
+  :value "很久前上线过")
+
+ ("lng_status_recently"
+  :value "近期上线过")
+
+ ("lng_sticker_premium_view"
+  :value "查看")
+
+ ("lng_stickers_add_pack"
+  :value "添加贴纸")
+
+ ("lng_stickers_featured_add"
+  :value "添加")
+
+ ("lng_stickers_group_set"
+  :value "群组贴纸包")
+
+ ("lng_stickers_installed_tab"
+  :value "贴纸")
+
+ ("lng_stickers_masks_tab"
+  :value "面具")
+
+ ("lng_stickers_remove_pack"
+  :value "要移除 \"{sticker_pack}\" 吗？")
+
+ ("lng_stickers_remove_pack_button"
+  :value "移除贴纸")
+
+ ("lng_stickers_remove_pack_confirm"
+  :value "移除")
+
+ ("lng_stickers_search_sets"
+  :value "搜索贴纸包")
+
+ ("lng_stories_my_name"
+  :value "我的故事")
+
+ ("lng_stories_row_count"
+  :one_value "{count} 个故事" :other_value "{count} 个故事")
+
+ ("lng_stories_show_more"
+  :value "查看更多")
+
+ ("lng_story_reply_ph"
+  :value "私下回复...")
+
+ ("lng_summarize_header_title"
+  :value "AI 摘要")
+
+ ("lng_sure_delete_contact"
+  :value "你确定要从联系人列表中删除 {contact} 吗？")
+
+ ("lng_sure_delete_history"
+  :value "你确定要删除与 {contact} 的所有聊天记录吗？\n\n此操作无法撤销。")
+
+ ("lng_sure_leave_channel"
+  :value "你确定要退出\n此频道吗？")
+
+ ("lng_sure_leave_group"
+  :value "你确定要退出此群组吗？")
+
+ ("lng_sure_logout"
+  :value "你确定要退出登录吗？")
+
+ ("lng_telegram_features_url"
+  :value "https://t.me/TelegramTips")
+
+ ("lng_text_copied"
+  :value "文本已复制到剪贴板。")
+
+ ("lng_todo_add_title"
+  :value "添加任务")
+
+ ("lng_todo_completed"
+  :one_value "{total} 个任务已完成 {count} 个"
+  :other_value "{total} 个任务已完成 {count} 个")
+
+ ("lng_todo_completed_none"
+  :value "{total} 个任务均未完成")
+
+ ("lng_todo_create"
+  :value "创建清单")
+
+ ("lng_todo_create_allow_add"
+  :value "允许他人添加任务")
+
+ ("lng_todo_create_allow_mark"
+  :value "允许他人标记完成")
+
+ ("lng_todo_create_list_add"
+  :value "添加任务...")
+
+ ("lng_todo_create_title"
+  :value "新建清单")
+
+ ("lng_todo_menu_item"
+  :value "清单")
+
+ ("lng_todo_title"
+  :value "清单")
+
+ ("lng_todo_title_group"
+  :value "群组清单")
+
+ ("lng_topic_author_badge"
+  :value "话题创建者")
+
+ ("lng_translate_bar_to"
+  :value "翻译为{name}")
+
+ ("lng_translate_box_error"
+  :value "翻译失败。")
+
+ ("lng_translate_menu_dont"
+  :value "不要翻译{name}")
+
+ ("lng_translate_menu_to"
+  :value "翻译为")
+
+ ("lng_translate_show_original"
+ :value "查看原文")
+
+ ("lng_ttl_about_duration1"
+  :value "24 小时")
+
+ ("lng_ttl_about_duration2"
+  :value "7 天")
+
+ ("lng_ttl_about_duration3"
+  :value "1 个月")
+
+ ("lng_ttl_about_tooltip_channel"
+  :value "此聊天中的新消息将在 {duration} 后自动删除。")
+
+ ("lng_ttl_edit_about"
+  :value "在一定时间后自动删除你与 {user} 的新消息。")
+
+ ("lng_ttl_edit_about_channel"
+  :value "在一定时间后自动删除此频道中发送的新消息。")
+
+ ("lng_ttl_edit_about_group"
+  :value "在一定时间后自动删除此聊天中发送的新消息。")
+
+ ("lng_ttl_round_expired"
+  :value "视频留言已过期")
+
+ ("lng_ttl_voice_expired"
+  :value "语音留言已过期")
+
+ ("lng_unblock_button"
+  :value "解除屏蔽")
+
+ ("lng_unread_bar"
+  :one_value "{count} 条未读消息"
+  :other_value "{count} 条未读消息")
+
+ ("lng_unread_bar_some"
+  :value "未读消息")
+
+ ("lng_user_action_choose_sticker"
+  :value "{user} 正在选择贴纸")
+
+ ("lng_user_action_record_audio"
+  :value "{user} 正在录制语音")
+
+ ("lng_user_action_record_round"
+  :value "{user} 正在录制视频留言")
+
+ ("lng_user_action_upload_audio"
+  :value "{user} 正在发送语音")
+
+ ("lng_user_action_upload_round"
+  :value "{user} 正在发送视频留言")
+
+ ("lng_user_action_upload_video"
+  :value "{user} 正在发送视频")
+
+ ("lng_user_action_watching_animations"
+  :value "正在观看 {emoji}")
+
+ ("lng_user_typing"
+  :value "{user} 正在输入")
+
+ ("lng_username_copied"
+  :value "链接已复制到剪贴板。")
+
+ ("lng_usernames_activate_confirm"
+  :value "显示")
+
+ ("lng_users_typing"
+  :value "{user} 和 {second_user} 正在输入")
+
+ ("lng_via_link_cant_many"
+  :one_value "**{count} 位用户**只能通过链接邀请，但你没有权限分享此群组的邀请链接。"
+  :other_value "**{count} 位用户**只能通过链接邀请，但你没有权限分享此群组的邀请链接。")
+
+ ("lng_via_link_group_many"
+  :one_value "**{count} 位用户**限制了将其添加到群组。\n你可以改为发送邀请链接给他们。"
+  :other_value "**{count} 位用户**限制了将其添加到群组。\n你可以改为发送邀请链接给他们。")
+
+ ("lng_via_link_send"
+  :value "发送邀请链接")
+
+ ("lng_view_button_background"
+  :value "查看背景")
+
+ ("lng_view_button_boost"
+  :value "助推")
+
+ ("lng_view_button_bot"
+  :value "查看机器人")
+
+ ("lng_view_button_bot_app"
+  :value "启动")
+
+ ("lng_view_button_call"
+  :value "加入通话")
+
+ ("lng_view_button_channel"
+  :value "查看频道")
+
+ ("lng_view_button_collectible"
+  :value "查看收藏品")
+
+ ("lng_view_button_emojipack"
+  :value "查看表情")
+
+ ("lng_view_button_external_link"
+  :value "打开链接")
+
+ ("lng_view_button_giftcode"
+  :value "打开")
+
+ ("lng_view_button_group"
+  :value "查看群组")
+
+ ("lng_view_button_iv"
+  :value "即时查看")
+
+ ("lng_view_button_message"
+  :value "查看消息")
+
+ ("lng_view_button_request_join"
+  :value "申请加入")
+
+ ("lng_view_button_story"
+  :value "查看故事")
+
+ ("lng_view_button_theme"
+  :value "查看主题")
+
+ ("lng_view_button_user"
+  :value "发送消息")
+
+ ("lng_view_button_voice_chat"
+  :value "视频聊天")
+
+ ("lng_view_button_voice_chat_channel"
+  :value "直播")
+
+ ("lng_views_tooltip"
+  :one_value "浏览量：{count}"
+  :other_value "浏览量：{count}")
+
+ ("lng_weekday1" :value "周一")
+
+ ("lng_weekday2" :value "周二")
+
+ ("lng_weekday3" :value "周三")
+
+ ("lng_weekday4" :value "周四")
+
+ ("lng_weekday5" :value "周五")
+
+ ("lng_weekday6" :value "周六")
+
+ ("lng_weekday7" :value "周日")
+
+ ("lng_weeks"
+  :one_value "{count} 周" :other_value "{count} 周")
+
+ ("lng_weeks_tiny"
+  :one_value "{count}周" :other_value "{count}周")
+
+ ("lng_years"
+  :one_value "{count} 年" :other_value "{count} 年")
+
+ ("lng_years_tiny"
+  :one_value "{count}年" :other_value "{count}年")
+
+ ("telega_chat_modeline_reaction_help"
+  :value "{mouse}：跳转到下一个回应")
+
+ ("telega_chat_modeline_thread_msg_help"
+  :value "{mouse}：跳转到话题起始消息")
+
+ ("telega_chat_modeline_video_chat_help"
+  :value "{mouse}：跳转到此群组的视频聊天")
+
+ ("telega_dashboard_telega_not_running"
+  :value "telega 未运行")
+
+ ("telega_last_entry"
+  :value "最后一个 i18n 条目")
+
+ ("telega_link_preview_options_help"
+  :value "此消息将使用自定义链接预览选项")
+
+ ("telega_query_reset_notifications"
+  :value "重置所有通知设置？ ")
+
+ ("telega_query_stop_live_location"
+  :one_value "停止共享实时位置？"
+  :other_value "停止在 {count} 个聊天中共享实时位置？")
+
+ ("telega_reset_notifications"
+  :value "重置所有通知")
+
+ ("telega_reset_notifications_help"
+  :value "撤销所有聊天的自定义通知设置")
+
+ ("telega_rights_promote_members"
+  :value "提升成员权限")
+
+ ("telega_rights_restrict_members"
+  :value "限制成员")
+
+ ("telega_settings_donate"
+  :value "捐赠")
+
+ ("telega_stop_live_location"
+  :one_value "停止"
+  :other_value "全部停止")
+
+ ("telega_stories_featured"
+  :value "精选")
+
+ ("telega_stories_heading"
+  :value "Emacs 故事")
+
+ ("telega_stories_no_stories"
+  :value "没有未读故事")
+
+ ("telega_view_files"
+  :value "文件")
+
+)
