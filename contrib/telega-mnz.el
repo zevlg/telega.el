@@ -176,11 +176,16 @@ Most of these languages available for language detection.")
         (insert text)
         ;; NOTE: suppress annoying messages from some major modes
         (let ((inhibit-message t))
-          (if (and (symbolp mode)
-                   (commandp mode))
-              (funcall mode)
-            (ignore-errors
-              (mapc #'funcall mode))))
+          (delay-mode-hooks
+            (if (and (symbolp mode)
+                     (commandp mode))
+                (funcall mode)
+              (ignore-errors
+                (mapc #'funcall mode)))))
+        (font-lock-default-function mode)
+        (font-lock-default-fontify-region (point-min)
+                                          (point-max)
+                                          nil)
         ;; NOTE: font-lock might trigger errors, for example:
         ;;   (telega-mnz--mode-render-text 'xml-mode "$ head -n2 /tmp/pechatnaya-forma.doc\n<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<?mso-application progid=\"Word.Document\"?>")
         ;;   ==>
@@ -329,12 +334,17 @@ If READ-ONLY-P is non-nil, then open buffer as read only."
             (when point-offset
               (goto-char point-offset)))
           ;; Enable corresponding Emacs mode
-          (dolist (mode-cmd (if (commandp mode)
-                                (list mode)
-                              (cl-assert (listp mode))
-                              (cl-assert (cl-every #'commandp mode))
-                              mode))
-            (funcall mode-cmd))
+          (delay-mode-hooks
+            (dolist (mode-cmd (if (commandp mode)
+                                  (list mode)
+                                (cl-assert (listp mode))
+                                (cl-assert (cl-every #'commandp mode))
+                                mode))
+              (funcall mode-cmd)))
+          (font-lock-default-function mode)
+          (font-lock-default-fontify-region (point-min)
+                                            (point-max)
+                                            nil)
           (setq buffer-read-only read-only-p)
           ;; NOTE: Construct and use proper keymap by mergin mode's
           ;; keymap and `telega-mnz-edit-map'
@@ -474,7 +484,6 @@ ARG is passed directly to function `telega-mnz-mode'."
       (with-current-buffer buf
         (telega-mnz-mode -1)))))
 
-
 (advice-add 'telega--text-entity-apply
             :before #'telega-mnz--text-entity-apply)
 
