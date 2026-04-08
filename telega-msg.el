@@ -2335,7 +2335,7 @@ be added or new tag will be created."
                         :custom_emoji_id (telega-custom-emoji-id sticker))
               big-p 'update-recent-reactions)))))))))
 
-(defun telega-msg-translate (msg &optional to-language-code quiet)
+(defun telega-msg-translate (msg &optional to-language-code tone quiet)
   "Translate message at point.
 If `\\[universal-argument]' is used, select language to translate message to.
 By default `telega-translate-to-language-default' is used.
@@ -2346,14 +2346,18 @@ If message is already translated, then disable translation unless
                              (not telega-translate-to-language-by-default))
                          (telega-completing-read-language-code
                           "Translate to language: ")
-                       telega-translate-to-language-by-default)))
+                       telega-translate-to-language-by-default)
+                     telega-translate-ai-tone-by-default))
 
   (plist-put msg :telega-summary nil)
 
   (if (and (plist-get msg :telega-translated)
            (or (not to-language-code)
-               (equal (telega--tl-get msg :telega-translated :to_language_code)
-                      to-language-code)))
+               (and (equal (telega--tl-get msg :telega-translated
+                                           :to_language_code)
+                           to-language-code)
+                    (equal (telega--tl-get msg :telega-translated :tone)
+                           tone))))
       ;; NOTE: Cancel translation on subsequent call if called
       ;; interactively, i.e. QUIET is not specified
       (unless quiet
@@ -2362,6 +2366,7 @@ If message is already translated, then disable translation unless
 
     (when-let* (;(msg-text (telega-msg-content-text msg 'with-voice-note))
                 (extra (telega--translateMessageText msg to-language-code
+                         :tone tone
                          :callback
                          (lambda (reply)
                            (let ((translated (plist-get msg :telega-translated)))
@@ -2377,23 +2382,27 @@ If message is already translated, then disable translation unless
             (seq-doseq (kbd-button row)
               (telega--translateText
                   (telega-tl-str kbd-button :text) to-language-code
+                :tone tone
                 :callback
                 (lambda (reply)
                   (let ((translated-text (telega-tl-str reply :text)))
                     (plist-put kbd-button :telega-translated
                                (list :to_language_code to-language-code
+                                     :tone tone
                                      :text translated-text))
                     (telega-msg-redisplay msg))))))))
 
       (plist-put msg :telega-translated
                  (list :to_language_code to-language-code
+                       :tone tone
                        :show-original-p telega-translate-show-original-content
                        :loading extra))
       (telega-msg-redisplay msg)
       )))
 
-(defun telega-msg-summarize (msg &optional to-language-code quiet)
-  "Summarize MSG's content and translate it to TO-LANGUAGE-CODE."
+(defun telega-msg-summarize (msg &optional to-language-code tone quiet)
+  "Summarize MSG's content and translate it to TO-LANGUAGE-CODE.
+TONE of the summarization."
   (interactive (list (telega-msg-for-interactive)))
 
   (unless (plist-get msg :summary_language_code)
@@ -2403,7 +2412,9 @@ If message is already translated, then disable translation unless
 
   (if (and (plist-get msg :telega-summary)
            (equal to-language-code
-                  (telega--tl-get msg :telega-summary :to_language_code)))
+                  (telega--tl-get msg :telega-summary :to_language_code))
+           (equal tone
+                  (telega--tl-get msg :telega-summary :tone)))
       ;; NOTE: Cancel translation on subsequent call if called
       ;; interactively, i.e. QUIET is not specified
       (unless quiet
@@ -2412,14 +2423,17 @@ If message is already translated, then disable translation unless
 
     (let ((extra (telega--summarizeMessage msg
                    :to-language-code to-language-code
+                   :tone tone
                    :callback
                    (lambda (reply)
                      (plist-put msg :telega-summary
                                 (list :to_language_code to-language-code
+                                      :tone tone
                                       :text reply))
                      (telega-msg-redisplay msg)))))
       (plist-put msg :telega-summary
                  (list :to_language_code to-language-code
+                       :tone tone
                        :loading extra))
       (telega-msg-redisplay msg))))
 

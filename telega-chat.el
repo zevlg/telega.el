@@ -1998,9 +1998,12 @@ Takes into account thread/topic."
   "View message MSG in the chatbuf.
 View only if message matches TEMEX or not yet viewed."
   (unless temex
-    (setq temex '(or (prop :contains_unread_mention)
-                     unread-reactions
-                     (not seen))))
+    ;; NOTE: always view message, to actualize message's meta info
+    (setq temex '(return t)))
+          ;; '(or (prop :contains_unread_mention)
+          ;;            unread-reactions
+          ;;            (not seen)
+          ;;            )))
 
   (when (and (telega-msg-from-history-p msg)
              (telega-msg-match-p msg temex))
@@ -2565,7 +2568,7 @@ These users can be added to group only via invite link."
   (when-let ((can-send-p (telega-chatbuf-match-p 'can-send-or-post))
              (markup-msg (telega-chat-reply-markup-msg telega-chatbuf--chat)))
     (unless (telega-msg-match-p markup-msg 'is-deleted)
-      (telega-ins--line-wrap-prefix (cons (telega-symbol 'keyboard) nil)
+      (telega-ins--line-wrap-prefix "        "
         (when (telega-ins--reply-markup markup-msg 'force)
           (telega-ins "\n"))))))
 
@@ -6643,10 +6646,6 @@ use for editing.  For example `C-u RET' will use
       (telega-chatbuf--chat-update "aux-plist")
       (telega-chatbuf--prompt-update))
 
-    ;; Replace any input text with edited message
-    (delete-region telega-chatbuf--input-marker (point-max))
-    (goto-char (point-max))
-
     ;; Insert message's text or attachment caption
     ;; Possibly use "markdown2" markup for the text
     (let* ((telega-inhibit-telega-display-by t)
@@ -6660,7 +6659,18 @@ use for editing.  For example `C-u RET' will use
            (markup-fmt-text-func
             (cdr (assoc markup-name telega-msg-edit--markup-specs)))
            (markup-str (funcall (or markup-fmt-text-func #'telega--fmt-text-faces)
-                                orig-fmt-text)))
+                                orig-fmt-text))
+           (edit-offset
+            (when (eq msg (telega-msg-at (point)))
+              (- (point)
+                 (save-excursion
+                   (telega-chatbuf--goto-msg-content)
+                   (point))))))
+
+      ;; Replace any input text with edited message
+      (delete-region telega-chatbuf--input-marker (point-max))
+      (goto-char (point-max))
+
       ;; NOTE: Scheduling state also can be edited
       (when-let ((scheduling-state (plist-get msg :scheduling_state)))
         (telega-chatbuf-input-insert
@@ -6675,8 +6685,12 @@ use for editing.  For example `C-u RET' will use
       ;; can edit text AS-IS
       (if (or (null markup-fmt-text-func)
               (string= markup-str (plist-get orig-fmt-text :text)))
-          ;; Insert msg text AS-IS
-          (telega-ins (telega--desurrogate-apply markup-str))
+          ;; Insert msg text AS-IS.  Keep point at position where it
+          ;; was in the message at edit time
+          (progn
+            (telega-ins (telega--desurrogate-apply markup-str))
+            (when edit-offset
+              (goto-char (+ telega-chatbuf--input-marker edit-offset))))
 
         ;; Insert msg text as markup input attachment
         (cl-assert (stringp markup-name))
@@ -7202,12 +7216,16 @@ ensuring point keep being inside the message."
      (return t) (:@type "searchMessagesFilterVoiceAndVideoNote"))
     ("chat-photo"
      (return t) (:@type "searchMessagesFilterChatPhoto"))
+    ("poll"
+     (return t) (:@type "searchMessagesFilterPoll"))
     ("mention"
      (return t) (:@type "searchMessagesFilterMention"))
     ("unread-mention"
      (return t) (:@type "searchMessagesFilterUnreadMention"))
     ("unread-reaction"
      (return t) (:@type "searchMessagesFilterUnreadReaction"))
+    ("unread-poll-vote"
+     (return t) (:@type "searchMessagesFilterUnreadPollVote"))
     ("failed-to-send"
      (return t) (:@type "searchMessagesFilterFailedToSend"))
     ("pinned"

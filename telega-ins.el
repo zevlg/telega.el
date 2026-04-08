@@ -3006,8 +3006,8 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
                 (message "receipt: %S" receipt)))))
 
 (defun telega-reply-markup--keyboard-layout (reply-markup &optional fit-width)
-  "Calculate keyboard layout for the REPLY-MARKUP."
-  ;; Layout: list of (width . spacing) conses for each button
+  "Calculate keyboard layout for the REPLY-MARKUP." 
+ ;; Layout: list of (width . spacing) conses for each button
   (when (eq (telega--tl-type reply-markup)
             'replyMarkupShowKeyboard)
     (if (plist-get reply-markup :resize_keyboard)
@@ -3021,7 +3021,7 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
           )
         ))))
 
-(defun telega-ins--reply-markup (msg &optional force-keyboard)
+(defun telega-ins--reply-markup (msg &optional force-keyboard width)
   "Insert reply markup.
 If FORCE-KEYBOARD is non-nil, then show reply markup even if it
 has `replyMarkupShowKeyboard' type."
@@ -3675,7 +3675,7 @@ If SENDER is specified, use it instead of messageOrigin from FWD-INFO."
                           palette :foreground :background))
         (telega-ins--raw-button
             (list 'action (lambda (_button)
-                            (telega-msg-translate msg nil))
+                            (telega-msg-translate msg))
                   'help-echo "telega: Press to disable translation")
           (telega-ins--with-face
               (telega-face-with-palette 'telega-msg-inline-other
@@ -3687,6 +3687,9 @@ If SENDER is specified, use it instead of messageOrigin from FWD-INFO."
               (telega-ins-i18n "lng_translate_bar_to"
                 :name (telega-i18n-translate-language-code-to-language
                        (plist-get translated :to_language_code))))
+            (when-let ((tone (plist-get translated :tone)))
+              (telega-ins-fmt " (%s: %s)"
+                (telega-i18n "lng_ai_compose_tab_style") tone))
             (when (plist-get translated :loading)
               (telega-ins ", " (telega-i18n "telega_loading")))
             (telega-ins "\n")))))))
@@ -3719,6 +3722,9 @@ If SENDER is specified, use it instead of messageOrigin from FWD-INFO."
                       (telega-i18n-translate-language-code-to-language
                        lang-code)
                       ")"))
+            (when-let ((tone (plist-get summary :tone)))
+              (telega-ins-fmt " (%s: %s)"
+                (telega-i18n "lng_ai_compose_tab_style") tone))
             (when (plist-get summary :loading)
               (telega-ins ", " (telega-i18n "telega_loading")))
             (telega-ins "\n")))))))

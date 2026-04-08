@@ -547,6 +547,17 @@ COMMAND is passed directly to `telega-server--send'."
            (plist-get telega-server--last-error :message)))
         ret))))
 
+(defmacro telega-server--send-or-call (sexp callback)
+  "Use this macro instead of `(or callback \\'ignore)' pattern."
+  (declare (indent 1))
+  (let ((cb-sym (gensym "callback"))
+        (sexp-sym (gensym "sexp")))
+    `(let ((,cb-sym ,callback)
+           (,sexp-sym ,sexp))
+       (if ,cb-sym
+           (telega-server--call ,sexp-sym ,cb-sym)
+         (telega-server--send ,sexp-sym)))))
+
 (defun telega-server--start ()
   "Start telega-server process."
   (when (process-live-p (telega-server--proc))

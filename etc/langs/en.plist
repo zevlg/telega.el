@@ -2450,4 +2450,27 @@ this channel?")
 
  ("lng_reply_from_private_chat"
   :value "This reply is from a private chat.")
+
+ ;; AI
+ ("lng_ai_compose_title"
+  :value "AI Editor")
+ ("lng_ai_compose_tooltip"
+  :value "Rewrite, translate and correct your text using AI.")
+ ("lng_ai_compose_tab_style"
+  :value "Style")
+ ("lng_ai_compose_tab_fix"
+  :value "Fix")
+ ("lng_ai_compose_to_language"
+  :value "To {language}")
+ ("lng_ai_compose_apply_style"
+  :value "Apply Style")
+ ("lng_ai_compose_select_style"
+  :value "Select Style")
+ ("lng_ai_compose_emojify"
+  :value "emojify")
+ ("lng_ai_compose_original"
+  :value "Original")
+
+ ("lng_ai_compose_style_neutral"
+  :value "Neutral")
  )

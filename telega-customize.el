@@ -462,6 +462,13 @@ See docstring for `display-buffer' for the values."
   :type (get 'display-buffer-alist 'custom-type)
   :group 'telega)
 
+(defcustom telega-translate-ai-tone-by-default "neutral"
+  "Default AI tone to be used by translation/summarization."
+  :type '(choice (const :tag "Formal" "formal")
+                 (const :tag "Neutral" "neutral")
+                 (const :tag "Casual" "casual"))
+  :group 'telega)
+
 (defcustom telega-translate-to-language-by-default nil
   "Default language code for messages translation.
 If nil, then use language suggested by the server."
@@ -873,7 +880,7 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
   :type 'integer
   :group 'telega-server)
 
-(defcustom telega-server-optimize 15
+(defcustom telega-server-optimize 31
   "Optimizations to use in `telega-server'.
 Requires at least telega-server 1.0.0.
 Optimization flags:
@@ -881,6 +888,7 @@ Optimization flags:
 2 - Remove nil values from resulting values.
 4 - Remove [] values from resulting values.
 8 - Remove empty strings from resulting values.
+16 - Remove empty \"ok\" replies without extra data.
 
 Flags are combined with logical or."
   :type 'integer
@@ -2661,6 +2669,11 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-poses-risk (propertize "🛈" 'face 'error)
+  "Symbol used to emphasize risk."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-inline "⮍"
   "Symbol used to mark attachments with inline result from bot."
   :type 'string
@@ -2997,7 +3010,11 @@ Used in one line message inserter."
     alarm
     attachment audio
     author-hidden
-    bell boost bot-menu bulp
+    bell
+    (blocked
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "symbols/cross_circle_fill_16.svg" 2)))
+    boost bot-menu bulp
     (button-close
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "symbols/button-close.svg" 1)))

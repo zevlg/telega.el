@@ -1282,7 +1282,9 @@ messages."
     (when (and (eq option :replies_bot_chat_id) value)
       (setq telega--replies-id value))
 
-    (when (and (eq option :enabled_proxy_id) value
+    (when (and (or (eq option :enabled_proxy_id)
+                   (eq option :expect_blocking))
+               value
                telega-proxy-status-auto
                (not telega-proxy-status-mode))
       (telega-proxy-status-mode 1))
@@ -1511,6 +1513,13 @@ Please downgrade TDLib and recompile `telega-server'"
 
   (telega-chat--mark-dirty chat event))
 
+(defun telega--on-updateChatUnreadPollVoteCount (event)
+  (when-let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (plist-put chat :unread_poll_vote_count
+               (plist-get event :unread_poll_vote_count))
+
+    (telega-chat--mark-dirty chat event)))
+
 (defun telega--on-updateMessageUnreadReactions (event)
   (with-telega--msg-update-event event (chat msg node)
     (cl-assert chat)
@@ -1704,6 +1713,8 @@ Please downgrade TDLib and recompile `telega-server'"
                (plist-get event :unread_mention_count))
     (plist-put forum-topic :unread_reaction_count
                (plist-get event :unread_reaction_count))
+    (plist-put forum-topic :unread_poll_vote_count
+               (plist-get event :unread_poll_vote_count))
     (plist-put forum-topic :notification_settings
                (plist-get event :notification_settings))
     (plist-put forum-topic :draft_message
@@ -1836,6 +1847,15 @@ For Saved Messages and channel direct messages chat topics only."
             (telega-custom-emoji--ensure sticker))
           (telega-chat--mark-dirty chat event))))
     ))
+
+(defun telega--on-updateTextCompositionStyles (event)
+  "The styles supported for AI text composition have changed."
+  (setq telega-ai-composition-styles-alist
+        (mapcar (lambda (tl-style)
+                  (cons (plist-get tl-style :name)
+                        tl-style))
+                (plist-get event :styles)))
+  )
 
 (provide 'telega-tdlib-events)
 

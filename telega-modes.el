@@ -1938,7 +1938,7 @@ Or nil if translation is not needed."
     (message "telega: canceled %d translations" (length pending-extras))))
 
 (defun telega-auto-translate--msg (msg)
-  (telega-msg-translate msg telega-translate-to-language-by-default 'quiet))
+  (telega-msg-translate msg telega-translate-to-language-by-default nil 'quiet))
 
 (defun telega-auto-translate--on-msg-insert (msg)
   "Translate observable message MSG after it has been inserted into chatbuf."
@@ -2499,15 +2499,16 @@ FMT-STRING is format string to be used instead of
 ;;
 ;; Global minor mode to display Telegram proxy status in the rootbuf.
 ;;
-;; Enable it with ~(telega-proxy-status-mode 1)~ or at =telega= load time:
+;; Enable it with ~(telega-proxy-status-mode 1)~ or before authorization:
 ;; #+begin_src emacs-lisp
-;; (add-hook 'telega-load-hook 'telega-proxy-status-mode)
+;; (add-hook 'telega-before-auth-hook 'telega-proxy-status-mode)
 ;; #+end_src
 ;; 
 ;; Customizable options:
 ;; - {{{user-option(telega-proxy-status-auto, 2)}}}
 (defcustom telega-proxy-status-auto t
-  "Automatically enable `telega-proxy-status-mode' when proxy is enabled."
+  "Automatically enable `telega-proxy-status-mode' when proxy is enabled.
+Also, enable `telega-proxy-status-mode' if Telegram blocking is expected."
   :type 'boolean
   :group 'telega-modes)
 
@@ -2619,7 +2620,8 @@ FMT-STRING is format string to be used instead of
         (advice-add 'telega--on-updateConnectionState
                     :after #'telega-proxy-status--on-update)
         (telega-root-aux-append #'telega-ins--proxy-status)
-        (telega-proxy-status--fetch-proxies))
+        (when (telega-server-live-p)
+          (telega-proxy-status--fetch-proxies)))
 
     (telega-root-aux-remove #'telega-ins--proxy-status)
     (advice-remove 'telega--on-updateOption

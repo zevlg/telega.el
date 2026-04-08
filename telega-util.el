@@ -54,14 +54,6 @@
 
 (declare-function telega-match-p "telega-match-p" (object temex))
 
-(defun telega-file-exists-p (filename)
-  "Return non-nil if FILENAME exists.
-Unlike `file-exists-p' this return nil for empty string FILENAME.
-Also return `nil' if FILENAME is `nil'."
-  (and filename
-       (not (string-empty-p filename))
-       (file-exists-p filename)))
-
 (defun telega-plist-del (plist prop)
   "From PLIST destructively remove property PROP."
   ;; NOTE: `cl--plist-remove' has been removed in Emacs master
@@ -2451,8 +2443,7 @@ integer values, then absolute value in pixels is used."
                   (or (plist-get bracket-props :rx) 0.25))
                  (xpos (round (* w (if left-p pos-fraction (- 1 pos-fraction)))))
                  (sw (or outline-width 0))
-                 (sw2 (/ sw 2.0))
-                 image)
+                 (sw2 (/ sw 2.0)))
             (svg--def svg mask)
             (svg-rectangle mask 0 0 w h :fill "white")
             (svg-rectangle mask (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
@@ -2462,15 +2453,8 @@ integer values, then absolute value in pixels is used."
                            :stroke-width sw
                            :stroke-color "black")
 
-            ;; NOTE from `face-background' docstring:
-            ;;   On TTY frames, the returned color name can be
-            ;;   "unspecified-bg", which stands for the unknown default
-            ;;   background color of the display where the frame is
-            ;;   displayed.
             (svg-rectangle svg 0 0 w h
-                           :fill (if (equal fill-color "unspecified-bg")
-                                     "black"
-                                   (telega-color-name-as-hex-2digits fill-color))
+                           :fill (telega-color-name-as-hex-2digits fill-color)
                            :mask "url(#hole)")
 
             (when (> sw 0)
@@ -2497,109 +2481,6 @@ integer values, then absolute value in pixels is used."
                            :ascent 'center)))
               (telega-emoji--image-cache-put cacheprop 1 image)
               image))))))
-
-(defun telega-box-button--edge-image (which style)
-  "Create left or right button edge image
-WHICH is one of: `left' or `right'.
-STYLE is a style plist."
-  (declare (indent 1))
-  (cl-assert (memq which '(left right right-sm-tag)))
-  ;; NOTE: always use default face background and outline color in the
-  ;; cache key, so changing theme will recreate button image
-  (let* ((fill-color (or (telega-box-button--style-get style :background)
-                         (face-background 'default)))
-         (outline-color (telega-box-button--style-outline-color style))
-         (cacheprop (format "button-edge-%S-%S-%S-%S"
-                            which style fill-color outline-color)))
-    (or ;(and (not (telega-box-button--style-get style :no-cache))
-        ;     (telega-emoji--image-cache-get cacheprop 1))
-        (let* ((w (telega-chars-xwidth 1))
-               (h (telega-chars-xheight 1))
-               (svg (telega-svg-create w h))
-               (mask (dom-node 'mask `((id . "hole"))))
-               (left-p (eq which 'left))
-               (pos-fraction
-                (if (eq which 'right-sm-tag)
-                    0.0
-                  (or (telega-box-button--style-get style :x-margin) 0.5)))
-               (round-fraction
-                (or (telega-box-button--style-get style :round-corner) 0.25))
-               (xpos (round (* w (if left-p pos-fraction (- 1 pos-fraction)))))
-               (sw (or (telega-box-button--style-outline-width style) 0))
-               (sw2 (/ sw 2.0))
-               image)
-          (svg-rectangle svg (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
-                         (if left-p (+ w w) (+ w xpos)) (- h sw)
-                         :rx (round (* h round-fraction))
-                         :fill "currentColor"
-                         :stroke-width sw
-                         :stroke-color
-                         (if outline-color
-                             (telega-color-name-as-hex-2digits outline-color)
-                           "currentColor"))
-
-          ;; (svg--def svg mask)
-          ;; (svg-rectangle mask 0 0 w h :fill "white")
-          ;; (svg-rectangle mask (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
-          ;;                (if left-p (+ w w) (+ w xpos)) (- h sw)
-          ;;                :rx (round (* h round-fraction))
-          ;;                :fill "black"
-          ;;                :stroke-width sw
-          ;;                :stroke-color "black")
-          ;; (when (eq which 'right-sm-tag)
-          ;;   ;; TODO: draw tag curve and circle hole
-          ;;   (svg-polygon svg (list (cons 0 0)
-          ;;                          (cons w (round (/ h 2)))
-          ;;                          (cons 0 h))
-          ;;                :rx (round (* h round-fraction))
-          ;;                :stroke-width sw
-          ;;                :fill "black")
-          ;;   (svg-circle mask (round (/ w 2)) (round (/ h 2))
-          ;;               (round (/ (* h round-fraction) 3))
-          ;;               :fill "white")
-          ;;   )
-          
-          ;; (svg-rectangle svg 0 0 w h
-          ;;                :fill (telega-color-name-as-hex-2digits fill-color)
-          ;;                :mask "url(#hole)")
-          ;; (when sw
-          ;;   (svg-rectangle svg (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
-          ;;                  (if left-p (+ w w) (+ w xpos)) (- h sw)
-          ;;                  :rx (round (* h round-fraction))
-          ;;                  :fill "none"
-          ;;                  :stroke-width sw
-          ;;                  :stroke-color
-          ;;                  (if outline-color
-          ;;                      (telega-color-name-as-hex-2digits outline-color)
-          ;;                    "currentColor")
-          ;;                  ))
-          ;; ;; Icon in the right top corner
-          ;; (unless left-p
-          ;;   (when-let ((icon (telega-box-button--style-get style :icon-symbol)))
-          ;;     (svg-text svg icon :font-size w :x 0 :y w
-          ;;               :stroke-color "currentColor")))
-
-          (setq image (telega-svg-image svg
-                        :scale 1.0
-                        :height (telega-ch-height 1)
-                        :telega-text (if left-p "[" "]")
-                        :mask 'heuristic
-                        :ascent 'center))
-          (telega-emoji--image-cache-put cacheprop 1 image)
-          image))))
-
-(defun telega-box-button--edge-image-left (style)
-  "Generate left edge image for the box button."
-  (telega-box-button--edge-image 'left style))
-
-(defun telega-box-button--edge-image-right (style)
-  "Generate right edge image for the box button."
-  (telega-box-button--edge-image 'right style))
-
-(defun telega-box-button--edge-image-right-sm-tag (style)
-  "Generate right edge image for the SavedMessages tag button."
-  ;; TODO: draw edge
-  (telega-box-button--edge-image 'right-sm-tag style))
 
 (cl-defun telega-svg-create-checkmark (checkmark-sym &key double-p
                                                      (stroke-width 1.0))
@@ -2906,6 +2787,12 @@ If FILE is local, then return expanded FILE."
 
 (defun telega-color-name-as-hex-2digits (color)
   "Convert COLOR to #rrggbb form."
+  ;; NOTE from `face-background' docstring:
+  ;;   On TTY frames, the returned color name can be "unspecified-bg",
+  ;;   which stands for the unknown default background color of the
+  ;;   display where the frame is displayed.
+  (when (equal color "unspecified-bg")
+    (setq color "black"))
   (apply #'color-rgb-to-hex (append (color-name-to-rgb color) '(2))))
 
 (defun telega-color-name-from-rgb24 (rgb24)
@@ -3002,13 +2889,15 @@ Also, applies `telega-image-transform-smoothing' setting."
   "Create image from etc's FILENAME.
 Width for the resulting image will be of CWIDTH chars.
 Maximum height for the image is 1."
-  (apply #'telega-create-image (telega-etc-file filename) nil nil
-         :scale 1.0
-         :ascent 'center
-         :mask 'heuristic
-         :max-height (telega-ch-height 1)
-         :width (telega-cw-width cwidth)
-         props))
+  (let ((abs-filename (telega-etc-file filename)))
+    (apply #'telega-create-image abs-filename
+           (when (equal "svg" (file-name-extension abs-filename)) 'svg) nil
+           :scale 1.0
+           :ascent 'center
+           :mask 'heuristic
+           :max-height (telega-ch-height 1)
+           :width (telega-cw-width cwidth)
+           props)))
 
 (defconst telega-symbol-animations
   '((dots "." ".." "...")

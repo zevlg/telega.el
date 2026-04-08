@@ -203,24 +203,8 @@ markup buttons only.  Otherwise, extract links from MSG body as well."
 
 (defun telega-adblock--link-other-channel-p (chat link-spec)
   "Return non-nil if link points to another channel."
-  (when-let* ((tme-internal-link (telega-tme-open (cdr link-spec) 'offline))
-              ;; NOTE: to avoid errors like:
-              ;;  string-prefix-p: Wrong type argument: stringp,
-              ;;  (:@type "internalLinkTypeWebApp" ..)
-              (string-p (stringp tme-internal-link)))
-    (or (string-prefix-p "tg:join?" tme-internal-link)
-        (string-prefix-p "tg:msg_url?" tme-internal-link)
-        (and (string-prefix-p "tg:privatepost?" tme-internal-link)
-             ;; Link URL is not direct url to the CHAT's message
-             (not (when-let* ((info (telega-chat--supergroup chat 'locally))
-                              (cid (plist-get info :id)))
-                    (string-prefix-p (format "tg:privatepost?channel=%d" cid)
-                                     tme-internal-link))))
-        (and (string-prefix-p "tg:resolve?" tme-internal-link)
-             ;; Link URL is not direct url to the CHAT
-             (not (when-let ((chat-username (telega-chat-username chat)))
-                    (string-prefix-p (concat "tg:resolve?domain=" chat-username)
-                                     tme-internal-link)))))))
+  ;; TODO: use `telega--getInternalLinkType' and check it
+  nil)
 
 (defun telega-adblock--link-cheating-p (link-spec)
   "Return non-nil if link is cheating on me.

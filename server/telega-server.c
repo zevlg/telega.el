@@ -73,7 +73,7 @@ void pngext_main(int ac, char** av);
 char* logfile = NULL;
 size_t logfile_size = 4 * 1024 * 1024;
 int verbosity = 5;
-const char* version = "1.1.0";
+const char* version = "1.2.0";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -143,6 +143,16 @@ output_json_prepare(const char* otype, const char* json,
 {
         if (verbosity > 4) {
                 fprintf(stderr, "[telega-server] OUTPUT %s: %s\n", otype, json);
+        }
+
+        if ((optimize & OPTIMIZE_EMPTY_OK)
+            && !strncmp("{\"@type\":\"ok\"}", json, 15))
+        {
+                if (verbosity > 4)
+                        fprintf(stderr,
+                                "[telega-server] OPTIMIZE_EMPTY_OK\n");
+                return;
+                /* NOT REACHED */
         }
 
         if ((optimize & OPTIMIZE_NOTIFICATIONS)

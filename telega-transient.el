@@ -1357,13 +1357,29 @@ Return fake chat suitable for `telega-ins--msg-sender'."
                            telega-translate-to-language-by-default))))
   :variable :translate-language)
 
+(transient-define-infix telega-transient--infix-ai-tone ()
+  "Tone to use for translation or summarization."
+  :description (lambda () (telega-i18n "lng_ai_compose_tab_style"))
+  :class 'telega-transient--variable
+  :format " %k %d (%v)"
+  :argument ""
+  :always-read t
+  :choices telega-ai-tone-list
+  :prompt (lambda (_obj)
+            (concat (telega-i18n "lng_ai_compose_select_style") ": "))
+  :init-value (lambda (obj)
+                (oset obj value
+                      (or (telega-transient--variable-get :translate-ai-tone)
+                          (car telega-ai-tone-list))))
+  :variable :translate-ai-tone)
+
 (transient-define-infix telega-transient--infix-translate-show-original ()
   "Keep original content of the message when translating."
   :description (lambda () "telega-translate-show-original-content")
   :class 'telega-transient--checkbox-switch
   :variable 'telega-translate-show-original-content)
 
-(defun telega-transient--infix-language-code ()
+(defun telega-transient--translate-language-code ()
   "Return language as language code."
   (let ((args (transient-args
                (or transient-current-command
@@ -1371,6 +1387,12 @@ Return fake chat suitable for `telega-ins--msg-sender'."
     (alist-get (telega-transient-args-get args :translate-language)
                (telega-i18n-translate-languages-alist)
                nil nil #'equal)))
+
+(defun telega-transient--translate-ai-tone ()
+  (telega-transient-args-get
+   (transient-args (or transient-current-command
+                       'telega-transient-msg-translate))
+   :translate-ai-tone))
 
 (transient-define-suffix telega-transient--suffix-translate (msg)
   "Translate message."
@@ -1384,7 +1406,8 @@ Return fake chat suitable for `telega-ins--msg-sender'."
          (telega-ins " " (telega-symbol 'right-arrow) " " to-lang)))))
 
   (interactive (list (telega-transient-scope)))
-  (telega-msg-translate msg (telega-transient--infix-language-code)))
+  (telega-msg-translate msg (telega-transient--translate-language-code)
+                        (telega-transient--translate-ai-tone)))
 
 (transient-define-suffix telega-transient--suffix-translate-summarize-disable
   (msg)
@@ -1413,31 +1436,34 @@ Return fake chat suitable for `telega-ins--msg-sender'."
                     (plist-get (telega-transient-scope) :summary_language_code))
                    ")"))))
   :if (lambda ()
-        (let* ((msg (telega-transient-scope))
-               (summary-lang-code (plist-get msg :summary_language_code))
-               (summary (plist-get msg :telega-summary)))
-          (and summary-lang-code
-               (or (not summary)
-                   (plist-get summary :to_language_code)))))
+        (plist-get (telega-transient-scope) :summary_language_code))
 
   (interactive (list (telega-transient-scope)))
-  (telega-msg-summarize msg))
+  (telega-msg-summarize msg nil (telega-transient--translate-ai-tone)))
 
 (transient-define-suffix telega-transient--suffix-summarize-translate (msg)
-  :description (lambda ()
-                 (concat (telega-i18n "lng_summarize_header_title")
-                         " & "
-                         (telega-i18n "lng_context_translate")))
+  :description 
+  (lambda ()
+    (telega-ins--as-string
+     (telega-ins (telega-i18n "lng_summarize_header_title")
+                 " & "
+                 (telega-i18n "lng_context_translate"))
+     (when-let ((to-lang (telega-transient--variable-get
+                          :translate-language)))
+       (telega-ins--with-face 'telega-shadow
+         (telega-ins " " (telega-symbol 'right-arrow) " " to-lang)))))
   :if (lambda ()
         (plist-get (telega-transient-scope) :summary_language_code))
 
   (interactive (list (telega-transient-scope)))
-  (telega-msg-summarize msg (telega-transient--infix-language-code)))
+  (telega-msg-summarize msg (telega-transient--translate-language-code)
+                        (telega-transient--translate-ai-tone)))
 
 (transient-define-prefix telega-transient-msg-translate (msg)
   [:description (lambda ()
                   (telega-i18n "lng_context_translate"))
    ("l" telega-transient--infix-language)
+   ("i" telega-transient--infix-ai-tone)
    ("o" telega-transient--infix-translate-show-original)
    ]
   [
@@ -1551,7 +1577,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
        (telega-ins-describe-item (telega-i18n "lng_proxy_box_server")
          (telega-ins (telega-tl-str tl-proxy :server)))
        (telega-ins-describe-item (telega-i18n "lng_proxy_box_port")
-         (telega-ins-fmt "%d" (plist-get tl-proxy :port) "\n"))
+         (telega-ins-fmt "%d" (plist-get tl-proxy :port)))
        )))
   :class 'telega-transient-information)
 
@@ -1578,7 +1604,6 @@ Return fake chat suitable for `telega-ins--msg-sender'."
   :description
   (lambda ()
     (let* ((scope (telega-transient-scope))
-           (tl-proxy (nth 0 scope))
            (ping (nth 1 scope)))
       (telega-ins--as-string
        (telega-ins-i18n "lng_proxy_box_status")
@@ -1622,6 +1647,88 @@ Return fake chat suitable for `telega-ins--msg-sender'."
                    ;; NOTE: scope is a list, where first element is
                    ;; TL-PROXY and second its ping stats
                    :scope (list tl-proxy ping-stats)))
+
+
+;;; AI text composition
+(transient-define-infix telega-transient--infix-input-ai-compose-translate ()
+  "Translate"
+  :description "Translate"
+  :class 'telega-transient--checkbox-switch
+  :variable :ai-compose-translate-p
+  )
+
+(transient-define-infix telega-transient--infix-input-ai-compose-fix ()
+  "Fix"
+  :description "Fix"
+  :class 'telega-transient--checkbox-switch
+  :variable :ai-compose-fix-p
+  )
+
+(transient-define-infix telega-transient--infix-input-ai-compose-style ()
+  "Style"
+  :description "Style"
+  :class 'telega-transient--checkbox-switch
+  :variable :ai-compose-style-p
+  )
+
+(transient-define-infix telega-transient--infix-input-ai-compose-emojify ()
+  "Emojify"
+  :description (lambda () (telega-i18n "lng_ai_compose_emojify"))
+  :class 'telega-transient--checkbox-switch
+  :variable :ai-compose-emojify-p)
+
+(transient-define-infix telega-transient--infix-input-ai-compose-preview ()
+  "Preview for the AI text composition."
+  :description "Preview"
+  :class 'telega-transient-information
+  )
+
+(transient-define-suffix telega-transient--suffix-input-ai-compose-apply
+  (fmt-text args)
+  :description (lambda ()
+                 (telega-i18n "lng_settings_apply"))
+
+  (interactive (list (telega-transient-scope)
+                     (transient-args
+                      (or transient-current-command
+                          'telega-transient-chatbuf-input-ai-compose))))
+
+  (setq telega-chatbuf--input-options-plist args)
+  (telega-chatbuf--chat-update "aux-plist")
+  (telega-chatbuf--prompt-update))
+
+(transient-define-prefix telega-transient-chatbuf-input-ai-compose (imc)
+  "Compose text input for the chatbuf."
+  [:description (lambda () (telega-i18n "lng_ai_compose_title"))
+   [:pad-keys t
+    ""
+    ("t" telega-transient--infix-input-ai-compose-translate)
+    ("f" telega-transient--infix-input-ai-compose-fix)
+    ("s" telega-transient--infix-input-ai-compose-style)
+    ]
+   ("e" telega-transient--infix-input-ai-compose-emojify)
+   " "
+   (telega-transient--infix-input-ai-compose-preview)
+
+   " "
+   ("RET" telega-transient--suffix-input-ai-compose-apply)
+   ]
+
+  (interactive
+   (list (let* ((arg current-prefix-arg)
+                (markup-name (if (and arg (listp arg))
+                                 (nth (round (log (car arg) 4))
+                                      telega-chat-input-markups)
+                               (car telega-chat-input-markups)))
+                (imcs (telega-chatbuf--input-imcs markup-name)))
+           ;; Find first available text imc
+           (seq-find (lambda (imc)
+                       (eq 'inputMessageText (telega--tl-type imc)))
+                     imcs))))
+  (unless imc
+    (user-error "No input for AI compose"))
+  (transient-setup 'telega-transient-chatbuf-input-ai-compose nil nil
+                   :scope (plist-get imc :text)))
 
 
 ;;; ellit-org: minor-modes

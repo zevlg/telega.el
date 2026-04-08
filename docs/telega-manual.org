@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.621)
+#+title: Telega Manual (v0.8.630)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -239,7 +239,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.62-0ae923c49.
+version equal to v1.8.63-1677a0c77.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -1507,6 +1507,9 @@ Use ~telega-user-match-p~ to match a user.
 - has-rating :: 
      Matches if user has rating.
      Return rating.
+
+- uses-unofficial-app :: 
+     Matches if user uses an unofficial application that poses a security risk.
 ** List of Message Sender Temexes
 :PROPERTIES:
 :CUSTOM_ID: list-of-message-sender-temexes
@@ -2500,7 +2503,7 @@ Customizable options for inline bots:
 :END:
 
 Message filtering means to show only some messages matching filter.
-Available message filters are: =favorite=, =scheduled=, =search=, =by-sender=, =hashtag=, =topic=, =tag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =mention=, =unread-mention=, =unread-reaction=, =failed-to-send=, =pinned=
+Available message filters are: =favorite=, =scheduled=, =search=, =by-sender=, =hashtag=, =topic=, =tag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =poll=, =mention=, =unread-mention=, =unread-reaction=, =unread-poll-vote=, =failed-to-send=, =pinned=
 
 Chatbuf uses next bindings for message filtering:
 - @@html:<kbd>@@C-c /@@html:</kbd>@@ (~telega-chatbuf-filter~) :: 
@@ -3400,15 +3403,16 @@ Customizable options:
 
 Global minor mode to display Telegram proxy status in the rootbuf.
 
-Enable it with ~(telega-proxy-status-mode 1)~ or at =telega= load time:
+Enable it with ~(telega-proxy-status-mode 1)~ or before authorization:
 #+begin_src emacs-lisp
-  (add-hook 'telega-load-hook 'telega-proxy-status-mode)
+  (add-hook 'telega-before-auth-hook 'telega-proxy-status-mode)
 #+end_src
 
 Customizable options:
 - User Option: ~telega-proxy-status-auto~ 
 
-  Automatically enable ~telega-proxy-status-mode~ when proxy is enabled. 
+  Automatically enable ~telega-proxy-status-mode~ when proxy is enabled.
+  Also, enable ~telega-proxy-status-mode~ if Telegram blocking is expected. 
 
   Default value: ~t~
 ** telega-transient-keymaps-mode -- Use transient for telega keymaps

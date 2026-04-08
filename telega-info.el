@@ -243,6 +243,16 @@ For secret chats return nil."
                     (telega-msg-sender-block user)))))
     (telega-ins "\n")
 
+    ;; Information about use of unofficial app that poses a security risk
+    (when (plist-get full-info :uses_unofficial_app)
+      (telega-ins (telega-symbol 'poses-risk) " ")
+      (telega-ins--msg-sender user)
+      (telega-ins--with-face 'telega-shadow
+        (telega-ins " "
+                    ;; TODO: i18n
+                    "uses an unofficial Telegram client - messages to this user may be less secure."))
+      (telega-ins "\n"))
+
     ;; Первый трек музыкальный
     (when-let ((profile-audio (plist-get full-info :first_profile_audio)))
       (telega-ins-describe-item (telega-i18n "lng_media_music_title")

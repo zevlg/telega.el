@@ -88,7 +88,7 @@ PARAMS is a plist of additional parameters to the returned link."
          (post-spec (url-target urlobj))
          (params (telega-tme-parse-query-string (cdr path-query)))
          (chat (or (unless (equal "telega" (url-type urlobj))
-                     (error "telega: non-internal link: %s" telega-link))
+                     (error "telega: non-internal link: %s" telega-link-url))
                    (if (string-prefix-p "@" chat-spec)
                        (telega-chat-by-username (substring chat-spec 1))
                      (telega-chat-get (string-to-number chat-spec) 'offline))
@@ -284,8 +284,9 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
 
     (internalLinkTypeUpgradedGift
      (let ((gift (telega--getUpgradedGift (telega-tl-str tdlib-link :name))))
-       (message "telega: TODO, show upgraded gift \"%s\""
-                (telega-tl-str tdlib-link :name))
+       (message "telega: TODO, show upgraded gift \"%s\": %S"
+                (telega-tl-str tdlib-link :name)
+                gift)
        ))
 
     (internalLinkTypePublicChat
@@ -416,7 +417,8 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
     (internalLinkTypeChatFolderInvite
      (let ((folder-info (telega--checkChatFolderInviteLink
                          (plist-get tdlib-link :invite_link))))
-       (error "TODO: telega-describe-chat-folder-info")
+       (error "TODO: telega-describe-chat-folder-info: %S"
+              folder-info)
        ))
     ))
 

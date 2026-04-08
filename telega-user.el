@@ -169,6 +169,14 @@ Return nil if given FMT-TYPE is not available."
             (telega-msg-sender--verification-badges
              (plist-get user :verification_status))
 
+            ;; Blocking Status badge
+            (when (telega-user-match-p user 'is-blocked)
+              (telega-symbol 'blocked))
+
+            ;; Unofficial app risk
+            (when (telega-user-match-p user 'uses-unofficial-app)
+              (telega-symbol 'poses-risk))
+
             name
 
             ;; Premium Badge
@@ -178,10 +186,7 @@ Return nil if given FMT-TYPE is not available."
                      (plist-get user :emoji_status))))
                   ((plist-get user :is_premium)
                    (telega-symbol 'premium)))
-
-            ;; Blocking Status badge
-            (when (telega-user-match-p user 'is-blocked)
-              (telega-symbol 'blocked))))
+            ))
           (name name)
           ((not (eq fmt-type 'username))
            ;; For some users only ID is known

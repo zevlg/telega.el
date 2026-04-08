@@ -45,6 +45,14 @@
 (defvar telega--lib-directory nil
   "The directory from where this library was first loaded.")
 
+(defun telega-file-exists-p (filename)
+  "Return non-nil if FILENAME exists.
+Unlike `file-exists-p' this return nil for empty string FILENAME.
+Also return `nil' if FILENAME is `nil'."
+  (and filename
+       (not (string-empty-p filename))
+       (file-exists-p filename)))
+
 (defun telega-etc-file (filename)
   "Return absolute path to FILENAME from etc/ directory in telega.
 Use FILENAME as is if resulting file does not exist."
@@ -211,6 +219,12 @@ Updated on `updateDefaultPaidReactionType' event.")
     ("Vietnamese" . "vi") ("Welsh" . "cy") ("Xhosa" . "xh")
     ("Yiddish" . "yi") ("Yoruba" . "yo") ("Zulu" . "zu"))
   "Language codes used for translations.")
+
+(defconst telega-ai-tone-list '("neutral" "formal" "casual")
+  "List of supported styles (tones) for the AI.")
+
+(defvar telega-ai-composition-styles-alist nil
+  "Alist of textCompositionStyle TL structures.")
 
 (defconst telega-history-search-separators
   (rx (one-or-more (or space "=" "-" "_" "." "," ":" ";" "^" "|" "(" ")" "[" "]" "{" "}")))

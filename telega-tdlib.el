@@ -105,25 +105,25 @@ If SYNC-P is specified, then set option is sync manner."
 (defun telega--addProxy (tl-proxy &optional enable-p callback)
   "Add PROXY-SPEC to the list of proxies."
   (declare (indent 2))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "addProxy"
          :proxy tl-proxy
          :enable (if enable-p t :false))
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--enableProxy (proxy-id &optional callback)
   "Enable proxy by PROXY-ID."
   (declare (indent 1))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "enableProxy"
          :proxy_id proxy-id)
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--disableProxy (&optional callback)
   "Disable the currently enabled proxy."
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "disableProxy")
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--pingProxy (tl-proxy &optional callback)
   "Get time needed to receive a response from a Telegram server through a PROXY."
@@ -136,10 +136,10 @@ If SYNC-P is specified, then set option is sync manner."
 (defun telega--removeProxy (proxy-id &optional callback)
   "Remove proxy server by PROXY-ID."
   (declare (indent 1))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "removeProxy"
          :proxy_id proxy-id)
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--searchEmojis (text &optional exact-match-p
                                   language-codes callback)
@@ -558,11 +558,11 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
 (defun telega--setMessageSenderBlockList (msg-sender tl-block-list
                                                      &optional callback)
   "Set Toggle block state of a CHAT."
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "setMessageSenderBlockList"
          :sender_id (telega--MessageSender msg-sender)
          :block_list tl-block-list)
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--getBlockedMessageSenders (block-list &optional offset callback)
   "Get list of chats blocked by me.
@@ -1045,12 +1045,12 @@ CHAT must be supergroup or channel."
 (defun telega--transferChatOwnership (chat to-user password &optional callback)
   "Transfer ownership of the CHAT supergroup TO-USER."
   (declare (indent 3))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "transferChatOwnership"
          :chat_id (plist-get chat :id)
          :user_id (plist-get to-user :id)
          :password password)
-   (or callback 'ignore)))
+   callback))
 
 (defun telega--getActiveSessions (&optional callback)
   "Get and return list of active sessions."
@@ -1383,19 +1383,19 @@ LIMIT - limit number of photos (default=100)."
 
 (defun telega--setProfilePhoto (filename &optional callback)
   "Upload a new profile photo for the current user."
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "setProfilePhoto"
          :photo (list :@type "inputFileLocal"
                       :path (expand-file-name filename)))
-   (or callback 'ignore)))
+   callback))
 
 (defun telega--deleteProfilePhoto (profile-photo-id &optional callback)
   "Delete profile photo by PROFILE-PHOTO-ID."
   (declare (indent 1))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "deleteProfilePhoto"
          :profile_photo_id profile-photo-id)
-   (or callback 'ignore)))
+   callback))
 
 (defun telega--setName (first-name last-name)
   "Set me name to FIRST-NAME and LAST-NAME."
@@ -1406,10 +1406,10 @@ LIMIT - limit number of photos (default=100)."
 
 (defun telega--setBio (bio &optional callback)
   "Set me bio to BIO."
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "setBio"
          :bio (or bio ""))
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--setUsername (username)
   "Set me username to USERNAME.
@@ -1422,13 +1422,13 @@ Empty string to unset username."
   "Changes the photo of a CHAT.
 Requires `:can_change_info' rights."
   (declare (indent 2))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "setChatPhoto"
          :chat_id (plist-get chat :id)
          :photo (list :@type "inputChatPhotoStatic"
                       :photo (list :@type "inputFileLocal"
                                    :path (expand-file-name filename))))
-   (or callback 'ignore)))
+   callback))
 
 (defun telega--setChatMessageAutoDeleteTime (chat auto-delete-seconds)
   "Change the message auto-delete time in a CHAT.
@@ -1491,16 +1491,17 @@ If DRAFT-MSG is ommited, then clear draft message."
   "Add a CHAT to a TDLIB-CHAT-LIST.
 A chat can't be simultaneously in Main and Archive chat lists, so
 it is automatically removed from another one if needed."
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "addChatToList"
          :chat_id (plist-get chat :id)
          :chat_list tdlib-chat-list)
-   (or callback 'ignore)))
+   callback))
 
-(defun telega--getChatFolder (folder-id)
+(defun telega--getChatFolder (folder-id &optional callback)
   (telega-server--call
    (list :@type "getChatFolder"
-         :chat_folder_id folder-id)))
+         :chat_folder_id folder-id)
+   callback))
 
 (defun telega--createChatFolder (chat-folder &optional callback)
   "Create new CHAT-FOLDER.
@@ -1512,11 +1513,11 @@ Return chatFolderInfo."
 
 (defun telega--editChatFolder (folder-id new-chat-folder &optional callback)
   (declare (indent 2))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "editChatFolder"
          :chat_folder_id folder-id
          :folder new-chat-folder)
-   (or callback 'ignore)))
+   callback))
 
 (defun telega--deleteChatFolder (folder-id &optional leave-chats)
   (telega-server--send
@@ -1721,13 +1722,13 @@ TDLib 1.8.3"
   "Add a FILE from a message MSG to the list of file downloads.
 TDLib 1.8.2"
   (declare (indent 2))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "addFileToDownloads"
          :file_id (plist-get file :id)
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
          :priority priority)
-   (or callback #'ignore)))
+   callback))
 
 (cl-defun telega--preliminaryUploadFile (filename &key file-type priority
                                                   callback)
@@ -2169,11 +2170,11 @@ Default LIMIT is 30."
   "Load more chats from a CHAT-LIST.
 Return error if all chats are loaded."
   (declare (indent 1))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "loadChats"
          :chat_list chat-list
          :limit 1000)
-   (or callback 'ignore)))
+   callback))
 
 (defun telega--getChats (chat-list &optional callback)
   "Retreive all chats from the server in async manner.
@@ -2287,13 +2288,14 @@ Use non-nil value for FORCE, if messages in closed chats should
 be marked as read."
   (declare (indent 2))
   (cl-assert chat)
-  (telega-server--call
-   (list :@type "viewMessages"
-         :chat_id (plist-get chat :id)
-         :message_ids (cl-map #'vector (telega--tl-prop :id) messages)
-         :source (or source '(:@type "messageSourceOther"))
-         :force_read (if force t :false))
-   (or callback #'ignore)))
+  (let ((req (list :@type "viewMessages"
+                   :chat_id (plist-get chat :id)
+                   :message_ids (cl-map #'vector (telega--tl-prop :id) messages)
+                   :source (or source '(:@type "messageSourceOther"))
+                   :force_read (if force t :false))))
+    (if callback
+        (telega-server--call req callback)
+      (telega-server--send req))))
 
 (defun telega--toggleChatIsPinned (chat)
   "Toggle pin state of the CHAT in the `telega-tdlib--chat-list'."
@@ -2671,12 +2673,12 @@ Pass non-nil UPDATE-RECENT-REACTIONS-P to update recent reactions."
 (defun telega--removeMessageReaction (msg tl-reaction-type &optional callback)
   "Remove a reaction from a message."
   (declare (indent 2))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "removeMessageReaction"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
          :reaction_type (telega--ReactionType tl-reaction-type))
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--setChatAvailableReactions (chat reactions)
   "Change REACTIONS, available in a CHAT."
@@ -2766,29 +2768,34 @@ For Telegram Premium users only."
          :new_recovery_email_address new-recovery-email)
    callback))
 
-(cl-defun telega--translateText (text to-language-code &key callback)
+(cl-defun telega--translateText (text to-language-code &key tone callback)
   "Translate TEXT to a language specified by TO-LANGUAGE-CODE.
-TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code. "
+TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code.
+TONE is one of \"formal\", \"neutral\", \"casual\"."
   (declare (indent 2))
   (telega-server--call
-   (list :@type "translateText"
-         ;; NOTE: Accepts "formattedText" as argument
-         :text (if (stringp text)
-                   (telega-fmt-text text)
-                 text)
-         :to_language_code to-language-code)
+   (nconc (list :@type "translateText"
+                ;; NOTE: Accepts "formattedText" as argument
+                :text (if (stringp text)
+                          (telega-fmt-text text)
+                        text)
+                :to_language_code to-language-code)
+          (when tone
+            (list :tone tone)))
    callback))
 
-(cl-defun telega--translateMessageText (msg to-language-code &key callback)
+(cl-defun telega--translateMessageText (msg to-language-code &key tone callback)
   (declare (indent 2))
   (telega-server--call
-   (list :@type "translateMessageText"
-         :chat_id (plist-get msg :chat_id)
-         :message_id (plist-get msg :id)
-         :to_language_code to-language-code)
+   (nconc (list :@type "translateMessageText"
+                :chat_id (plist-get msg :chat_id)
+                :message_id (plist-get msg :id)
+                :to_language_code to-language-code)
+          (when tone
+            (list :tone tone)))
    callback))
 
-(cl-defun telega--summarizeMessage (msg &key to-language-code callback)
+(cl-defun telega--summarizeMessage (msg &key to-language-code tone callback)
   "Summarize content of the message MSG with non-empty `:summary_language_code'."
   (declare (indent 1))
   (telega-server--call
@@ -2796,7 +2803,9 @@ TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code. "
                 :chat_id (plist-get msg :chat_id)
                 :message_id (plist-get msg :id))
           (when to-language-code
-            (list :translate_to_language_code to-language-code)))
+            (list :translate_to_language_code to-language-code))
+          (when tone
+            (list :tone tone)))
    callback))
 
 (defun telega--setAlarm (seconds &optional callback)
@@ -2821,10 +2830,10 @@ TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code. "
     callback))
   
 (defun telega--setNetworkType (tdlib-network-type &optional callback)
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "setNetworkType"
          :type tdlib-network-type)
-   (or callback 'ignore)))
+   callback))
 
 (defun telega--getNetworkStatistics (&optional only-current-p callback)
   (declare (indent 1))
@@ -3125,13 +3134,14 @@ Mode activates for
   "Boost a CHAT.
 Return list of available boost slots."
   (declare (indent 1))
-  (with-telega-server-reply (reply)
-      (append (plist-get reply :slots) nil)
-
-    (list :@type "boostChat"
-          :chat_id (plist-get chat :id)
-          :slot_ids (cl-map 'vector (telega--tl-prop :id) boost-slots))
-    (or callback 'ignore)))
+  (let ((req (list :@type "boostChat"
+                   :chat_id (plist-get chat :id)
+                   :slot_ids (cl-map 'vector #'telega--tl-id boost-slots))))
+    (if callback
+        (with-telega-server-reply (reply)
+            (append (plist-get reply :slots) nil)
+          req callback)
+      (telega-server--send req))))
 
 (defun telega--getChatBoostLinkInfo (url &optional callback)
   (telega-server--call
@@ -3282,18 +3292,18 @@ URL to open after a link of the type internalLinkTypeWebApp is clicked."
 
 (defun telega--loadDirectMessagesChatTopics (chat &optional limit callback)
   (declare (indent 1))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "loadDirectMessagesChatTopics"
          :chat_id (plist-get chat :id)
          :limit (or limit 100))
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--loadSavedMessagesTopics (&optional limit callback)
   (declare (indent 1))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "loadSavedMessagesTopics"
          :limit (or limit 100))
-   (or callback #'ignore)))
+   callback))
 
 (cl-defun telega--getSavedMessagesTopicHistory (topic from-msg-id offset
                                                       &key limit callback)
@@ -3343,11 +3353,11 @@ Saved Messages topic is specified by SM-TOPIC-ID."
 (defun telega--setSavedMessagesTagLabel (tag label &optional callback)
   "Changes label of a Saved Messages tag; for Telegram Premium users only."
   (declare (indent 2))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "setSavedMessagesTagLabel"
          :tag (telega--ReactionType (plist-get tag :tag))
          :label label)
-   (or callback #'ignore)))
+   callback))
 
 (cl-defun telega--searchSavedMessages (from-msg-id offset
                                                    &key query limit tag
@@ -3369,34 +3379,34 @@ Saved Messages topic is specified by SM-TOPIC-ID."
 (cl-defun telega--shareUsersWithBot (bot-msg button-id users
                                              &key only-check-p callback)
   (declare (indent 3))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "shareUsersWithBot"
          :chat_id (plist-get bot-msg :chat_id)
          :message_id (plist-get bot-msg :id)
          :button_id button-id
          :shared_user_ids (cl-map #'vector (telega--tl-prop :id) users)
          :only_check (if only-check-p t :false))
-   (or callback #'ignore)))
+   callback))
 
 (cl-defun telega--shareChatWithBot (bot-msg button-id chat
                                             &key only-check-p callback)
   (declare (indent 3))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "shareChatWithBot"
          :chat_id (plist-get bot-msg :chat_id)
          :message_id (plist-get bot-msg :id)
          :button_id button-id
          :shared_chat_id (plist-get chat :id)
          :only_check (if only-check-p t :false))
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--toggleChatFolderTags (enabled-p &optional callback)
   "Toggles whether chat folder tags are enabled."
   (declare (indent 1))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "toggleChatFolderTags"
          :are_tags_enabled (if enabled-p t :false))
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--hideSuggestedAction (tl-suggested-action)
   (telega-server--send
@@ -3408,19 +3418,19 @@ Saved Messages topic is specified by SM-TOPIC-ID."
    (list :@type "hideContactCloseBirthdays")))
 
 (defun telega--toggleHasSponsoredMessagesEnabled (enable-p &optional callback)
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "toggleHasSponsoredMessagesEnabled"
          :has_sponsored_messages_enabled (if enable-p t :false))
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--toggleSupergroupCanHaveSponsoredMessages
     (supergroup enable-p &optional callback)
   "Toggles whether sponsored messages are shown in the channel chat."
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "toggleHasSponsoredMessagesEnabled"
          :supergroup_id (plist-get supergroup :id)
          :can_have_sponsored_messages (if enable-p t :false))
-   (or callback #'ignore)))
+   callback))
 
 (cl-defun telega--addPendingPaidMessageReaction (msg &key (star-count 1)
                                                      tl-paid-reaction-type)
@@ -3466,10 +3476,10 @@ Saved Messages topic is specified by SM-TOPIC-ID."
 
 (defun telega--removeRecentHashtag (hashtag &optional callback)
   "Remov a HASHTAG from the list of recently used hashtags."
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "removeRecentHashtag"
          :hashtag hashtag)
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--getBotSimilarBots (user &optional callback)
   "Return a list of bots similar to the given bot USER."
@@ -3595,12 +3605,12 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
          :input_message_content imc)))
 
 (defun telega--editMessageChecklist (msg input-checklist &optional callback)
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "editMessageChecklist"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
          :checklist input-checklist)
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--addChecklistTasks (msg &rest input-tasks)
   "Add tasks to a checklist in a message MSG."
@@ -3673,12 +3683,12 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
 (defun telega--processChatJoinRequest (chat user approve-p &optional callback)
   "Handle a pending join request."
   (declare (indent 3))
-  (telega-server--call
+  (telega-server--send-or-call
    (list :@type "processChatJoinRequest"
          :chat_id (plist-get chat :id)
          :user_id (plist-get user :id)
          :approve (if approve-p t :false))
-   (or callback #'ignore)))
+   callback))
 
 (defun telega--searchChatAffiliateProgram (username referrer &optional callback)
   "Searche a chat with an affiliate program."
@@ -3706,6 +3716,26 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
          :chat_id (plist-get chat :id)
          :user_id (plist-get user :id)
          :tag tag)))
+
+(cl-defun telega--composeTextWithAi (fmt-text &key (to-language-code "")
+                                              (style-name "")
+                                              with-emojis-p
+                                              callback)
+  "Changes text using an AI model."
+  (telega-server--call
+   (list :@type "composeTextWithAi"
+         :text fmt-text
+         :translate_to_language_code to-language-code
+         :style_name style-name
+         :add_emojis (if with-emojis-p t :false))
+   callback))
+
+(defun telega--fixTextWithAi (fmt-text &optional callback)
+  "Fixes text using an AI model."
+  (telega-server--call
+   (list :@type "fixTextWithAi"
+         :text fmt-text)
+   callback))
 
 (provide 'telega-tdlib)
 

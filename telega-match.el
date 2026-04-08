@@ -1069,6 +1069,13 @@ Return number of stars to be paid for a message."
 Return rating."
   (plist-get (telega--full-info user) :rating))
 
+;;; ellit-org: user-temex
+;; - uses-unofficial-app ::
+;;   {{{temexdoc(user, uses-unofficial-app, 2)}}}
+(define-telega-matcher user uses-unofficial-app (user)
+  "Matches if user uses an unofficial application that poses a security risk."
+  (plist-get (telega--full-info user) :uses_unofficial_app))
+
 
 ;;; Message Temexes
 ;;; ellit-org: msg-temex

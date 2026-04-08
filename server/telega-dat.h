@@ -15,6 +15,8 @@ extern int optimize;
 #define OPTIMIZE_EMPTY_LISTS   0x4
 /* Remove empty strings from resulting values */
 #define OPTIMIZE_EMPTY_STRINGS 0x8
+/* Remove "ok" replies without extra */
+#define OPTIMIZE_EMPTY_OK      0x10
 
 struct telega_dat {
         size_t cap;             /* data capacity */

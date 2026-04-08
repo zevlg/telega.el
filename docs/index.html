@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2026-03-31 Вт 23:37 -->
+<!-- 2026-04-08 Ср 22:50 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.621)</title>
+<title>Telega Manual (v0.8.630)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -68,7 +68,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.621)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.630)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -371,7 +371,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.62-0ae923c49.
+version equal to v1.8.63-1677a0c77.
 </p>
 
 <p>
@@ -873,7 +873,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgd0a416d">
+<pre class="example" id="org87f56a4">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -891,7 +891,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgba8b8c3">
+<pre class="example" id="orgdd7aa5e">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -980,7 +980,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org77d197e">
+<pre class="example" id="orgdd8cde4">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1018,7 +1018,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org71e16da">
+<pre class="example" id="org5236eb7">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1896,6 +1896,8 @@ By default <code>blockListMain</code> is used.</dd>
 
 <dt>has-rating</dt><dd>Matches if user has rating.
 Return rating.</dd>
+
+<dt>uses-unofficial-app</dt><dd>Matches if user uses an unofficial application that poses a security risk.</dd>
 </dl>
 </div>
 </div>
@@ -2445,7 +2447,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgb72ef02">
+<pre class="example" id="org5a017c0">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2649,7 +2651,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org863bb36">
+<pre class="example" id="org2cd7e60">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2681,7 +2683,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orgc71e42f">
+<pre class="example" id="orgee86edc">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3336,7 +3338,7 @@ Default value: <code>t</code>
 <div class="outline-text-3" id="text-filtering-chat-messages-aka-shared-media">
 <p>
 Message filtering means to show only some messages matching filter.
-Available message filters are: <code>favorite</code>, <code>scheduled</code>, <code>search</code>, <code>by-sender</code>, <code>hashtag</code>, <code>topic</code>, <code>tag</code>, <code>photo</code>, <code>photo-video</code>, <code>url</code>, <code>doc</code>, <code>file</code>, <code>gif</code>, <code>audio</code>, <code>video</code>, <code>voice-note</code>, <code>video-note</code>, <code>voice-video-note</code>, <code>chat-photo</code>, <code>mention</code>, <code>unread-mention</code>, <code>unread-reaction</code>, <code>failed-to-send</code>, <code>pinned</code>
+Available message filters are: <code>favorite</code>, <code>scheduled</code>, <code>search</code>, <code>by-sender</code>, <code>hashtag</code>, <code>topic</code>, <code>tag</code>, <code>photo</code>, <code>photo-video</code>, <code>url</code>, <code>doc</code>, <code>file</code>, <code>gif</code>, <code>audio</code>, <code>video</code>, <code>voice-note</code>, <code>video-note</code>, <code>voice-video-note</code>, <code>chat-photo</code>, <code>poll</code>, <code>mention</code>, <code>unread-mention</code>, <code>unread-reaction</code>, <code>unread-poll-vote</code>, <code>failed-to-send</code>, <code>pinned</code>
 </p>
 
 <p>
@@ -3577,7 +3579,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org838b109">
+<pre class="example" id="orge5f463f">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4754,10 +4756,10 @@ Global minor mode to display Telegram proxy status in the rootbuf.
 </p>
 
 <p>
-Enable it with <code>(telega-proxy-status-mode 1)</code> or at <code>telega</code> load time:
+Enable it with <code>(telega-proxy-status-mode 1)</code> or before authorization:
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook 'telega-proxy-status-mode)
+<pre class="src src-emacs-lisp">(add-hook 'telega-before-auth-hook 'telega-proxy-status-mode)
 </pre>
 </div>
 
@@ -4770,7 +4772,8 @@ User Option: <code>telega-proxy-status-auto</code>
 </p>
 
 <p>
-Automatically enable <code>telega-proxy-status-mode</code> when proxy is enabled. 
+Automatically enable <code>telega-proxy-status-mode</code> when proxy is enabled.
+Also, enable <code>telega-proxy-status-mode</code> if Telegram blocking is expected. 
 </p>
 
 <p>
@@ -4927,7 +4930,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgc8eaf13">
+<pre class="example" id="org8b2183b">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
