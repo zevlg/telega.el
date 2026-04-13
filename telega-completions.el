@@ -238,7 +238,6 @@ If FUZZY-MATCH is non-nil, also allow fuzzy hyphen matching."
 (defun telega-completions--emoji-candidates (prefix fuzzy-match)
   "Return local emoji candidates matching PREFIX.
 Use FUZZY-MATCH to control fuzzy hyphen matching."
-  (telega-emoji-init)
   (cl-remove-if-not
    (lambda (emoji-name)
      (telega-completions--emoji-match-p prefix emoji-name fuzzy-match))
@@ -568,11 +567,11 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
              (= (match-beginning 0) telega-chatbuf--input-marker))
     (cons (match-beginning 0) (point))))
 
-
 ;;; CAPF: local emoji (:<name>:)
 
 (defun telega-capf-emoji ()
   "CAPF for emoji completion using the local emoji list."
+  (telega-emoji-init)
   (when-let* ((end (point))
               (start (save-excursion
                        (and (re-search-backward
@@ -583,7 +582,6 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
                             (match-beginning 1))))
               (prefix (buffer-substring-no-properties start end))
               ((string-prefix-p ":" prefix)))
-    (telega-emoji-init)
     (let ((candidates
            (telega-completions--emoji-candidates
             prefix telega-completions-emoji-fuzzy-match)))
@@ -604,6 +602,7 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
 
 (defun telega-capf-telegram-emoji ()
   "CAPF for emoji completion using TDLib searchEmojis."
+  (telega-emoji-init)
   (when-let* ((end (point))
               (start (save-excursion
                        (and (re-search-backward
