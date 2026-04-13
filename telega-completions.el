@@ -568,7 +568,6 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
              (= (match-beginning 0) telega-chatbuf--input-marker))
     (cons (match-beginning 0) (point))))
 
-
 ;;; CAPF: local emoji (:<name>:)
 
 (defun telega-capf-emoji ()
@@ -583,7 +582,6 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
                             (match-beginning 1))))
               (prefix (buffer-substring-no-properties start end))
               ((string-prefix-p ":" prefix)))
-    (telega-emoji-init)
     (let ((candidates
            (telega-completions--emoji-candidates
             prefix telega-completions-emoji-fuzzy-match)))
@@ -771,6 +769,9 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
 (defun telega-completions-setup-capf ()
   "Add telega CAPF functions to `completion-at-point-functions'.
 Intended for use in `telega-chat-mode-hook'."
+  (when (or (memq 'telega-capf-emoji telega-completions-capf-functions)
+            (memq 'telega-capf-telegram-emoji telega-completions-capf-functions))
+    (telega-emoji-init))
   (setq-local completion-at-point-functions
               (append telega-completions-capf-functions
                       completion-at-point-functions)))
