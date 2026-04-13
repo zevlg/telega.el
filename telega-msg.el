@@ -1230,9 +1230,8 @@ corresponding thread or topic."
                  ;; is already ordinary supergroup, in this case we
                  ;; can't get topic
                  (chat is-forum)))
-        (if-let ((topic (telega-msg-topic msg 'sync)))
-            (telega-topic-goto topic (plist-get msg :id))
-          (user-error "telega: Can't resolve topic")))
+        (telega-topic-goto (telega-msg-topic msg 'sync)
+                           (plist-get msg :id)))
 
         ((telega-msg-match-p msg 'post-with-comments)
          (telega-chat--goto-thread (telega-msg-chat msg 'offline)

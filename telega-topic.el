@@ -237,11 +237,11 @@ If SYNC-P is non-nil, fetch missing forum topic info before returning it."
              (chat (telega-msg-chat msg 'offline)))
     (or (telega-topic-get chat (telega--MessageTopic-id msg-topic))
         (when-let* (sync-p
-                    (forum-topic-msg (telega-msg-match-p msg 'is-forum-topic))
+                    (msg-forum-topic (telega-msg-match-p msg 'is-forum-topic))
                     (topic (telega--getForumTopic
-                               chat (plist-get forum-topic-msg :forum_topic_id))))
-          (unless (telega--tl-error-p topic)
-            (telega-topic--ensure topic chat))))))
+                               chat (plist-get msg-forum-topic :forum_topic_id))))
+          (cl-assert (not (telega--tl-error-p topic)))
+          (telega-topic--ensure topic chat)))))
 
 (defun telega-topic-at (&optional pos)
   "Return topic at point POS."
@@ -313,9 +313,7 @@ If START-MSG-ID is specified, jump to the this message in the topic."
 (defun telega-msg-show-topic-info (msg)
   "Show MSG's topic info."
   (interactive (list (telega-msg-for-interactive)))
-  (if-let ((topic (telega-msg-topic msg 'sync)))
-      (telega-describe-topic topic)
-    (user-error "telega: Can't resolve topic")))
+  (telega-describe-topic (telega-msg-topic msg 'sync)))
 
 
 ;;; Topic button
