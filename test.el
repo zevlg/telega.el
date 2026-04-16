@@ -282,6 +282,61 @@ Have Stoploss 690 Satoshi." :entities []))))
     (should (equal (external-completion--all-completions "you" table nil 3)
                    '("i-love-you")))))
 
+(ert-deftest telega-capf-emoji-initializes-before-search ()
+  "Local emoji CAPF should init emoji data before scanning for a prefix."
+  (with-temp-buffer
+    (insert " :rocket")
+    (goto-char (point-max))
+    (let ((telega-emoji-alist nil)
+          (telega-emoji-candidates nil)
+          (telega-emoji-candidate-max-length 0)
+          (init-calls 0))
+      (cl-letf (((symbol-function 'telega-emoji-init)
+                 (lambda ()
+                   (setq init-calls (1+ init-calls)
+                         telega-emoji-alist '((":rocket:" . "\xF0\x9F\x9A\x80"))
+                         telega-emoji-candidates '(":rocket:")
+                         telega-emoji-candidate-max-length
+                         (length ":rocket:")))))
+        (let ((capf (telega-capf-emoji)))
+          (should (= init-calls 1))
+          (should capf)
+          (should (equal (buffer-substring-no-properties
+                          (nth 0 capf)
+                          (nth 1 capf))
+                         ":rocket"))
+          (should (equal (nth 2 capf)
+                         '(":rocket:"))))))))
+
+(ert-deftest telega-capf-telegram-emoji-initializes-before-search ()
+  "Telegram emoji CAPF should init emoji data before scanning for a prefix."
+  (with-temp-buffer
+    (insert " :rocket")
+    (goto-char (point-max))
+    (let ((telega-emoji-alist nil)
+          (telega-emoji-candidates nil)
+          (telega-emoji-candidate-max-length 0)
+          (init-calls 0))
+      (cl-letf (((symbol-function 'telega-emoji-init)
+                 (lambda ()
+                   (setq init-calls (1+ init-calls)
+                         telega-emoji-alist '((":rocket:" . "\xF0\x9F\x9A\x80"))
+                         telega-emoji-candidates '(":rocket:")
+                         telega-emoji-candidate-max-length
+                         (length ":rocket:"))))
+                ((symbol-function 'telega-completions--ensure-external-completion)
+                 (lambda () t))
+                ((symbol-function 'external-completion-table)
+                 (lambda (&rest _args) 'telegram-emoji-table)))
+        (let ((capf (telega-capf-telegram-emoji)))
+          (should (= init-calls 1))
+          (should capf)
+          (should (equal (buffer-substring-no-properties
+                          (nth 0 capf)
+                          (nth 1 capf))
+                         ":rocket"))
+          (should (eq (nth 2 capf) 'telegram-emoji-table)))))))
+
 (ert-deftest telega-bot-chat-with-topics-is-forum ()
   "Bot chats with topics enabled should reuse forum topic support."
   (let* ((bot-id 90901)
