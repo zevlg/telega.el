@@ -328,6 +328,29 @@
                            'telega-before-auth-hook
                             "0.8.621")
 
+(telega-obsolete--variable 'telega-chat-input-complete-function
+                           'telega-chat-input-complete-functions
+                            "0.8.632")
+
+(telega-obsolete--variable 'telega-company-username-show-avatars
+                           'telega-completions-username-show-avatars
+                            "0.8.632")
+(telega-obsolete--variable 'telega-company-username-prefer-name
+                           'telega-completions-username-prefer-name
+                            "0.8.632")
+(telega-obsolete--variable 'telega-company-username-complete-nonmember-for
+                           'telega-completions-username-complete-nonmember-for
+                            "0.8.632")
+(telega-obsolete--variable 'telega-company-username-markup
+                           'telega-completions-username-markup
+                            "0.8.632")
+(telega-obsolete--variable 'telega-company-emoji-fuzzy-match
+                           'telega-completions-emoji-fuzzy-match
+                            "0.8.632")
+(telega-obsolete--variable 'telega-symbol-quiz-options
+                           'telega-symbol-poll-XXX
+                            "0.8.632")
+
 ;; Uncomment once `telega-ins--box-button2' is everywhere in use
 ;; (telega-obsolete--variable 'telega-box-button-endings
 ;;                            'telega-box-button-brackets

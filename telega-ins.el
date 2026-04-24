@@ -1772,6 +1772,49 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
     (telega-ins "\n")
     (telega-ins desc)))
 
+(defun telega-ins--poll-media (media &optional msg)
+  "Insert poll's MEDIA content for the message MSG."
+  (cl-ecase (telega--tl-type media)
+    (messageAnimation
+     )
+    (messageLocation
+     )
+    (messagePhoto
+     (telega-ins--photo (plist-get media :photo) msg))
+    (messageSticker
+     (telega-ins--sticker-image (plist-get media :sticker) 'slices))
+    (messageVenue
+     (telega-ins "TODO: venue")
+     )
+    (messageVideo
+     (if-let ((cover (plist-get media :cover)))
+         (telega-ins--photo cover nil telega-video-size-limits)
+       (telega-ins--video msg (plist-get media :video) 'thumbnail)))
+    ))
+
+(defun telega-ins--poll-media-one-line (media &optional chat)
+  "Insert poll's MEDIA content for the message MSG in one line manner."
+  (cl-ecase (telega--tl-type media)
+    (messageAnimation
+     )
+    (messageLocation
+     )
+    (messagePhoto
+     (when-let ((img (telega-photo-preview--create-image-one-line
+                      (plist-get media :photo) chat)))
+       (telega-ins--image img)))
+    (messageSticker
+     (telega-ins--image
+      (telega-sticker--create-image-one-line
+       (plist-get media :sticker))))
+    (messageVenue
+     )
+    (messageVideo
+     (when-let ((img (telega-video-preview--create-image-one-line
+                      (plist-get media :video) chat)))
+       (telega-ins--image img)))
+    ))
+
 (defun telega-ins--poll (msg)
   "Insert poll message MSG."
   (let* ((content (plist-get msg :content))
@@ -1779,20 +1822,18 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
          (poll-type (plist-get poll :type))
          (closed-p (plist-get poll :is_closed))
          (anonymous-p (plist-get poll :is_anonymous))
+         (multiple-answers-p (plist-get poll :allows_multiple_answers))
          (options (append (plist-get poll :options) nil))
          (choices (cl-loop for popt in options
                            for popt-id from 0
                            if (plist-get popt :is_chosen)
                            collect popt-id))
          (quiz-p (eq (telega--tl-type poll-type) 'pollTypeQuiz))
-         (quiz-popt-id (when quiz-p
-                         (plist-get poll-type :correct_option_id)))
-         (multiple-answers-p (unless quiz-p
-                               (plist-get poll-type :allow_multiple_answers)))
+         (quiz-popt-ids (when quiz-p
+                          (plist-get poll-type :correct_option_ids)))
          (option-symbols
           (mapcar #'telega-symbol
-                  (cond (quiz-p telega-symbol-quiz-options)
-                        (multiple-answers-p telega-symbol-poll-multiple-options)
+                  (cond (multiple-answers-p telega-symbol-poll-multiple-options)
                         (t telega-symbol-poll-options)))))
     ;; Poll header
     (telega-ins (telega-symbol 'poll) " ")
@@ -1812,27 +1853,37 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
                                       "lng_polls_answers_count"
                                     "lng_polls_votes_count")
                        :count (plist-get poll :total_voter_count)))
-    (when-let ((recent-voters (append (plist-get poll :recent_voter_ids) nil)))
-      (telega-ins " ")
-      (seq-doseq (rv recent-voters)
+    (telega-ins-prefix " "
+      (seq-doseq (rv (plist-get poll :recent_voter_ids))
         (telega-ins--image (telega-msg-sender-avatar-image-one-line
                             (telega-msg-sender rv)))))
     (when closed-p
       (telega-ins ", ")
       (telega-ins--with-face 'error
         (telega-ins-i18n "lng_polls_closed")))
+    (when (plist-get content :can_add_option)
+      (telega-ins " ")
+      (telega-ins--ui-button (telega-i18n "lng_polls_add_option")
+        :action #'telega-msg-poll-add-option))
     (when (and (not closed-p)
                ;; NOTE: `(message-property :can_be_edited)' makes
                ;; TDLib request, so we put Stop/Close button only for
                ;; outgoing poll messages
                (telega-msg-match-p msg 'is-outgoing))
       (telega-ins " ")
-      (telega-ins--box-button
+      (telega-ins--ui-button
           (if quiz-p
               "Stop Quiz"
             (telega-i18n "lng_polls_stop"))
-        :action #'telega-msg-stop-poll))
+        :action #'telega-msg-poll-stop))
     (telega-ins "\n")
+
+    ;; Media and description
+    (when-let ((media (plist-get content :media)))
+      (telega-ins--poll-media media msg)
+      (telega-ins "\n"))
+    (when (telega-ins (telega-tl-str content :description))
+      (telega-ins "\n"))
 
     ;; Question and options
     (telega-ins--with-face 'bold
@@ -1856,14 +1907,17 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
           (telega-ins--with-face 'telega-link
             (telega-ins
              (if quiz-p
-                 (cond ((eq quiz-popt-id popt-id)
-                        (if (plist-get popt :is_chosen)
-                            (propertize (nth 0 option-symbols) 'face 'bold)
-                          (nth 0 option-symbols)))
+                 (cond ((seq-contains-p quiz-popt-ids popt-id)
+                        (cond ((plist-get popt :is_chosen)
+                               (propertize (nth 1 option-symbols) 'face 'success))
+                              (choices
+                               (nth 1 option-symbols))
+                              (t
+                               (nth 0 option-symbols))))
                        ((plist-get popt :is_chosen)
                         (propertize (nth 2 option-symbols) 'face 'error))
                        (t
-                        (nth 1 option-symbols)))
+                        (nth 0 option-symbols)))
 
                (if (plist-get popt :is_chosen)
                    (propertize (nth 1 option-symbols) 'face 'bold)
@@ -1871,6 +1925,9 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
 
           (telega-ins " ")
           (telega-ins--line-wrap-prefix "   "
+            (when-let ((media (plist-get popt :media)))
+              (telega-ins--poll-media-one-line media msg)
+              (telega-ins " "))
             (telega-ins--fmt-text (plist-get popt :text)))
           (when (or choices closed-p)
             (telega-ins "\n")
@@ -1886,8 +1943,12 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
                 (telega-ins-i18n (if quiz-p
                                      "lng_polls_answers_count"
                                    "lng_polls_votes_count")
-                  :count (plist-get popt :voter_count))))))
-        ))
+                  :count (plist-get popt :voter_count)))))
+          (telega-ins-prefix " "
+            (seq-doseq (rv (plist-get popt :recent_voter_ids))
+              (telega-ins--image (telega-msg-sender-avatar-image-one-line
+                                  (telega-msg-sender rv)))))
+          )))
 
     (unless anonymous-p
       (telega-ins "\n")
@@ -2363,6 +2424,8 @@ Return number of done tasks."
           messageChecklistTasksAdded
           messageChatHasProtectedContentToggled
           messageSuggestBirthdate
+          messagePollOptionAdded
+          messagePollOptionDeleted
           telegaInternal)))
 
 (defun telega-ins--special-replied-msg (msg &optional _attrs)
@@ -2771,6 +2834,18 @@ Special messages are determined with `telega-msg-special-p'."
                    (telega-chat-user (telega-msg-chat msg))))
        (telega-ins " ")
        (telega-ins--birthdate (plist-get content :birthdate)))
+      (messagePollOptionAdded
+       (telega-ins-i18n (if (telega-me-p sender)
+                            "lng_action_poll_added_answer_self"
+                          "lng_action_poll_added_answer")
+         :from sender-name
+         :option (telega-tl-str content :text)))
+      (messagePollOptionDeleted
+       (telega-ins-i18n (if (telega-me-p sender)
+                            "lng_action_poll_deleted_answer_self"
+                          "lng_action_poll_deleted_answer")
+         :from sender-name
+         :option (telega-tl-str content :text)))
 
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))

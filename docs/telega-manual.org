@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.630)
+#+title: Telega Manual (v0.8.632)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -69,8 +69,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#deleting-messages][Deleting messages]]
     - [[#scheduling-messages-and-reminders][Scheduling messages and reminders]]
     - [[#navigating-previous-input][Navigating previous input]]
-    - [[#completing-input-in-chatbuf][Completing input in chatbuf]]
-      - [[#using-capf-for-input-completions][Using capf for input completions]]
+    - [[#completing-input-in-a-chatbuf][Completing input in a chatbuf]]
     - [[#sending-messages-via-bots][Sending messages via bots]]
     - [[#filtering-chat-messages-aka-shared-media][Filtering chat messages a.k.a. Shared Media]]
     - [[#inplace-searching-in-text-messages-or-media-captions][Inplace searching in text messages or media captions]]
@@ -239,7 +238,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.63-1677a0c77.
+version equal to v1.8.63-8921c22f0.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -2326,142 +2325,34 @@ You can navigate your previous chatbuf input using commands:
      and
      @@html:<kbd>@@M-n@@html:</kbd>@@ (~telega-chatbuf--input-search-input-next~)
      to cycle chatbuf input ring.
-** Completing input in chatbuf
+** Completing input in a chatbuf
 :PROPERTIES:
-:CUSTOM_ID: completing-input-in-chatbuf
+:CUSTOM_ID: completing-input-in-a-chatbuf
 :END:
 
-Powerful =company-mode= can be used to complete input in the chatbuf
-with
+It is possible to complete chatbuf's input with
 @@html:<kbd>@@TAB@@html:</kbd>@@ (~telega-chatbuf-complete-or-next-link~).
 
-=telega= provides few company backends, such as:
+You can use standard Emacs ~capf~ (completion at point) or advanced 
+[[#telega-company][telega-company]].
 
+To enable ~capf~ completions use:
+#+begin_src elisp
+  (add-hook 'telega-chat-mode-hook 'telega-completions-setup-capf)
+#+end_src
 
-- telega-company-emoji :: Complete emojis via ~:<emoji>:~
-     syntax. Completion is done using predefined set of emojis.
+~capf~ functions to be used to complete input:
+- User Option: ~telega-completions-capf-functions~ 
 
-     Customizable Options:
-  - User Option: ~telega-company-emoji-fuzzy-match~ 
-
-    Non-nil to use fuzzy prefix matching.
-    For example without fuzzy matches, prefix ~:jo~ will match only
-    ~:joy:~, ~:joy-cat:~ and ~:joystick:~.  With fuzzy matching
-    enabled it will match also ~:flag-jo:~ and ~:black-jocker:~. 
-
-    Default value: ~t~
-
-
-- telega-company-telegram-emoji :: Same as ~telega-company-emoji~,
-     but uses Telegram cloud for the emojis completion.
-
-
-- telega-company-username :: Complete user mentions via ~@<username>~
-     syntax. Here is the screenshot, showing use of this backend:
-     [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
-
-     Use ~@@~ prefix to complete chat admins only.
-
-Customizable options:
-- User Option: ~telega-company-username-prefer-name~ 
-
-  Preferred formatting argument to the ~telega-user-title~ to complete user.
-  First giving non-nil result will be used. 
-
-  Default value: ~(username first-name last-name)~
-- User Option: ~telega-company-username-show-avatars~ 
-
-  Non-nil to show avatars in the company annotation. 
-
-  Default value: ~nil~
-- User Option: ~telega-company-username-markup~ 
-
-  Markup to use for usernames completion. 
-
-  Default value: ~nil~
-
-
-- telega-company-hashtag :: Complete common hashtags via
-     ~#<hashtag>~ syntax.
-
-
-- telega-company-botcmd :: Complete bot commands via ~/<botcmd>~
-     syntax.  This backend does not complete if ~/<botcmd>~ syntax is
-     used in the middle of the chatbuf input, only if ~/<botcmd>~
-     starts chatbuf input.
-
-
-- telega-company-quick-reply :: Complete quick replies via
-     ~/<shortcut>~ syntax in private chats.
-
-
-- telega-company-markdown-precode :: Complete language name for
-     code blocks via ~```~ syntax.
-
-List of company backends to be used for user input completion is
-controlled by:
-- User Option: ~telega-company-backends~ 
-
-  Company backends to use in chat buffers.
-  Set to nil to disable company completions in chat buffers. 
+  CAPF functions to add in chat buffers.
+  Set to nil to disable. 
 
   Default value: 
   #+begin_src emacs-lisp
-    (telega-company-emoji telega-company-telegram-emoji
-                          telega-company-username telega-company-hashtag
-                          telega-company-markdown-precode
-                          telega-company-botcmd telega-company-quick-reply)
+    (telega-capf-emoji telega-capf-telegram-emoji telega-capf-username
+                       telega-capf-hashtag telega-capf-markdown-precode
+                       telega-capf-quick-reply telega-capf-botcmd)
   #+end_src
-
-
-You can use completion without enabling =company-mode= in the chat
-buffers, by explicitly pressing
-@@html:<kbd>@@TAB@@html:</kbd>@@ (~telega-chatbuf-complete-or-next-link~)
-to perform completion at point.
-
-On the other hand, =company-mode= detects input context and pops up
-completion candidates if completion at point is available.  To enable
-=company-mode= in chat buffers use:
-#+begin_src elisp
-  (add-hook 'telega-chat-mode-hook 'company-mode)
-#+end_src
-
-Consider also using =company-posframe= Emacs package (in MELPA), so
-chatbuf's contents remain untouched when completion menu pops above
-the chatbuf prompt.
-
-If you don't like =company-posframe=, consider option:
-- User Option: ~telega-company-tooltip-always-below~ 
-
-  Non-nil to show company tooltip always below the point.
-  Done by recentering point in the chatbuf. 
-
-  Default value: ~t~
-*** Using capf for input completions
-:PROPERTIES:
-:CUSTOM_ID: using-capf-for-input-completions
-:END:
-
-It is possible to use standard Emacs ~capf~ (completion at point)
-functionality to perform completions in the chatbuf.  You still need
-~company.el~ package installed **and loaded** because =telega= uses it
-as engine.
-
-~capf~ is used by default if ~company-mode~ is disabled in the
-chatbuf, so to enable ~capf~ completions setup could look like:
-
-#+begin_src elisp
-  (defun my-telega-chat-mode ()
-    (require 'company)
-    (add-hook 'completion-at-point-functions
-              #'telega-chatbuf-complete-at-point nil 'local)
-    )
-
-  (add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
-#+end_src
-
-~capf~ functionality is very limited comparing to ~company-mode~
-completions, however, some users might still prefer ~capf~.
 ** Sending messages via bots
 :PROPERTIES:
 :CUSTOM_ID: sending-messages-via-bots

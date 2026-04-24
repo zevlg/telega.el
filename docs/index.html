@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2026-04-08 Ср 22:50 -->
+<!-- 2026-04-24 Пт 11:49 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.630)</title>
+<title>Telega Manual (v0.8.632)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -68,7 +68,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.630)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.632)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -131,11 +131,7 @@
 <li><a href="#deleting-messages">Deleting messages</a></li>
 <li><a href="#scheduling-messages-and-reminders">Scheduling messages and reminders</a></li>
 <li><a href="#navigating-previous-input">Navigating previous input</a></li>
-<li><a href="#completing-input-in-chatbuf">Completing input in chatbuf</a>
-<ul>
-<li><a href="#using-capf-for-input-completions">Using capf for input completions</a></li>
-</ul>
-</li>
+<li><a href="#completing-input-in-a-chatbuf">Completing input in a chatbuf</a></li>
 <li><a href="#sending-messages-via-bots">Sending messages via bots</a></li>
 <li><a href="#filtering-chat-messages-aka-shared-media">Filtering chat messages a.k.a. Shared Media</a></li>
 <li><a href="#inplace-searching-in-text-messages-or-media-captions">Inplace searching in text messages or media captions</a></li>
@@ -371,7 +367,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.63-1677a0c77.
+version equal to v1.8.63-8921c22f0.
 </p>
 
 <p>
@@ -873,7 +869,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org87f56a4">
+<pre class="example" id="org547dd07">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -891,7 +887,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgdd7aa5e">
+<pre class="example" id="org9284c27">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -980,7 +976,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgdd8cde4">
+<pre class="example" id="orgcd76fa8">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1018,7 +1014,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org5236eb7">
+<pre class="example" id="org2ad3e2d">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -2447,7 +2443,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org5a017c0">
+<pre class="example" id="orgce838d0">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2651,7 +2647,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org2cd7e60">
+<pre class="example" id="orgd61d12e">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2683,7 +2679,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orgee86edc">
+<pre class="example" id="org343b486">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3049,231 +3045,50 @@ to cycle chatbuf input ring.
 </dl>
 </div>
 </div>
-<div id="outline-container-completing-input-in-chatbuf" class="outline-3">
-<h3 id="completing-input-in-chatbuf"><a class="self-link" href="#completing-input-in-chatbuf"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Completing input in chatbuf</h3>
-<div class="outline-text-3" id="text-completing-input-in-chatbuf">
+<div id="outline-container-completing-input-in-a-chatbuf" class="outline-3">
+<h3 id="completing-input-in-a-chatbuf"><a class="self-link" href="#completing-input-in-a-chatbuf"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Completing input in a chatbuf</h3>
+<div class="outline-text-3" id="text-completing-input-in-a-chatbuf">
 <p>
-Powerful <code>company-mode</code> can be used to complete input in the chatbuf
-with
+It is possible to complete chatbuf's input with
 <kbd>TAB</kbd> (<code>telega-chatbuf-complete-or-next-link</code>).
 </p>
 
 <p>
-<code>telega</code> provides few company backends, such as:
-</p>
-
-
-<dl class="org-dl">
-<dt>telega-company-emoji</dt><dd><p>
-Complete emojis via <code>:&lt;emoji&gt;:</code>
-syntax. Completion is done using predefined set of emojis.
+You can use standard Emacs <code>capf</code> (completion at point) or advanced 
+[BROKEN LINK: telega-company].
 </p>
 
 <p>
-Customizable Options:
+To enable <code>capf</code> completions use:
+</p>
+<div class="org-src-container">
+<pre class="src src-elisp">(add-hook 'telega-chat-mode-hook 'telega-completions-setup-capf)
+</pre>
+</div>
+
+<p>
+<code>capf</code> functions to be used to complete input:
 </p>
 <ul class="org-ul">
 <li><p>
-User Option: <code>telega-company-emoji-fuzzy-match</code> 
+User Option: <code>telega-completions-capf-functions</code> 
 </p>
 
 <p>
-Non-nil to use fuzzy prefix matching.
-For example without fuzzy matches, prefix <code>:jo</code> will match only
-<code>:joy:</code>, <code>:joy-cat:</code> and <code>:joystick:</code>.  With fuzzy matching
-enabled it will match also <code>:flag-jo:</code> and <code>:black-jocker:</code>. 
-</p>
-
-<p>
-Default value: <code>t</code>
-</p></li>
-</ul></dd>
-</dl>
-
-
-<dl class="org-dl">
-<dt>telega-company-telegram-emoji</dt><dd>Same as <code>telega-company-emoji</code>,
-but uses Telegram cloud for the emojis completion.</dd>
-</dl>
-
-
-<dl class="org-dl">
-<dt>telega-company-username</dt><dd><p>
-Complete user mentions via <code>@&lt;username&gt;</code>
-syntax. Here is the screenshot, showing use of this backend:
-<img src="https://zevlg.github.io/telega/completing-usernames.jpg" alt="completing-usernames.jpg" />
-</p>
-
-<p>
-Use <code>@@</code> prefix to complete chat admins only.
-</p></dd>
-</dl>
-
-<p>
-Customizable options:
-</p>
-<ul class="org-ul">
-<li><p>
-User Option: <code>telega-company-username-prefer-name</code> 
-</p>
-
-<p>
-Preferred formatting argument to the <code>telega-user-title</code> to complete user.
-First giving non-nil result will be used. 
-</p>
-
-<p>
-Default value: <code>(username first-name last-name)</code>
-</p></li>
-<li><p>
-User Option: <code>telega-company-username-show-avatars</code> 
-</p>
-
-<p>
-Non-nil to show avatars in the company annotation. 
-</p>
-
-<p>
-Default value: <code>nil</code>
-</p></li>
-<li><p>
-User Option: <code>telega-company-username-markup</code> 
-</p>
-
-<p>
-Markup to use for usernames completion. 
-</p>
-
-<p>
-Default value: <code>nil</code>
-</p></li>
-</ul>
-
-
-<dl class="org-dl">
-<dt>telega-company-hashtag</dt><dd>Complete common hashtags via
-<code>#&lt;hashtag&gt;</code> syntax.</dd>
-</dl>
-
-
-<dl class="org-dl">
-<dt>telega-company-botcmd</dt><dd>Complete bot commands via <code>/&lt;botcmd&gt;</code>
-syntax.  This backend does not complete if <code>/&lt;botcmd&gt;</code> syntax is
-used in the middle of the chatbuf input, only if <code>/&lt;botcmd&gt;</code>
-starts chatbuf input.</dd>
-</dl>
-
-
-<dl class="org-dl">
-<dt>telega-company-quick-reply</dt><dd>Complete quick replies via
-<code>/&lt;shortcut&gt;</code> syntax in private chats.</dd>
-</dl>
-
-
-<dl class="org-dl">
-<dt>telega-company-markdown-precode</dt><dd>Complete language name for
-code blocks via <code>```</code> syntax.</dd>
-</dl>
-
-<p>
-List of company backends to be used for user input completion is
-controlled by:
-</p>
-<ul class="org-ul">
-<li><p>
-User Option: <code>telega-company-backends</code> 
-</p>
-
-<p>
-Company backends to use in chat buffers.
-Set to nil to disable company completions in chat buffers. 
+CAPF functions to add in chat buffers.
+Set to nil to disable. 
 </p>
 
 <p>
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(telega-company-emoji telega-company-telegram-emoji
-                      telega-company-username telega-company-hashtag
-                      telega-company-markdown-precode
-                      telega-company-botcmd telega-company-quick-reply)
+<pre class="src src-emacs-lisp">(telega-capf-emoji telega-capf-telegram-emoji telega-capf-username
+                   telega-capf-hashtag telega-capf-markdown-precode
+                   telega-capf-quick-reply telega-capf-botcmd)
 </pre>
 </div></li>
 </ul>
-
-
-<p>
-You can use completion without enabling <code>company-mode</code> in the chat
-buffers, by explicitly pressing
-<kbd>TAB</kbd> (<code>telega-chatbuf-complete-or-next-link</code>)
-to perform completion at point.
-</p>
-
-<p>
-On the other hand, <code>company-mode</code> detects input context and pops up
-completion candidates if completion at point is available.  To enable
-<code>company-mode</code> in chat buffers use:
-</p>
-<div class="org-src-container">
-<pre class="src src-elisp">(add-hook 'telega-chat-mode-hook 'company-mode)
-</pre>
-</div>
-
-<p>
-Consider also using <code>company-posframe</code> Emacs package (in MELPA), so
-chatbuf's contents remain untouched when completion menu pops above
-the chatbuf prompt.
-</p>
-
-<p>
-If you don't like <code>company-posframe</code>, consider option:
-</p>
-<ul class="org-ul">
-<li><p>
-User Option: <code>telega-company-tooltip-always-below</code> 
-</p>
-
-<p>
-Non-nil to show company tooltip always below the point.
-Done by recentering point in the chatbuf. 
-</p>
-
-<p>
-Default value: <code>t</code>
-</p></li>
-</ul>
-</div>
-<div id="outline-container-using-capf-for-input-completions" class="outline-4">
-<h4 id="using-capf-for-input-completions"><a class="self-link" href="#using-capf-for-input-completions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Using capf for input completions</h4>
-<div class="outline-text-4" id="text-using-capf-for-input-completions">
-<p>
-It is possible to use standard Emacs <code>capf</code> (completion at point)
-functionality to perform completions in the chatbuf.  You still need
-<code>company.el</code> package installed <b><b>and loaded</b></b> because <code>telega</code> uses it
-as engine.
-</p>
-
-<p>
-<code>capf</code> is used by default if <code>company-mode</code> is disabled in the
-chatbuf, so to enable <code>capf</code> completions setup could look like:
-</p>
-
-<div class="org-src-container">
-<pre class="src src-elisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-chat-mode</span> ()
-  (<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">company</span>)
-  (add-hook 'completion-at-point-functions
-            #'telega-chatbuf-complete-at-point nil 'local)
-  )
-
-(add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
-</pre>
-</div>
-
-<p>
-<code>capf</code> functionality is very limited comparing to <code>company-mode</code>
-completions, however, some users might still prefer <code>capf</code>.
-</p>
-</div>
 </div>
 </div>
 <div id="outline-container-sending-messages-via-bots" class="outline-3">
@@ -3579,7 +3394,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="orge5f463f">
+<pre class="example" id="orgb7740bb">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4930,7 +4745,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org8b2183b">
+<pre class="example" id="orgc68d785">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

@@ -17,7 +17,7 @@
 
 FROM alpine:latest AS builder
 ARG tdlib_version=v1.8.63
-ARG tdlib_branch=1677a0c77
+ARG tdlib_branch=8921c22f0
 ARG telega_branch=master
 
 RUN set +x && apk update && apk upgrade && \

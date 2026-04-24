@@ -1846,6 +1846,10 @@ For Saved Messages and channel direct messages chat topics only."
           (seq-doseq (sticker stickers)
             (telega-custom-emoji--ensure sticker))
           (telega-chat--mark-dirty chat event))))
+
+    ;; TODO: support for
+    ;; (plist-get telega--options :pending_text_message_period)
+    ;; i.e. remove any pending message after 30 sec
     ))
 
 (defun telega--on-updateTextCompositionStyles (event)

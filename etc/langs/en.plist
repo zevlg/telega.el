@@ -2473,4 +2473,16 @@ this channel?")
 
  ("lng_ai_compose_style_neutral"
   :value "Neutral")
+
+ ("lng_action_poll_added_answer_self"
+  :value "You added \"{option}\" to the poll.")
+ ("lng_action_poll_added_answer"
+  :value "{from} added \"{option}\" to the poll.")
+ ("lng_action_poll_deleted_answer_self"
+  :value "You removed \"{option}\" from the poll.")
+ ("lng_action_poll_deleted_answer"
+  :value "{from} removed \"{option}\" from the poll.")
+
+ ("lng_polls_add_option"
+  :value "Add an Option")
  )

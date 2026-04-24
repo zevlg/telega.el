@@ -76,7 +76,7 @@
      :visible (telega-msg-match-p (telega-msg-for-interactive)
                 '(and (not (type Poll))
                       (message-property :can_be_edited)))]
-    ["stop-poll" telega-msg-stop-poll
+    ["stop-poll" telega-msg-poll-stop
      :label (if (eq 'pollTypeQuiz
                     (telega--tl-type
                      (plist-get (telega-msg-match-p (telega-msg-for-interactive)
@@ -1963,11 +1963,16 @@ Requires administrator rights in the chat."
        (list :@type "chatMemberStatusBanned"
              :banned_until_date 0)))))
 
-(defun telega-msg-stop-poll (msg)
+(defun telega-msg-poll-stop (msg)
   "Stop poll message MSG."
   (interactive (list (telega-msg-for-interactive)))
   (when (yes-or-no-p (telega-i18n "lng_polls_stop_warning"))
     (telega--stopPoll msg)))
+
+(defun telega-msg-poll-add-option (msg)
+  "Add an option to the poll MSG."
+  (interactive (list (telega-msg-for-interactive)))
+  (message "TODO: add poll option"))
 
 (defun telega-ins--message-read-date (msg-read-date)
   "Inserter for the MessageReadDate structure."

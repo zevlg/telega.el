@@ -60,25 +60,20 @@
 
 (require 'telega-core)
 (require 'telega-tdlib)
+(require 'telega-user)
 (require 'telega-msg)
 (require 'telega-ins)
 (require 'telega-voip)                  ;telega-voip-call
 (require 'telega-notifications)
 (require 'telega-sticker)
-(require 'telega-company)
 (require 'telega-i18n)
 (require 'telega-tme)
 (require 'telega-sort)
 (require 'telega-filter)
 (require 'telega-modes)
+(require 'telega-emoji)
 
 (require 'visual-fill-column)
-
-;; shutup compiler
-(defvar company-backends)
-(declare-function company-complete "company")
-(declare-function company-begin-backend "company" (backend &optional callback))
-(declare-function company-call-backend "company" (&rest args))
 
 ;; telega-tdlib-events.el depends on telega-chat.el
 (declare-function telega--on-updateDeleteMessages "telega-tdlib-events" (event))
@@ -2246,11 +2241,7 @@ Use this to surrond header with some prefix and suffix."
        (when-let ((ccode (plist-get account-info :phone_number_country_code)))
          (telega-ins "\n  ")
          (telega-ins-describe-item (telega-i18n "lng_new_contact_phone_number")
-           (when-let ((flag-emoji
-                       (cdr (assoc (format ":flag-%s:" (downcase ccode))
-                                   telega-emoji-alist))))
-             (telega-ins flag-emoji))
-           (telega-ins ccode)
+           (telega-ins (telega-emoji-flag ccode) ccode)
            'no-newline))
        (when-let ((name-cd (plist-get account-info :last_name_change_date)))
          (unless (telega-zerop name-cd)
@@ -2600,6 +2591,25 @@ These users can be added to group only via invite link."
       (telega-ins "Chat is restricted:"))
     (telega-ins "\n")
     (telega-ins reason)
+    (telega-ins "\n")))
+
+(defun telega-chatbuf-footer-ins-inline-query-button ()
+  "Inserter for the inline query button."
+  (when-let* ((ib-user (plist-get telega-chatbuf--inline-bot-plist :bot-user))
+              (ib-button (plist-get telega-chatbuf--inline-bot-plist :button))
+              (ib-text (telega-tl-str ib-button :text))
+              (ib-type (plist-get ib-button :type)))
+    (telega-ins (telega-user-title ib-user 'username) ": ")
+    (telega-ins--ui-button ib-text
+      'action (lambda (_ignored)
+                (cl-ecase (telega--tl-type ib-type)
+                  (inlineQueryResultsButtonTypeWebApp
+                   (let ((webapp-url (telega--getWebAppUrl ib-user
+                                       :url (plist-get ib-type :url))))
+                     (telega-browse-url (plist-get webapp-url :url))))
+                  (inlineQueryResultsButtonTypeStartBot
+                   (message "TODO: start bot"))
+                  )))
     (telega-ins "\n")))
 
 (defun telega-chat-toggle-payment-confirm (chat)
@@ -3105,7 +3115,7 @@ Global chat bindings:
         telega-chatbuf--input-idx nil
         telega-chatbuf--input-pending nil
         telega-chatbuf--history-loading nil
-        telega-chatbuf--inline-query nil
+        telega-chatbuf--inline-bot-plist nil
         telega-chatbuf--vvnote-msg nil
         telega-chatbuf--my-action nil
         telega-chatbuf--administrators nil
@@ -3180,8 +3190,6 @@ Global chat bindings:
   (setq telega--chat-buffers-alist
         (cl-pushnew (cons telega-chatbuf--chat (current-buffer))
                     telega--chat-buffers-alist))
-
-  (setq-local company-backends telega-company-backends)
 
   ;; Initialize chatbuf headers
   (let ((telega-chatbuf--dirtiness-symbol 'telega-chatbuf--dirtiness-header-line))
@@ -3365,8 +3373,21 @@ Recover previous active action after BODY execution."
     (when (and (plist-get (or telega-chatbuf--topic telega-chatbuf--chat)
                           :draft_message)
                (not input-p))
-      (telega--setChatDraftMessage telega-chatbuf--chat)))
-  )
+      (telega--setChatDraftMessage telega-chatbuf--chat))
+
+    ;; Change of the input may affect inline bot query button
+    (let ((username (car (telega-chatbuf-input--grab-inline-bot))))
+      (unless (equal username
+                     (when-let ((bot (plist-get telega-chatbuf--inline-bot-plist
+                                                :bot-user)))
+                       (telega-msg-sender-username bot)))
+        ;; Inline bot has been changed
+        (let ((update-footer-p
+               (plist-get telega-chatbuf--inline-bot-plist :button)))
+          (setq telega-chatbuf--inline-bot-plist nil)
+          (when update-footer-p
+            (telega-chatbuf--footer-update)))))
+    ))
 
 (defun telega-chatbuf--name (chat)
   "Return uniquified name for the CHAT buffer."
@@ -6038,29 +6059,6 @@ EMOJI - emoji string to use instead of emoji associated with the STICKER."
            ))
     ))
 
-(defun telega-chatbuf-attach-sticker-by-emoji ()
-  "If chatbuf has single emoji input, then popup stickers win.
-Intended to be added to `post-command-hook' in chat buffer.
-Or to be called directly.
-Return non-nil if input has single emoji."
-  (interactive)
-
-  (telega-emoji-init)
-  (let ((emoji (buffer-substring (save-excursion (telega-emoji-backward) (point))
-                                 (point))))
-    (when (telega-emoji-p emoji)
-      ;; NOTE: Do nothing in case sticker's help win is exists and
-      ;; have same emoji
-      (let ((buf (get-buffer "*Telegram Stickers*")))
-        (when (or (called-interactively-p 'interactive)
-                  (not (buffer-live-p buf))
-                  (not (with-current-buffer buf
-                         (string= emoji telega-help-win--emoji))))
-          (telega-sticker-choose-emoji emoji telega-chatbuf--chat
-                                       (not (string= (telega-chatbuf-input-string)
-                                                     emoji)))))
-      t)))
-
 (defun telega-chatbuf-attach-custom-emoji ()
   "Interactively attach a custom emoji."
   (interactive)
@@ -6121,32 +6119,6 @@ a file, otherwise choose animation from list of saved animations."
   "Attach GIF-FILE as animation to the chatbuf input."
   (interactive (list (telega-read-file-name "GIF File: ")))
   (telega-chatbuf-attach-animation gif-file))
-
-(defun telega-chatbuf-attach-inline-bot-query (&optional no-empty-search)
-  "Popup results with inline bot query.
-Intended to be added to `post-command-hook' in chat buffer.
-Or to be called directly.
-Return non-nil if input has inline bot query.
-If NO-EMPTY-SEARCH is non-nil, then do not perform empty query search."
-  (interactive)
-  (let ((input (telega-chatbuf-input-string)))
-    (when (string-match "^@\\([^ ]+\\)[ \t]+\\(.*\\)" input)
-      (let* ((username (match-string 1 input))
-             (query (match-string 2 input))
-             (uchat (telega--searchPublicChat username))
-             (bot-user (telega-chat-match-p uchat 'bot-user))
-             (bot (plist-get bot-user :type))
-             (inline-help (telega-tl-str bot :inline_query_placeholder)))
-        (when (plist-get bot :is_inline)
-          ;; Start querying the bot
-          (unless (and (string-empty-p query) no-empty-search)
-            (telega-inline-bot-query bot-user query telega-chatbuf--chat))
-
-          ;; Display the inline help
-          (when (string-empty-p query)
-            (telega-momentary-display
-             (propertize inline-help 'face 'telega-shadow)))
-          t)))))
 
 (defun telega-chatbuf-attach-poll (question anonymous-p allow-multiple-answers-p
                                             &rest options)
@@ -6893,56 +6865,69 @@ REVOKE forced to non-nil for supergroup, channel or a secret chat."
   ;; telega--reportSupergroupSpam
   )
 
+(defun telega-chatbuf-input--grab-inline-bot ()
+  "Return username and query for the inline bot completer."
+  (when (eq ?@ (char-after telega-chatbuf--input-marker))
+    (let ((input (telega-chatbuf-input-string)))
+      (when (string-match "^@\\([^ ]+\\)[ \t]+\\(.*\\)" input)
+        (list (match-string 1 input) (match-string 2 input))))))
+
+(defun telega-chatbuf-complete-inline-bot-query (&optional no-empty-search)
+  "Function to complete inline bot's query.
+To be used in the `telega-chat-input-complete-functions'."
+  (interactive)
+  (seq-let (username query) (telega-chatbuf-input--grab-inline-bot)
+    (when username
+      (let ((bot-user (plist-get telega-chatbuf--inline-bot-plist :bot-user)))
+        (unless (and bot-user
+                     (equal username
+                            (telega-msg-sender-username bot-user)))
+          ;; Inline bot has been changed
+          (setq bot-user (telega-chat-match-p (telega--searchPublicChat username)
+                           'bot-user))
+          (setq telega-chatbuf--inline-bot-plist
+                (list :bot-user bot-user)))
+        
+        (when-let ((bot-type (plist-get bot-user :type))
+                   ((plist-get bot-type :is_inline)))
+          ;; Start querying the bot
+          (unless (and (string-empty-p query) no-empty-search)
+            (telega-inline-bot-query bot-user query telega-chatbuf--chat))
+
+          (when (string-empty-p query)
+            (telega-momentary-display
+             (propertize (telega-tl-str bot-type :inline_query_placeholder)
+                         'face 'telega-shadow)))
+          t)))))
+
+(defun telega-chatbuf-complete-sticker-by-emoji ()
+  "Complete function for a sticker.
+To be used in the `telega-chat-input-complete-functions'."
+  (interactive)
+
+  (telega-emoji-init)
+  (let ((emoji (buffer-substring (save-excursion (telega-emoji-backward) (point))
+                                 (point))))
+    (when (telega-emoji-p emoji)
+      ;; NOTE: Do nothing in case sticker's help win is exists and
+      ;; have same emoji
+      (let ((buf (get-buffer "*Telegram Stickers*")))
+        (when (or (called-interactively-p 'interactive)
+                  (not (buffer-live-p buf))
+                  (not (with-current-buffer buf
+                         (string= emoji telega-help-win--emoji))))
+          (telega-sticker-choose-emoji emoji telega-chatbuf--chat
+                                       (not (string= (telega-chatbuf-input-string)
+                                                     emoji)))))
+      t)))
+
 (defun telega-chatbuf-complete ()
   "Complete thing at chatbuf input."
   (interactive)
-  (or (when (functionp telega-chat-input-complete-function)
-        (funcall telega-chat-input-complete-function))
-      ;; 1) Try all company backends for completions
-      (if (and (boundp 'company-mode) company-mode)
-          ;; Use company-mode for completion
-          (when-let ((backend (telega-company--grab-backend 'backend)))
-            (company-begin-backend backend)
-            (company-complete)
-            t)
-        ;; Use capf for completion, `completion-at-point' returns
-        ;; non-nil if completion at point is performed
-        (let ((completion-at-point-functions
-               (cons 'telega-chatbuf-complete-at-point
-                     completion-at-point-functions)))
-          (completion-at-point)))
-      ;; 2) Try to complete bot's inline query
-      (call-interactively 'telega-chatbuf-attach-inline-bot-query)
-      ;; 3) Try completing emoji to sticker
-      (call-interactively 'telega-chatbuf-attach-sticker-by-emoji)
-
-      ;; TODO: add other completions
-      ))
-
-(defun telega-chatbuf-completion-candidates (prefix)
-  "Return list of completion candidates for current user input."
-  ;; NOTE: for empty PREFIX string we can't decide which company
-  ;; backend to use to fetch candidates
-  (unless (string-empty-p prefix)
-    (when-let* ((chat telega-chatbuf--chat)
-                (company-backend (with-temp-buffer
-                                   (setq telega-chatbuf--chat chat)
-                                   ;; NOTE: `telega-company-grab-botcmd' uses
-                                   ;; `telega-chatbuf--input-marker'
-                                   (setq telega-chatbuf--input-marker (point))
-                                   (insert prefix)
-                                   (telega-company--grab-backend 'backend))))
-      (company-call-backend 'candidates prefix))))
-
-(defun telega-chatbuf-complete-at-point ()
-  "Function suitable for use by `completion-at-point-functions'.
-Works only if `company' feature is provided."
-  (interactive)
-  (when-let ((has-company-p (featurep 'company))
-             (prefix (telega-company--grab-backend 'prefix)))
-    (list (- (point) (length (car prefix))) (point)
-          (completion-table-with-cache
-           #'telega-chatbuf-completion-candidates))))
+  (when (<= telega-chatbuf--input-marker (point))
+    (let ((comp-funcs telega-chat-input-complete-functions))
+      (while (and comp-funcs (not (funcall (car comp-funcs))))
+        (setq comp-funcs (cdr comp-funcs))))))
 
 (defun telega-chatbuf-next-link (n)
   "Jump to N's next link in the message.

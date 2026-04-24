@@ -822,61 +822,21 @@ You can navigate your previous chatbuf input using commands:
   {{{where-is(telega-chatbuf--input-search-input-next,telega-chatbuf--input-search-map)}}}
   to cycle chatbuf input ring.
 
-** Completing input in chatbuf
+** Completing input in a chatbuf
 
-Powerful =company-mode= can be used to complete input in the chatbuf
-with
+It is possible to complete chatbuf's input with
 {{{where-is(telega-chatbuf-complete-or-next-link,telega-chat-mode-map)}}}.
 
-=telega= provides few company backends, such as:
+You can use standard Emacs ~capf~ (completion at point) or advanced 
+[[#telega-company][telega-company]].
 
-#+ELLIT-INCLUDE: ../telega-company.el :label company-backends
-
-List of company backends to be used for user input completion is
-controlled by:
-- {{{user-option(telega-company-backends, 2)}}}
-
-You can use completion without enabling =company-mode= in the chat
-buffers, by explicitly pressing
-{{{where-is(telega-chatbuf-complete-or-next-link,telega-chat-mode-map)}}}
-to perform completion at point.
-
-On the other hand, =company-mode= detects input context and pops up
-completion candidates if completion at point is available.  To enable
-=company-mode= in chat buffers use:
+To enable ~capf~ completions use:
 #+begin_src elisp
-(add-hook 'telega-chat-mode-hook 'company-mode)
+(add-hook 'telega-chat-mode-hook 'telega-completions-setup-capf)
 #+end_src
 
-Consider also using =company-posframe= Emacs package (in MELPA), so
-chatbuf's contents remain untouched when completion menu pops above
-the chatbuf prompt.
-
-If you don't like =company-posframe=, consider option:
-- {{{user-option(telega-company-tooltip-always-below, 2)}}}
-
-*** Using capf for input completions
-
-It is possible to use standard Emacs ~capf~ (completion at point)
-functionality to perform completions in the chatbuf.  You still need
-~company.el~ package installed **and loaded** because =telega= uses it
-as engine.
-
-~capf~ is used by default if ~company-mode~ is disabled in the
-chatbuf, so to enable ~capf~ completions setup could look like:
-
-#+begin_src elisp
-(defun my-telega-chat-mode ()
-  (require 'company)
-  (add-hook 'completion-at-point-functions
-            #'telega-chatbuf-complete-at-point nil 'local)
-  )
-
-(add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
-#+end_src
-
-~capf~ functionality is very limited comparing to ~company-mode~
-completions, however, some users might still prefer ~capf~.
+~capf~ functions to be used to complete input:
+- {{{user-option(telega-completions-capf-functions, 2)}}}
 
 ** Sending messages via bots
 

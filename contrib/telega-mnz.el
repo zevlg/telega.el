@@ -174,7 +174,9 @@ Most of these languages available for language detection.")
       (with-current-buffer (get-buffer-create "*Telega Mnz Fontification*")
         (erase-buffer)
         (insert text)
-        ;; NOTE: suppress annoying messages from some major modes
+        ;; NOTE:
+        ;  - Suppress annoying messages from some major modes
+        ;; - Disable mode hooks, because we need only fontification
         (let ((inhibit-message t))
           (delay-mode-hooks
             (if (and (symbolp mode)
@@ -182,15 +184,8 @@ Most of these languages available for language detection.")
                 (funcall mode)
               (ignore-errors
                 (mapc #'funcall mode)))))
-        (font-lock-default-function mode)
-        (font-lock-default-fontify-region (point-min)
-                                          (point-max)
-                                          nil)
-        ;; NOTE: font-lock might trigger errors, for example:
-        ;;   (telega-mnz--mode-render-text 'xml-mode "$ head -n2 /tmp/pechatnaya-forma.doc\n<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<?mso-application progid=\"Word.Document\"?>")
-        ;;   ==>
-        ;;   Debugger entered--Lisp error: (error "Invalid search bound (wrong side of point)")
-        ;;     search-backward("<" 2 t)
+
+        (turn-on-font-lock-if-desired)
         (ignore-errors
           (when font-lock-mode
             (font-lock-ensure))
@@ -334,17 +329,12 @@ If READ-ONLY-P is non-nil, then open buffer as read only."
             (when point-offset
               (goto-char point-offset)))
           ;; Enable corresponding Emacs mode
-          (delay-mode-hooks
-            (dolist (mode-cmd (if (commandp mode)
-                                  (list mode)
-                                (cl-assert (listp mode))
-                                (cl-assert (cl-every #'commandp mode))
-                                mode))
-              (funcall mode-cmd)))
-          (font-lock-default-function mode)
-          (font-lock-default-fontify-region (point-min)
-                                            (point-max)
-                                            nil)
+          (dolist (mode-cmd (if (commandp mode)
+                                (list mode)
+                              (cl-assert (listp mode))
+                              (cl-assert (cl-every #'commandp mode))
+                              mode))
+            (funcall mode-cmd))
           (setq buffer-read-only read-only-p)
           ;; NOTE: Construct and use proper keymap by mergin mode's
           ;; keymap and `telega-mnz-edit-map'

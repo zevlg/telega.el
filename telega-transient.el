@@ -1685,6 +1685,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
 
 (transient-define-suffix telega-transient--suffix-input-ai-compose-apply
   (fmt-text args)
+  "Apply AI text composition."
   :description (lambda ()
                  (telega-i18n "lng_settings_apply"))
 
@@ -1700,12 +1701,13 @@ Return fake chat suitable for `telega-ins--msg-sender'."
 (transient-define-prefix telega-transient-chatbuf-input-ai-compose (imc)
   "Compose text input for the chatbuf."
   [:description (lambda () (telega-i18n "lng_ai_compose_title"))
-   [:pad-keys t
+;   [
+    ;;:pad-keys t
     ""
     ("t" telega-transient--infix-input-ai-compose-translate)
     ("f" telega-transient--infix-input-ai-compose-fix)
     ("s" telega-transient--infix-input-ai-compose-style)
-    ]
+;    ]
    ("e" telega-transient--infix-input-ai-compose-emojify)
    " "
    (telega-transient--infix-input-ai-compose-preview)

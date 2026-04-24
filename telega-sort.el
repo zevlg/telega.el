@@ -30,8 +30,6 @@
 (require 'telega-core)
 
 
-(declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
-
 (declare-function telega-root-view--redisplay "telega-root")
 
 (declare-function telega-chat--info "telega-chat" (chat))
@@ -113,6 +111,13 @@ CRITERIA could be a lit of sort criterias."
       (if (get (car criteria) :telega-sort-inverted)
           (not result)
         result))))
+
+(defun telega-chat> (chat1 chat2)
+  "Compare CHAT1 with CHAT2 according to `telega--sort-criteria'.
+Return if CHAT1 is greater than CHAT2."
+  (telega-chats-compare telega--sort-criteria
+                        (if telega--sort-inverted chat2 chat1)
+                        (if telega--sort-inverted chat1 chat2)))
 
 (defun telega-sorted-chats (criteria chats)
   "Non-destructive variant of `telega-sort-chats'."

@@ -1491,71 +1491,6 @@ Might be a `relative' to show time relative to now."
   :group 'telega-user)
 
 
-(defgroup telega-company nil
-  "Customization for telega company completion."
-  :group 'telega)
-
-(defcustom telega-company-backends '(telega-company-emoji
-                                     telega-company-telegram-emoji
-                                     telega-company-username
-                                     telega-company-hashtag
-                                     telega-company-markdown-precode
-                                     telega-company-botcmd
-                                     telega-company-quick-reply
-                                     )
-  "Company backends to use in chat buffers.
-Set to nil to disable company completions in chat buffers."
-  :package-version '(telega . "0.8.170")
-  :type '(repeat function)
-  :group 'telega-company)
-
-(defcustom telega-company-tooltip-always-below t
-  "Non-nil to show company tooltip always below the point.
-Done by recentering point in the chatbuf."
-  :package-version '(telega . "0.7.47")
-  :type 'boolean
-  :group 'telega-company)
-
-(defcustom telega-company-username-show-avatars telega-user-show-avatars
-  "Non-nil to show avatars in the company annotation."
-  :package-version '(telega . "0.7.44")
-  :type 'boolean
-  :group 'telega-company)
-
-(defcustom telega-company-username-markup nil
-  "Markup to use for usernames completion."
-  :package-version '(telega . "0.8.82")
-  :type '(choice (const :tag "No markup" nil)
-                 (const :tag "Markdown1" "markdown1")
-                 (const :tag "Markdown2" "markdown2"))
-  :group 'telega-company)
-
-(defcustom telega-company-username-complete-nonmember-for '(type bot)
-  "For chats matching this temex complete usernames for non-mebers."
-  :package-version '(telega . "0.8.0")
-  :type 'telega-chat-temex
-  :group 'telega-company)
-
-(defcustom telega-company-username-prefer-name '(username first-name last-name)
-  "Preferred formatting argument to the `telega-user-title' to complete user.
-First giving non-nil result will be used."
-  :package-version '(telega . "0.8.152")
-  :type '(repeat (choice (const :tag "Username" username)
-                         (const :tag "First Name" first-name)
-                         (const :tag "Last Name" last-name)
-                         (const :tag "Full Name" full-name)))
-  :group 'telega-company)
-
-(defcustom telega-company-emoji-fuzzy-match t
-  "*Non-nil to use fuzzy prefix matching.
-For example without fuzzy matches, prefix `:jo' will match only
-`:joy:', `:joy-cat:' and `:joystick:'.  With fuzzy matching
-enabled it will match also `:flag-jo:' and `:black-jocker:'."
-  :package-version '(telega . "0.8.170")
-  :type 'boolean
-  :group 'telega-company)
-
-
 (defgroup telega-chat nil
   "Customization for chat buffer."
   :group 'telega)
@@ -1848,12 +1783,13 @@ timespan, then do not group messages."
   :type '(choice symbol (list symbol))
   :group 'telega-chat)
 
-(defcustom telega-chat-input-complete-function nil
-  "*Custom function to be called before any other on TAB in chatbuf input.
-Should return non-nil if completion occured."
-  :package-version '(telega . "0.6.30")
-  :type 'function
-  :options '(counsel-company)
+(defcustom telega-chat-input-complete-functions
+  '(telega-chatbuf-complete-inline-bot-query
+    telega-chatbuf-complete-sticker-by-emoji)
+  "*List of complete functions to call on TAB in chatbuf's input.
+Function should return non-nil if completion occured."
+  :package-version '(telega . "0.8.631")
+  :type '(repeat function)
   :group 'telega-chat)
 
 (defcustom telega-chat-message-filters-as-media nil
@@ -1945,6 +1881,9 @@ See `mode-line-buffer-identification'."
       :with-menu-p t)
      ;; Chat's START/UNBLOCK/JOIN button
      (telega-chatbuf-footer-ins-join-button)
+
+     ;; Inline bot query button, if any
+     (telega-chatbuf-footer-ins-inline-query-button)
 
      ;; Edit/Reply aux message, defined by `telega-chatbuf--aux-plist'
      ;; is displayed last
@@ -2285,7 +2224,7 @@ example @gif `TAB' will popup buffer with inlined photos. "
   :package-version '(telega . "0.8.620")
   :type '(list integer integer integer integer)
   :group 'telega)
-  
+
 (defcustom telega-album-size-limits '(16 6 70 24)
   "*Limits overall size for the media album.
 Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
@@ -2343,6 +2282,65 @@ Function should take two arguments - TOFILE and REGION-P."
   :type 'function
   :group 'telega)
 
+
+;;; Completions
+(defgroup telega-completions nil
+  "Completions settings."
+  :group 'telega)
+
+(defcustom telega-completions-capf-functions
+  '(telega-capf-emoji
+    telega-capf-telegram-emoji
+    telega-capf-username
+    telega-capf-hashtag
+    telega-capf-markdown-precode
+    ;; NOTE: quick reply completions should go before botcmd, because
+    ;; it uses same char (/) to complete, but quick replies completes
+    ;; only for private chats
+    telega-capf-quick-reply
+    telega-capf-botcmd)
+  "CAPF functions to add in chat buffers.
+Set to nil to disable."
+  :package-version '(telega . "0.8.631")
+  :type '(repeat function)
+  :group 'telega-completions)
+
+(defcustom telega-completions-username-prefer-name
+  '(username first-name last-name)
+  "Preferred name formats when inserting a completed username."
+  :package-version '(telega . "0.8.631")
+  :type '(repeat (choice (const username) (const first-name)
+                         (const last-name) (const full-name)))
+  :group 'telega-completions)
+
+(defcustom telega-completions-username-show-avatars telega-user-show-avatars
+  "Non-nil to show avatars in username completion annotations."
+  :package-version '(telega . "0.8.631")
+  :type 'boolean
+  :group 'telega-completions)
+
+(defcustom telega-completions-username-markup nil
+  "Markup format for completed usernames."
+  :package-version '(telega . "0.8.632")
+  :type '(choice (const :tag "None" nil)
+                 (const :tag "Markdown1" "markdown1")
+                 (const :tag "Markdown2" "markdown2")
+                 (const :tag "Org" "org"))
+  :group 'telega-completions)
+
+(defcustom telega-completions-username-complete-nonmember-for '(type bot)
+  "Complete non-member usernames in chats matching this chat temex."
+  :package-version '(telega . "0.8.631")
+  :type 'telega-chat-temex
+  :group 'telega-completions)
+
+(defcustom telega-completions-emoji-fuzzy-match t
+  "Non-nil to use fuzzy matching for local emoji completion."
+  :package-version '(telega . "0.8.631")
+  :type 'boolean
+  :group 'telega-completions)
+
+
 ;; special symbols
 (defgroup telega-symbol nil
   "Group to customize special symbols used by telega."
@@ -2452,6 +2450,11 @@ Used for alignment with outgoing messages."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-checkbox-cross (propertize "[x]" 'face 'error)
+  "Symbol for checkbox with cross."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-radiobox-on "(*)"
   "Symbol for checked radio button."
   :type 'string
@@ -2459,6 +2462,11 @@ Used for alignment with outgoing messages."
 
 (defcustom telega-symbol-radiobox-off "( )"
   "Symbol for unchecked radio button."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-radiobox-cross (propertize "(x)" 'face 'error)
+  "Symbol for radio box with cross."
   :type 'string
   :group 'telega-symbol)
 
@@ -2610,28 +2618,22 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-poll-options '(radiobox-off radiobox-on)
+(defcustom telega-symbol-poll-options '(radiobox-off radiobox-on radiobox-cross)
   "Symbols used to display poll options with single choice.
 First - for non-selected option.
 Second - for selected option."
-  :type '(list (choice string symbol) (choice string symbol))
+  :type '(list (choice string symbol)
+               (choice string symbol)
+               (choice string symbol))
   :group 'telega-symbol)
 
-(defcustom telega-symbol-poll-multiple-options '(checkbox-off checkbox-on)
+(defcustom telega-symbol-poll-multiple-options '(checkbox-off checkbox-on checkbox-cross)
   "Symbols used to display poll options with multiple answers allowed.
 First - for non-selected option.
 Second - for selected option."
-  :type '(list (choice string symbol) (choice string symbol))
-  :group 'telega-symbol)
-
-(defcustom telega-symbol-quiz-options (list (compose-chars ?○ ?✓)
-                                            "○"
-                                            (compose-chars ?○ ?✗))
-  "Symbols used to display quiz options.
-First - for correct option.
-Second - for non-selected incorrect option.
-Third - for selected incorrect option."
-  :type '(list string string string)
+  :type '(list (choice string symbol)
+               (choice string symbol)
+               (choice string symbol))
   :group 'telega-symbol)
 
 (defcustom telega-symbol-attach-brackets (cons "⟬" "⟭")
@@ -3043,6 +3045,9 @@ Used in one line message inserter."
     (checkbox-on
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "checked.svg" 2)))
+    (checkbox-cross
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "symbols/button-close.svg" 2)))
     (checklist
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "checked.svg" 2)))
@@ -3093,6 +3098,9 @@ Used in one line message inserter."
     (radiobox-on
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "radio-checked.svg" 2)))
+    (radiobox-cross
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "symbols/cross_circle_fill_16.svg" 2)))
     (reaction (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "symbols/reaction.svg" 2)))
     (reaction-mark (when (and telega-use-images (image-type-available-p 'svg))

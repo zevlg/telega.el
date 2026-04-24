@@ -141,16 +141,24 @@ If SYNC-P is specified, then set option is sync manner."
          :proxy_id proxy-id)
    callback))
 
-(defun telega--searchEmojis (text &optional exact-match-p
-                                  language-codes callback)
-  "Search for emojis by TEXT keywords.
-Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
+(cl-defun telega--searchEmojis (text &key language-codes callback)
+  "Search for emojis by TEXT keywords."
+  (declare (indent 1))
   (with-telega-server-reply (reply)
       (plist-get reply :emoji_keywords)
 
     (list :@type "searchEmojis"
           :text text
-          :exact_match (or exact-match-p :false)
+          :input_language_codes (apply #'vector language-codes))
+    callback))
+
+(cl-defun telega--getKeywordEmojis (text &key language-codes callback)
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :emojis) nil)
+
+    (list :@type "getKeywordEmojis"
+          :text text
           :input_language_codes (apply #'vector language-codes))
     callback))
 
@@ -2090,7 +2098,7 @@ LIMIT defaults to 200."
 If CALLBACK is specified, call it with one argument - CHAT."
   (declare (indent 1))
   (with-telega-server-reply (reply)
-      (when reply
+      (unless (telega--tl-error-p reply)
         (telega-chat-get (plist-get reply :id)))
 
     (list :@type "searchPublicChat"
@@ -3226,17 +3234,17 @@ URL to open after a link of the type internalLinkTypeWebApp is clicked."
          :allow_write_access allow-write-access-p)
    callback))
 
-(cl-defun telega--getWebAppUrl (bot-user &key (url "") tdlib-theme app-name
-                                         callback)
-  "Return an HTTPS URL of a Web App to open."
+(cl-defun telega--getWebAppUrl (bot-user &key (url "") params callback)
+  "Return an HTTPS URL of a Web App to open.
+PARAMS is a TL WebAppOpenParameters structure."
   (declare (indent 1))
   (with-telega-server-reply (reply)
       (telega-tl-str reply :url)
-    (list :@type "getWebAppUrl"
-          :bot_user_id (plist-get bot-user :id)
-          :url url
-          :theme tdlib-theme
-          :app-name app-name)
+    (nconc (list :@type "getWebAppUrl"
+                 :bot_user_id (plist-get bot-user :id)
+                 :url url)
+           (when params
+             (list :parameters params)))
     callback))
 
 (defun telega--getMessageReadDate (msg &optional callback)
@@ -3416,6 +3424,22 @@ Saved Messages topic is specified by SM-TOPIC-ID."
 (defun telega--hideContactCloseBirthdays ()
   (telega-server--send
    (list :@type "hideContactCloseBirthdays")))
+
+(cl-defun telega--getInlineQueryResults (bot-user query &key chat
+                                                  offset location callback)
+  "Query BOT-ID for the QUERY."
+  (declare (indent 2))
+  (telega-server--call
+   (nconc (list :@type "getInlineQueryResults"
+                :bot_user_id (plist-get bot-user :id)
+                :query query)
+          (when chat
+            (list :chat_id (plist-get chat :id)))
+          (when location
+            (list :location location))
+          (when offset
+            (list :offset offset)))
+   callback))
 
 (defun telega--toggleHasSponsoredMessagesEnabled (enable-p &optional callback)
   (telega-server--send-or-call

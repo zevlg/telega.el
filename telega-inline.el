@@ -253,23 +253,6 @@
        (telega-tl-str kbd-type :url))
       )))
 
-
-(defun telega--getInlineQueryResults (bot-user query &optional chat
-                                               offset location callback)
-  "Query BOT-ID for the QUERY."
-  (declare (indent 5))
-  (telega-server--call
-   (nconc (list :@type "getInlineQueryResults"
-                :bot_user_id (plist-get bot-user :id)
-                :query query)
-          (when chat
-            (list :chat_id (plist-get chat :id)))
-          (when location
-            (list :location location))
-          (when offset
-            (list :offset offset)))
-   callback))
-
 (defun telega-ins--inline-delim (&optional chars-width)
   "Inserter for the delimiter."
   (telega-ins--with-face
@@ -454,10 +437,20 @@
 (defun telega-inline-bot--gen-callback (bot query &optional for-chat)
   "Generate callback for the BOT's QUERY result handling in FOR-CHAT."
   (lambda (reply)
+    (with-telega-chatbuf for-chat
+      (plist-put telega-chatbuf--inline-bot-plist :query query)
+      (plist-put telega-chatbuf--inline-bot-plist :query-reply reply)
+      (plist-put telega-chatbuf--inline-bot-plist :loading nil)
+      ;; Redisplay inline bot query button if it changes
+      (unless (equal (plist-get telega-chatbuf--inline-bot-plist :button)
+                     (plist-get reply :button))
+        (plist-put telega-chatbuf--inline-bot-plist :button
+                   (plist-get reply :button))
+        (telega-chatbuf--footer-update)))
+
     (if-let ((qr-results (append (plist-get reply :results) nil)))
         (let ((help-window-select telega-inline-query-window-select))
           (with-telega-help-win "*Telegram Inline Results*"
-            (visual-line-mode 1)
             ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
             ;; of the buffer
             (set (make-local-variable 'auto-window-vscroll) nil)
@@ -567,15 +560,19 @@
 (defun telega-inline-bot-query (bot query for-chat)
   "Query BOT for inline results for the QUERY."
   (with-telega-chatbuf for-chat
-    ;; Cancel currently active inline-query loading
-    (when (telega-server--callback-get telega-chatbuf--inline-query)
-      (telega-server--callback-put telega-chatbuf--inline-query 'ignore))
+    ;; Cancel currently active inline query loading
+    (when-let ((extra (plist-get telega-chatbuf--inline-bot-plist :loading)))
+      (when (telega-server--callback-get extra)
+        (telega-server--callback-put extra 'ignore)))
 
-    (message "telega: @%s Searching for %s..."
-             (telega-msg-sender-username bot) (propertize query 'face 'bold))
-    (setq telega-chatbuf--inline-query
-          (telega--getInlineQueryResults bot query for-chat nil nil
-            (telega-inline-bot--gen-callback bot query for-chat)))))
+    (unless (string-empty-p query)
+      (message "telega: @%s Searching for \"%s\"..."
+               (telega-msg-sender-username bot) (propertize query 'face 'bold)))
+    (plist-put telega-chatbuf--inline-bot-plist :loading
+               (telega--getInlineQueryResults bot query
+                 :chat for-chat
+                 :callback (telega-inline-bot--gen-callback
+                            bot query for-chat)))))
 
 (defun telega--recent-inline-bots-fetch ()
   "Update recently used bots."

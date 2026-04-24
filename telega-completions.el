@@ -22,10 +22,9 @@
 ;;; Commentary:
 
 ;; Completion helpers and CAPF (completion-at-point-functions) based
-;; completions for telega chat buffers.  Shared helper functions live
-;; here and are reused by `telega-company.el'; CAPF-specific adapters
-;; are defined below and use `external-completion' to fetch candidates
-;; directly from TDLib without depending on company-mode.
+;; completions for telega chat buffers.  CAPF-specific adapters are
+;; defined below and use `external-completion' to fetch candidates
+;; from TDLib.
 ;;
 ;; The `external-completion' style means the LOOKUP function is
 ;; synchronous but interruptible: it waits for TDLib via
@@ -46,81 +45,14 @@
 
 ;;; Code:
 (require 'cl-lib)
-(require 'telega-core)
-(require 'telega-tdlib)
-(require 'telega-util)
-(require 'telega-user)
-(require 'telega-emoji)
 
-(declare-function telega-chat--info "telega-chat" (chat))
-(declare-function telega-chatbuf-attach-inline-bot-query "telega-chat"
-                  (&optional no-empty-search))
-(declare-function telega-chat-admin-get "telega-chat" (chat user))
-(declare-function telega-filter-chats "telega-filter" (chats-list chat-temex))
-(declare-function telega-i18n "telega-i18n" (key &rest args))
-(declare-function telega-ins--content-one-line "telega-ins" (content))
-(declare-function telega-ins--msg-sender "telega-ins" (sender &rest props))
-(declare-function telega-msg-sender-title "telega-msg" (sender))
-(declare-function telega-msg-sender-username "telega-msg"
-                  (sender &optional with-prefix))
-(declare-function telega-string-as-markup "telega-markup"
-                  (text markup markup-func))
-(declare-function telega--full-info "telega-info" (tlobj))
+(require 'telega-info)
+
 (declare-function external-completion-table "external-completion"
                   (category lookup &optional metadata
                             try-completion-function))
-
-
-;;; Customization
-
-(defcustom telega-completions-capf-functions
-  '(telega-capf-emoji
-    telega-capf-telegram-emoji
-    telega-capf-username
-    telega-capf-hashtag
-    telega-capf-markdown-precode
-    telega-capf-botcmd
-    telega-capf-quick-reply)
-  "CAPF functions to add in chat buffers.
-Set to nil to disable."
-  :package-version '(telega . "0.9.0")
-  :type '(repeat function)
-  :group 'telega)
-
-(defcustom telega-completions-username-prefer-name
-  '(username first-name last-name)
-  "Preferred name formats when inserting a completed username."
-  :package-version '(telega . "0.9.0")
-  :type '(repeat (choice (const username) (const first-name)
-                         (const last-name) (const full-name)))
-  :group 'telega)
-
-(defcustom telega-completions-username-show-avatars telega-user-show-avatars
-  "Non-nil to show avatars in username completion annotations."
-  :package-version '(telega . "0.9.0")
-  :type 'boolean
-  :group 'telega)
-
-(defcustom telega-completions-username-markup nil
-  "Markup format for completed usernames."
-  :package-version '(telega . "0.9.0")
-  :type '(choice (const :tag "None" nil)
-                 (const :tag "Markdown1" "markdown1")
-                 (const :tag "Markdown2" "markdown2"))
-  :group 'telega)
-
-(defcustom telega-completions-username-complete-nonmember-for '(type bot)
-  "Complete non-member usernames in chats matching this temex."
-  :package-version '(telega . "0.9.0")
-  :type 'telega-chat-temex
-  :group 'telega)
-
-(defcustom telega-completions-emoji-fuzzy-match t
-  "Non-nil to use fuzzy matching for local emoji completion."
-  :package-version '(telega . "0.9.0")
-  :type 'boolean
-  :group 'telega)
-
+(declare-function external-completion--call "external-completion"
+                  (op string table pred point))
 
 ;;; Internal: interruptible TDLib lookup
 
@@ -224,23 +156,18 @@ On success, updates the cache and returns fresh candidates."
         (puthash (cons type query) outcome telega-completions--cache)
         outcome))))
 
+
 ;;; Shared completion helpers
-
-(defun telega-completions--emoji-match-p (prefix emoji-name fuzzy-match)
-  "Return non-nil if EMOJI-NAME matches PREFIX.
-If FUZZY-MATCH is non-nil, also allow fuzzy hyphen matching."
-  (or (string-prefix-p prefix emoji-name)
-      (and fuzzy-match
-           (string-match-p
-            (regexp-quote (concat "-" (substring prefix 1)))
-            emoji-name))))
-
-(defun telega-completions--emoji-candidates (prefix fuzzy-match)
-  "Return local emoji candidates matching PREFIX.
-Use FUZZY-MATCH to control fuzzy hyphen matching."
+(defun telega-completions--emoji-candidates (prefix)
+  "Return local emoji candidates matching PREFIX."
+  (telega-emoji-init)
   (cl-remove-if-not
    (lambda (emoji-name)
-     (telega-completions--emoji-match-p prefix emoji-name fuzzy-match))
+     (or (string-prefix-p prefix emoji-name)
+         (and telega-completions-emoji-fuzzy-match
+              (string-match-p
+               (regexp-quote (concat "-" (substring prefix 1)))
+               emoji-name))))
    telega-emoji-candidates))
 
 (defun telega-completions--emoji-annotation (emoji)
@@ -255,26 +182,35 @@ Use FUZZY-MATCH to control fuzzy hyphen matching."
   (delete-region (- (point) (length candidate)) (point))
   (insert emoji))
 
-(defun telega-completions--telegram-emoji-query (prefix)
-  "Return TDLib `searchEmojis' query for PREFIX."
-  (replace-regexp-in-string
-   (regexp-quote "-") " " (substring prefix 1)))
+(defun telega-completions--telegram-emoji-candidates (&optional prefix suffix)
+  "Return callback to search Telegram emoji candidates.
+Surround emoji keyword with PREFIX and SUFFIX."
+  (lambda (query callback)
+    ;; NOTE: `telega--searchEmojis' will return nil on empty search
+    (if (string-empty-p query)
+        (funcall callback nil)
 
-(defun telega-completions--telegram-emoji-candidates (prefix)
-  "Return async company-style candidates thunk for PREFIX."
-  (cons :async
-        (lambda (callback)
-          (telega--searchEmojis
-           (telega-completions--telegram-emoji-query prefix)
-           nil nil
-           (lambda (emoji-keywords)
-             (funcall callback
-                      (mapcar (lambda (ek)
-                                (propertize
-                                 (telega-tl-str ek :keyword)
-                                 'telega-emoji
-                                 (telega-tl-str ek :emoji)))
-                              emoji-keywords)))))))
+      (let* ((closed-p (string-suffix-p ":" query))
+             (search-text 
+              ;; Strip off leading ":" and replace `-' with spaces
+              ;; before the search, so one could use `:i-love-you' for
+              ;; example
+              (replace-regexp-in-string
+               "-" " "
+               (substring query 1 (and closed-p -1)))))
+      (telega--searchEmojis search-text
+        :callback
+        (lambda (emoji-keywords)
+          (funcall callback
+                   (mapcar (lambda (ek)
+                             (propertize
+                              (concat prefix
+                                      (telega-tl-str ek :keyword)
+                                      ;; (replace-regexp-in-string
+                                      ;;  " " "-" (telega-tl-str ek :keyword))
+                                      suffix)
+                              'telega-emoji (telega-tl-str ek :emoji)))
+                           emoji-keywords))))))))
 
 (defun telega-completions--language-names ()
   "Return completion candidates for markdown code block languages."
@@ -298,7 +234,7 @@ Use FUZZY-MATCH to control fuzzy hyphen matching."
                         (substring mode-name 0 -5))))
                   sorted-modes))))
 
-(defun telega-completions--markdown-precode-post-completion ()
+(defun telega-completions--markdown-precode-post-completion (&rest _ignored)
   "Insert trailing code fence structure after markdown language completion."
   (if (save-excursion (re-search-forward "^```" nil 'noerror))
       (forward-char)
@@ -381,38 +317,40 @@ Return nil if MEMBER can't be represented safely."
                                                   (user is-deleted)))
                  members))))
 
-(defun telega-completions--username-extra-candidates (input complete-nonmember-for)
+(defun telega-completions--username-extra-candidates (input &optional
+                                                            with-nonmembers-p)
   "Return non-member username candidates for INPUT.
-Use COMPLETE-NONMEMBER-FOR to filter chats eligible for fallback usernames."
+If WITH-NONMEMBERS-P is non-nil, also include usernames for chats
+matching `telega-completions-username-complete-nonmember-for' chat
+temex."
   (unless (telega-completions--username-admin-p input)
-    (let ((bot-cands
-           (cl-remove-if-not
+    (nconc (when with-nonmembers-p
+             ;; NOTE: In case there is no candidates, and INPUT starts
+             ;; some username from Main chat list, then complete it
+             (cl-remove-if-not
+              (lambda (username)
+                (and username
+                     (string-prefix-p input username 'ignore-case)))
+              (mapcar (lambda (chat-user)
+                        (telega-msg-sender-username chat-user 'with-@))
+                      (telega-filter-chats (telega-chats-list)
+                        telega-completions-username-complete-nonmember-for))))
+
+           (seq-remove
             (lambda (botname)
-              (string-prefix-p input botname 'ignore-case))
-            (cl-union telega--recent-inline-bots
-                      telega-known-inline-bots
-                      :test #'string=)))
-          (nonmember-cands
-           (cl-remove-if-not
-            (lambda (username)
-              (and username
-                   (string-prefix-p input username 'ignore-case)))
-            (mapcar (lambda (chat-user)
-                      (telega-msg-sender-username chat-user 'with-@))
-                    (telega-filter-chats
-                     (telega-chats-list)
-                     complete-nonmember-for)))))
-      (nconc bot-cands nonmember-cands))))
+              (not (string-prefix-p input botname 'ignore-case)))
+            (seq-union telega--recent-inline-bots
+                       telega-known-inline-bots
+                       #'string=)))))
 
-(defun telega-completions--username-candidates (members input complete-nonmember-for)
-  "Return completion candidates from MEMBERS for INPUT.
-Use COMPLETE-NONMEMBER-FOR to include additional non-member candidates."
-  (nconc (telega-completions--username-member-candidates members input)
-         (telega-completions--username-extra-candidates
-          input complete-nonmember-for)))
+(defun telega-completions--username-candidates (members input)
+  "Return completion candidates from MEMBERS for INPUT."
+  (let ((cands (telega-completions--username-member-candidates members input)))
+    (nconc cands
+           (telega-completions--username-extra-candidates
+            input (unless cands 'with-nonmembers)))))
 
-(defun telega-completions--username-search (chat input complete-nonmember-for
-                                               &optional callback)
+(defun telega-completions--username-search (chat input &optional callback)
   "Search CHAT mention candidates for INPUT.
 Use COMPLETE-NONMEMBER-FOR to extend results with non-member usernames.
 If CALLBACK is non-nil, invoke it asynchronously with the candidate list."
@@ -424,64 +362,68 @@ If CALLBACK is non-nil, invoke it asynchronously with the candidate list."
          :callback
          (lambda (members)
            (funcall callback
-                    (telega-completions--username-candidates
-                     members input complete-nonmember-for))))
+                    (telega-completions--username-candidates members input))))
       (telega-completions--username-candidates
        (telega--searchChatMembers chat query filter)
-       input complete-nonmember-for))))
+       input))))
 
-(defun telega-completions--username-annotation (chat candidate show-avatars)
-  "Return annotation for CANDIDATE in CHAT.
-If SHOW-AVATARS is non-nil, include sender avatars in the annotation."
+(defun telega-completions--username-annotation (candidate)
+  "Return annotation for the username CANDIDATE."
   (when-let* ((member (or (get-text-property 0 'telega-member candidate)
                           (telega-user--by-username candidate))))
     (telega-ins--as-string
      (telega-ins "  ")
      (telega-ins--msg-sender member
-       :with-avatar-p show-avatars)
-     (when (telega-user-p member)
-       (when-let* ((admin (telega-chat-admin-get chat member)))
-         (telega-ins--with-face 'telega-shadow
-           (telega-ins " ("
-                       (or (telega-tl-str admin :custom_title)
-                           (if (plist-get admin :is_owner)
-                               (telega-i18n "lng_owner_badge")
-                             (telega-i18n "lng_admin_badge")))
-                       ")")))))))
+       :with-avatar-p telega-completions-username-show-avatars)
+     (when-let* ((_ (telega-user-p member))
+                 (admin (telega-chat-admin-get telega-chatbuf--chat member)))
+       (telega-ins--with-face 'telega-shadow
+         (telega-ins " ("
+                     (or (telega-tl-str admin :custom_title)
+                         (if (plist-get admin :is_owner)
+                             (telega-i18n "lng_owner_badge")
+                           (telega-i18n "lng_admin_badge")))
+                     ")"))))))
 
-(defun telega-completions--username-post-completion (arg prefer-name markup)
-  "Insert completed username ARG using PREFER-NAME and MARKUP options."
+(defun telega-completions--username-post-completion (arg &optional _status)
+  "Insert completed username ARG."
   (when-let* ((member (and (get-text-property 0 'telega-input arg)
-                           (get-text-property 0 'telega-member arg))))
-    (when (telega-user-p member)
-      (delete-region (- (point) (length arg)) (point))
-      (when-let* ((fmt-names prefer-name)
-                  (name (let (tmp)
-                          (while (and fmt-names (not tmp))
-                            (setq tmp (telega-user-title
-                                       member (car fmt-names) 'raw)
-                                  fmt-names (cdr fmt-names)))
-                          tmp)))
-        (telega-ins
-         (cond
-          ((string-prefix-p "@" name) name)
-          ((member markup '("markdown1" "markdown2"))
-           (telega-string-as-markup
-            (format "[%s](tg://user?id=%d)" name (plist-get member :id))
-            markup
-            (cdr (assoc markup telega-chat-markup-functions))))
-          (t
-           (propertize name
-                       :tl-entity-type (list :@type "textEntityTypeMentionName"
-                                             :user_id (plist-get member :id))
-                       'face 'telega-entity-type-mention
-                       'rear-nonsticky nil
-                       'front-sticky nil)))))))
-  (insert " ")
+                           (get-text-property 0 'telega-member arg)))
+              (_ (telega-user-p member)))
+    (delete-region (- (point) (length arg)) (point))
+    (when-let ((name (seq-some (lambda (name-fmt)
+                                 (telega-user-title member name-fmt 'raw))
+                               telega-completions-username-prefer-name)))
+      (telega-ins
+       (cond
+        ((string-prefix-p "@" name) name)
+        ((member telega-completions-username-markup '("markdown1" "markdown2"))
+         (telega-string-as-markup
+             (format "[%s](tg://user?id=%d)" name (plist-get member :id))
+             telega-completions-username-markup
+             (cdr (assoc telega-completions-username-markup
+                         telega-chat-markup-functions))))
+        ((equal telega-completions-username-markup "org")
+         (telega-string-as-markup
+             (propertize (format "[[tg://user?id=%d][%s]]"
+                                 (plist-get member :id) name)
+                         'org-link t)
+             telega-completions-username-markup
+             (cdr (assoc telega-completions-username-markup
+                         telega-chat-markup-functions))))
+        (t
+         (propertize name
+                     :tl-entity-type (list :@type "textEntityTypeMentionName"
+                                           :user_id (plist-get member :id))
+                     'face 'telega-entity-type-mention
+                     'rear-nonsticky nil
+                     'front-sticky nil))))))
+
   (let ((input (telega-chatbuf-input-string)))
+    (insert " ")
     (when (or (member input telega-known-inline-bots)
               (member input telega--recent-inline-bots))
-      (telega-chatbuf-attach-inline-bot-query 'no-search))))
+      (telega-chatbuf-complete-inline-bot-query 'no-search))))
 
 (defun telega-completions--bot-commands-list (bot-commands &optional suffix)
   "Return completion candidates for BOT-COMMANDS with optional SUFFIX."
@@ -502,15 +444,14 @@ If SHOW-AVATARS is non-nil, include sender avatars in the annotation."
     (if (telega-chatbuf-match-p '(type bot))
         (telega-completions--bot-commands-list
          (telega--tl-get full-info :bot_info :commands))
-      (apply #'nconc
-             (mapcar (lambda (bot-commands)
-                       (telega-completions--bot-commands-list
-                        (plist-get bot-commands :commands)
-                        (telega-msg-sender-username
-                         (telega-user-get
-                          (plist-get bot-commands :bot_user_id))
-                         'with-@)))
-                     (plist-get full-info :bot_commands))))))
+      (mapcar (lambda (bot-commands)
+                (telega-completions--bot-commands-list
+                 (plist-get bot-commands :commands)
+                 (telega-msg-sender-username
+                  (telega-user-get
+                   (plist-get bot-commands :bot_user_id))
+                  'with-@)))
+              (plist-get full-info :bot_commands)))))
 
 (defun telega-completions--annotation (candidate)
   "Return generic completion annotation stored on CANDIDATE."
@@ -549,14 +490,15 @@ If SHOW-AVATARS is non-nil, include sender avatars in the annotation."
 Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
   (let ((end (point)))
     (save-excursion
-      (when (or (looking-at-p "\\>") (eobp))
+      (when (looking-at-p "\\>")
         (skip-syntax-backward "w"))
       ;; At this point we are right after the trigger char(s).
       ;; Check char-before FIRST (same logic as telega-company-grab-single-char),
       ;; then skip backward over all repeated CHARs to find the true start.
-      (when (and (char-before) (= (char-before) char))
+      (when (equal (char-before) char)
         (skip-chars-backward (char-to-string char))
-        (unless (looking-at-p "\\w")
+        ;; CHAR must not be in the middle of the word
+        (unless (looking-at-p "\\>")
           (cons (point) end))))))
 
 (defun telega-capf--botcmd-bounds ()
@@ -567,52 +509,54 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
              (= (match-beginning 0) telega-chatbuf--input-marker))
     (cons (match-beginning 0) (point))))
 
-;;; CAPF: local emoji (:<name>:)
+(defun telega-capf--emoji-name-bounds (&optional allow-spaces-p bound)
+  "Return (START . END) where emoji name starts.
+Non-nil ALLOW-SPACES-P allows spaces for the closed (having trailing
+colon) emoji."
+  (let ((end (point))
+        (bound (or bound (1- telega-chatbuf--input-marker))))
+    (save-excursion
+      (when (and (or (re-search-backward
+                      (rx (or bol space)
+                          (group ":" (1+ (not (or space ":"))) (? ":")))
+                      bound 'no-error)
+                     ;; Try closed emoji if spaces allowed
+                     (and allow-spaces-p
+                          (re-search-backward
+                           (rx (or bol space) (group ":" (1+ (not ":"))) ":")
+                           bound 'no-error)))
+                 (equal end (match-end 0)))
+        (cons (match-beginning 1) end)))))
 
+;;; CAPF: local emoji (:<name>:)
 (defun telega-capf-emoji ()
   "CAPF for emoji completion using the local emoji list."
   (telega-emoji-init)
-  (when-let* ((end (point))
-              (start (save-excursion
-                       (and (re-search-backward
-                             "\\(?:^\\|[[:space:]]\\)\\(:[^: _]+\\)"
-                             (max (point-min)
-                                  (- end telega-emoji-candidate-max-length))
-                             t)
-                            (match-beginning 1))))
-              (prefix (buffer-substring-no-properties start end))
-              ((string-prefix-p ":" prefix)))
-    (let ((candidates
-           (telega-completions--emoji-candidates
-            prefix telega-completions-emoji-fuzzy-match)))
-      (list start end candidates
-            :exclusive 'no
-            :annotation-function
-            (lambda (en)
-              (telega-completions--emoji-annotation
-               (cdr (assoc en telega-emoji-alist))))
-            :exit-function
-            (lambda (candidate _status)
-              (when-let* ((emoji (cdr (assoc candidate telega-emoji-alist))))
-                (telega-completions--emoji-post-completion
-                 candidate emoji)))))))
-
+  (when-let* ((bounds (telega-capf--emoji-name-bounds))
+              (start (car bounds))
+              (end (cdr bounds))
+              (candidates
+               (telega-completions--emoji-candidates
+                (buffer-substring-no-properties start end))))
+    (list start end candidates
+          :exclusive 'no
+          :annotation-function
+          (lambda (en)
+            (telega-completions--emoji-annotation
+             (cdr (assoc en telega-emoji-alist))))
+          :exit-function
+          (lambda (candidate _status)
+            (when-let* ((emoji (cdr (assoc candidate telega-emoji-alist))))
+              (telega-completions--emoji-post-completion
+               candidate emoji))))))
 
 ;;; CAPF: Telegram emoji (:<name>: via TDLib searchEmojis)
 
 (defun telega-capf-telegram-emoji ()
   "CAPF for emoji completion using TDLib searchEmojis."
-  (telega-emoji-init)
-  (when-let* ((end (point))
-              (start (save-excursion
-                       (and (re-search-backward
-                             "\\(?:^\\|[[:space:]]\\)\\(:[^: _]+\\)"
-                             (max (point-min)
-                                  (- end telega-emoji-candidate-max-length))
-                             t)
-                            (match-beginning 1))))
-              (prefix (buffer-substring-no-properties start end))
-              ((string-prefix-p ":" prefix)))
+  (when-let* ((bounds (telega-capf--emoji-name-bounds 'allow-spaces))
+              (start (car bounds))
+              (end (cdr bounds)))
     (telega-completions--ensure-external-completion)
     (let ((table
             (external-completion-table
@@ -620,18 +564,7 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
              (lambda (string _point)
                (telega-completions--lookup
                 'telegram-emoji
-                (lambda (q cb)
-                  (telega--searchEmojis
-                   (telega-completions--telegram-emoji-query q)
-                   nil nil
-                   (lambda (emoji-keywords)
-                     (funcall cb
-                              (mapcar (lambda (ek)
-                                        (propertize
-                                         (telega-tl-str ek :keyword)
-                                         'telega-emoji
-                                         (telega-tl-str ek :emoji)))
-                                      emoji-keywords)))))
+                (telega-completions--telegram-emoji-candidates ":" ":")
                 string)))))
       (list start end table
             :exclusive 'no
@@ -645,19 +578,7 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
                 (telega-completions--emoji-post-completion
                  candidate emoji)))))))
 
-
 ;;; CAPF: username / @@admin mention
-
-(defun telega-capf--username-annotation (candidate)
-  (telega-completions--username-annotation
-   telega-chatbuf--chat candidate
-   telega-completions-username-show-avatars))
-
-(defun telega-capf--username-post-completion (arg)
-  (telega-completions--username-post-completion
-   arg
-   telega-completions-username-prefer-name
-   telega-completions-username-markup))
 
 (defun telega-capf--username-table (chat)
   "Return completion table for username mentions in CHAT."
@@ -670,25 +591,20 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
           'username-admin
         'username)
       (lambda (_query cb)
-        (telega-completions--username-search
-         chat string telega-completions-username-complete-nonmember-for cb))
+        (telega-completions--username-search chat string cb))
       (telega-completions--username-query string)))))
 
 (defun telega-capf-username ()
   "CAPF for @username and @@admin mention completions."
   (when-let* ((bounds (telega-capf--bounds-for-char ?\@))
               (start (car bounds))
-              (end (cdr bounds))
-              (input (buffer-substring-no-properties start end))
-              ((> (length input) 0)))
+              (end (cdr bounds)))
+    (cl-assert (> end start))
     (let ((table (telega-capf--username-table telega-chatbuf--chat)))
       (list start end table
             :exclusive 'no
-            :annotation-function #'telega-capf--username-annotation
-            :exit-function
-            (lambda (candidate _status)
-              (telega-capf--username-post-completion candidate))))))
-
+            :annotation-function #'telega-completions--username-annotation
+            :exit-function #'telega-completions--username-post-completion))))
 
 ;;; CAPF: hashtag (#hashtag)
 
@@ -696,9 +612,8 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
   "CAPF for #hashtag completions via TDLib searchHashtags."
   (when-let* ((bounds (telega-capf--bounds-for-char ?\#))
               (start (car bounds))
-              (end (cdr bounds))
-              (input (buffer-substring-no-properties start end))
-              ((> (length input) 0)))
+              (end (cdr bounds)))
+    (cl-assert (> end start))
     (telega-completions--ensure-external-completion)
     (let ((table
             (external-completion-table
@@ -711,7 +626,7 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
                 (telega-completions--hashtag-query string))))))
       (list start end table
             :exclusive 'no
-            :exit-function (lambda (_candidate _status) (insert " "))))))
+            :exit-function (lambda (&rest _ignored) (insert " "))))))
 
 
 ;;; CAPF: bot commands (/command)
@@ -720,31 +635,29 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
   "CAPF for /bot-command completions at start of chatbuf input."
   (when-let* ((bounds (telega-capf--botcmd-bounds))
               (start (car bounds))
-              (end (cdr bounds))
-              (input (buffer-substring-no-properties start end)))
+              (end (cdr bounds)))
     (list start end
-          (all-completions input
-                           (telega-completions--bot-commands telega-chatbuf--chat))
+          (all-completions (buffer-substring-no-properties start end)
+                           (telega-completions--bot-commands
+                            telega-chatbuf--chat))
           :exclusive 'no
-          :annotation-function
-          #'telega-completions--annotation)))
+          :annotation-function #'telega-completions--annotation)))
 
 
 ;;; CAPF: quick reply shortcuts (/name in private chats)
 
 (defun telega-capf-quick-reply ()
   "CAPF for /quick-reply shortcut completions (private chats only)."
-  (when (telega-chatbuf-match-p '(type private))
-    (when-let* ((bounds (telega-capf--bounds-for-char ?/))
-                (start (car bounds))
-                (end (cdr bounds))
-                (input (buffer-substring-no-properties start end)))
-      (let ((shortcuts
-             (telega-completions--quick-replies)))
-        (list start end (all-completions input shortcuts)
-              :exclusive 'no
-              :annotation-function
-              #'telega-completions--quick-reply-annotation)))))
+  (when-let* ((_ (telega-chatbuf-match-p '(type private)))
+              (bounds (telega-capf--bounds-for-char ?/))
+              (start (car bounds))
+              (end (cdr bounds))
+              (collection (telega-completions--quick-replies)))
+    (list start end
+          (all-completions (buffer-substring-no-properties start end)
+                           collection)
+          :exclusive 'no
+          :annotation-function #'telega-completions--quick-reply-annotation)))
 
 
 ;;; CAPF: markdown code block language (```lang)
@@ -754,25 +667,32 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
   (when-let* ((end (point))
               (start (save-excursion
                        (and (re-search-backward "```\\([^`\t\n ]*\\)"
-                                               (line-beginning-position) t)
-                            (match-beginning 1))))
-              (prefix (buffer-substring-no-properties start end)))
+                                                (line-beginning-position) t)
+                            (match-beginning 1)))))
     (list start end
-          (all-completions prefix (telega-completions--language-names))
+          (all-completions (buffer-substring-no-properties start end)
+                           (telega-completions--language-names))
           :exclusive 'no
           :exit-function
-          (lambda (_candidate _status)
-            (telega-completions--markdown-precode-post-completion)))))
+          #'telega-completions--markdown-precode-post-completion)))
 
 
 ;;; Setup
 
-(defun telega-completions-setup-capf ()
-  "Add telega CAPF functions to `completion-at-point-functions'.
+(defun telega-completions-setup-capf (&optional append-p)
+  "Setup `completion-at-point' to use `telega-completions-capf-functions'.
+If APPEND-P is non-nil, then append telega capf functions to existing,
+otherwise fully replace them.
 Intended for use in `telega-chat-mode-hook'."
+  (interactive)
   (setq-local completion-at-point-functions
               (append telega-completions-capf-functions
-                      completion-at-point-functions)))
+                      (when append-p
+                        completion-at-point-functions)))
+  (setq-local telega-chat-input-complete-functions
+              (append telega-chat-input-complete-functions
+                      (list #'completion-at-point)))
+  )
 
 (provide 'telega-completions)
 

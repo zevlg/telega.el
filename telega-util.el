@@ -1193,14 +1193,16 @@ buffer) or a string."
                            (= (char-syntax (aref object (1- collapse-pos))) ?\s))
                  (cl-decf collapse-pos))
 
+               (add-face-text-property
+                collapse-pos end 'telega-shadow 'append object)
                (put-text-property
                 collapse-pos end
-                'display (propertize (concat (telega-symbol 'eliding)
-                                             (telega-symbol 'expand-details)
-                                             (when (= (aref object (1- end)) ?\n)
-                                               "\n"))
-                                     'face 'telega-shadow)
-                object)))
+                'telega-display (concat (telega-symbol 'eliding)
+                                        (telega-symbol 'expand-details)
+                                        (when (= (aref object (1- end)) ?\n)
+                                          "\n"))
+                object)
+               ))
            )))
       )))
 
@@ -2589,8 +2591,8 @@ Same as `momentary-string-display', but keeps the point."
             (goto-char start)
             (insert string)
             (setq end (copy-marker (point) t)))
-          (message "Type %s to continue editing."
-                   (single-key-description exit-char))
+          ;; (message "Type %s to continue editing."
+          ;;          (single-key-description exit-char))
           (let ((event (read-key)))
             ;; `exit-char' can be an event, or an event description list.
             (or (eq event exit-char)
@@ -2598,7 +2600,9 @@ Same as `momentary-string-display', but keeps the point."
                 (setq unread-command-events
                       (append (this-single-command-raw-keys)
                               unread-command-events)))))
-      (delete-region start end))))
+      ;; NOTE: buffer might change at this point
+      (with-current-buffer (marker-buffer start)
+        (delete-region start end)))))
 
 (defun telega-remove-face-text-property (start end face &optional object)
   "Remove FACE value from face text property at START END region of the OBJECT."

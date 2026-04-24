@@ -40,7 +40,6 @@
 (declare-function telega-chars-xwidth "telega-util" (n))
 (declare-function telega-em-width-ratio "telega-util")
 (declare-function telega-em-height-ratio "telega-util")
-(declare-function telega-chats-compare "telega-sort" (criteria chat1 chat2))
 
 (defvar telega--lib-directory nil
   "The directory from where this library was first loaded.")
@@ -667,10 +666,10 @@ to make `:outline' be a `:foreground'."
   "List of previously marked messages.")
 (make-variable-buffer-local 'telega-chatbuf--marked-messages-1)
 
-(defvar telega-chatbuf--inline-query nil
-  "Non-nil if some inline bot has been requested.
-Actual value is `:@extra` value of the call to inline bot.")
-(make-variable-buffer-local 'telega-chatbuf--inline-query)
+(defvar telega-chatbuf--inline-bot-plist nil
+  "Plist with inline bot params currently used in the chatbuf.
+Props are `:bot-user', `:query', `:query-reply', `:button' or `:loading'.")
+(make-variable-buffer-local 'telega-chatbuf--inline-bot-plist)
 
 (defvar telega-chatbuf--input-marker nil)
 (make-variable-buffer-local 'telega-chatbuf--input-marker)
@@ -1819,13 +1818,6 @@ If CHAT has custom order, then return its custom order."
                          :test #'equal)
         (cl-intersection telega--sort-reorder-dirtiness dirtiness
                          :test #'equal))))
-
-(defsubst telega-chat> (chat1 chat2)
-  "Compare CHAT1 with CHAT2 according to `telega--sort-criteria'.
-Return if CHAT1 is greater than CHAT2."
-  (telega-chats-compare telega--sort-criteria
-                        (if telega--sort-inverted chat2 chat1)
-                        (if telega--sort-inverted chat1 chat2)))
 
 (defsubst telega-chatbuf-has-input-p ()
   "Return non-nil if chatbuf has some input."

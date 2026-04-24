@@ -27,7 +27,7 @@
   (package-initialize)
 
   (let* ((core-pkgs '(visual-fill-column transient))
-         (contrib-pkgs '(all-the-icons alert dashboard))
+         (contrib-pkgs '(all-the-icons alert dashboard company))
          (all-pkgs (append core-pkgs contrib-pkgs))
          (need-pkgs (cl-remove-if #'package-installed-p all-pkgs))
          )

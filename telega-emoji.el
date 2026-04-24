@@ -190,6 +190,12 @@ CHEIGHT is height for the svg in characters, default=1."
       1
     nil))
 
+(defun telega-emoji-flag (country-code)
+  "Return emoji with a flag for COUNTRY-CODE."
+  (telega-emoji-init)
+  (cdr (assoc (format ":flag-%s:" (downcase country-code))
+              telega-emoji-alist)))
+
 
 ;;; Custom Emojis
 (defun telega-custom-emoji-get (custom-emoji-id)
@@ -324,11 +330,18 @@ Where is the list of `content', `reactions' or `reply-markup'."
                   (fmt-text
                    (or (plist-get content :text)
                        (plist-get content :caption)
+                       (plist-get content :description) ; poll
                        ;; Custom emojis in a checklist tasks titles
                        (when-let ((tasks (telega--tl-get content
                                                          :list :tasks)))
                          (apply #'telega-fmt-text-concat
-                                (mapcar (telega--tl-prop :text) tasks))))))
+                                (mapcar (telega--tl-prop :text) tasks)))
+                       ;; Custom emojis in a poll options
+                       (when-let ((poll-opts (telega--tl-get content
+                                                             :poll :options)))
+                         (apply #'telega-fmt-text-concat
+                                (mapcar (telega--tl-prop :text) poll-opts)))
+                       )))
          (telega-custom-emoji--ids-for-fmt-text fmt-text))
 
        ;; Custom emojis from message's reactions
