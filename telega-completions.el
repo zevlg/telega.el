@@ -191,7 +191,7 @@ Surround emoji keyword with PREFIX and SUFFIX."
         (funcall callback nil)
 
       (let* ((closed-p (string-suffix-p ":" query))
-             (search-text 
+             (search-text
               ;; Strip off leading ":" and replace `-' with spaces
               ;; before the search, so one could use `:i-love-you' for
               ;; example
@@ -516,14 +516,18 @@ colon) emoji."
   (let ((end (point))
         (bound (or bound (1- telega-chatbuf--input-marker))))
     (save-excursion
+      ;; NOTE: rx in emacs-28 does not support `space'
+      ;; as character set, thats why we don't use rx
       (when (and (or (re-search-backward
-                      (rx (or bol space)
-                          (group ":" (1+ (not (or space ":"))) (? ":")))
+                      ;;  (rx (or bol space) (group
+                      ;;   ":" (1+ (not (or space ":"))) (? ":")))
+                      "\\(?:^\\|[[:space:]]\\)\\(:[^:[:space:]]+:?\\)"
                       bound 'no-error)
                      ;; Try closed emoji if spaces allowed
                      (and allow-spaces-p
                           (re-search-backward
-                           (rx (or bol space) (group ":" (1+ (not ":"))) ":")
+                           ;; (rx (or bol space) (group ":" (1+ (not ":"))) ":")
+                           "\\(?:^\\|[[:space:]]\\)\\(:[^:]+\\):"
                            bound 'no-error)))
                  (equal end (match-end 0)))
         (cons (match-beginning 1) end)))))
