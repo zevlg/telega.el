@@ -1341,9 +1341,10 @@ Please downgrade TDLib and recompile `telega-server'"
       (authorizationStateWaitTdlibParameters
        ;; Tune permissions for docker's /dev/snd, /dev/video*
        (when-let ((devices-chown-cmd
-                   (telega-docker-exec-cmd
-                    "chmod -R o+rw /dev/snd /dev/video0" nil
-                    "-u 0" 'no-error)))
+                   (unless (telega-docker--windows-p)
+                     (telega-docker-exec-cmd
+                      "chmod -R o+rw /dev/snd /dev/video0" nil
+                      "-u 0" 'no-error))))
          (telega-debug "docker RUN: %s" devices-chown-cmd)
          (shell-command-to-string devices-chown-cmd))
 
