@@ -31,8 +31,10 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <libgen.h>
 
 #ifdef WITH_AYATANA_APPINDICATOR
 #include <libayatana-appindicator/app-indicator.h>
@@ -54,13 +56,55 @@ appindicator_click_cb(GtkWidget *widget, gpointer data)
                 telega_output("appindicator-event", text);
 }
 
+/* Split a full icon path into a heap-allocated directory and name
+ * without extension.  Caller must free both *dir_out and *name_out. */
+static void
+appindicator_split_icon_path(const char* icon_path,
+                             char** dir_out, char** name_out)
+{
+        char* tmp = strdup(icon_path);
+        g_assert(tmp != NULL);
+        *dir_out = strdup(dirname(tmp));
+        free(tmp);
+
+        tmp = strdup(icon_path);
+        g_assert(tmp != NULL);
+        *name_out = strdup(basename(tmp));
+        free(tmp);
+
+        g_assert(*dir_out != NULL && *name_out != NULL);
+
+        char* dot = strrchr(*name_out, '.');
+        if (dot)
+                *dot = '\0';
+}
+
+static void
+appindicator_set_icon(const char* icon_path)
+{
+        char *dir, *name;
+        appindicator_split_icon_path(icon_path, &dir, &name);
+        app_indicator_set_icon_theme_path(appind, dir);
+        app_indicator_set_icon_full(appind, name, "telega icon");
+        free(dir);
+        free(name);
+}
+
 static void
 appindicator_setup(char* icon_path)
 {
         if (!appind) {
-                appind = app_indicator_new("telega", icon_path,
+                /* Resolve the theme name + path before creating the
+                 * indicator so it never appears with a placeholder
+                 * icon, even briefly. */
+                char *dir, *name;
+                appindicator_split_icon_path(icon_path, &dir, &name);
+                appind = app_indicator_new("telega", name,
                                            APP_INDICATOR_CATEGORY_COMMUNICATIONS);
                 g_assert(appind != NULL);
+                app_indicator_set_icon_theme_path(appind, dir);
+                free(dir);
+                free(name);
 
                 app_indicator_set_status(appind, APP_INDICATOR_STATUS_ACTIVE);
 
@@ -84,7 +128,7 @@ appindicator_setup(char* icon_path)
                 app_indicator_set_menu(appind, GTK_MENU(menu));
         } else {
                 app_indicator_set_status(appind, APP_INDICATOR_STATUS_ACTIVE);
-                app_indicator_set_icon_full(appind, icon_path, "telega icon");
+                appindicator_set_icon(icon_path);
                 app_indicator_set_label(appind, "", "");
         }
 }
@@ -117,7 +161,8 @@ appindicator_cmd(void* data)
                 if (appind)
                         app_indicator_set_label(appind, cmd_args, cmd_args);
         } else if (!strncmp(cmd, "icon ", 5)) {
-                app_indicator_set_icon_full(appind, cmd_args, "telega icon");
+                if (appind)
+                        appindicator_set_icon(cmd_args);
         } else {
                 fprintf(stderr, "[telega-appindicator]: unknown cmd -> %s\n",
                         cmd);
