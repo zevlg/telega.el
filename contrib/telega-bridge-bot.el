@@ -314,8 +314,15 @@ If FORCE-UPDATE is non-nil, force update the file."
 
 (defun telega-bridge-bot--matrix-file-spliter (text)
   "Split TEXT into username and message."
-  ;; Split with file type prefix
-  (split-string text " sent \\(a file\\|an image\\|a video\\): "))
+  (when (string-match
+         "\\`\\(.+?\\) sent \\(a file\\|an image\\|a video\\)\\(?:: \\(.*\\)\\)?\\'"
+         text)
+    (list
+     (match-string 1 text)
+     ;; Keep empty string for bridge-generated placeholder captions like
+     ;; \"Alice sent an image\" so caller can still replace sender and
+     ;; clear the duplicated caption.
+     (or (match-string 3 text) ""))))
 
 
 ;;; bridge
@@ -377,6 +384,23 @@ Return a string if STRING is non-nil."
 (defun telega-bridge-bot--cached-counterparty-name (chat-id bot-id)
   "Return cached bridge username for CHAT-ID and BOT-ID."
   (gethash (list chat-id bot-id) telega-bridge-bot--recent-counterparty-name))
+
+(defun telega-bridge-bot--set-msg-sender (msg sender-id)
+  "Set MSG sender to SENDER-ID."
+  (plist-put msg :sender_id (list :@type "messageSenderUser" :user_id sender-id)))
+
+(defun telega-bridge-bot--cached-msg-sender-name (msg chat-id bot-id)
+  "Return bridge sender name for MSG using signature or recent cache."
+  (or (telega-tl-str msg :author_signature)
+      (telega-bridge-bot--cached-counterparty-name chat-id bot-id)))
+
+(defun telega-bridge-bot--apply-bridge-sender (msg chat-id bot-id username)
+  "Apply bridge sender USERNAME to MSG in CHAT-ID from BOT-ID."
+  (let ((sender-id
+         (telega-bridge-bot--update-user-info
+          (telega--tl-get msg :id) chat-id bot-id username)))
+    (telega-bridge-bot--set-msg-sender msg sender-id)
+    sender-id))
 
 (defun telega-bridge-bot--file-id (path)
   "Return file id based on PATH and modification time seconds."
@@ -463,16 +487,13 @@ If FORCE-UPDATE is non-nil, force update the user info."
 
 (defun telega-bridge-bot--update-sticker (msg)
   "Update sender id in sticker MSG using recently resolved bridge username."
-  (when-let* ((msg-id (telega--tl-get msg :id))
-              (chat-id (telega--tl-get msg :chat_id))
+  (when-let* ((chat-id (telega--tl-get msg :chat_id))
               (bot-id (telega--tl-get (telega-msg-sender msg) :id))
               (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id))
               (content (telega--tl-get msg :content))
               (sticker-p (eq (telega--tl-type content) 'messageSticker))
-              (name (or (telega-tl-str msg :author_signature)
-                        (telega-bridge-bot--cached-counterparty-name chat-id bot-id))))
-    (let ((sender-id (telega-bridge-bot--update-user-info msg-id chat-id bot-id name)))
-      (plist-put msg :sender_id (list :@type "messageSenderUser" :user_id sender-id)))))
+              (name (telega-bridge-bot--cached-msg-sender-name msg chat-id bot-id)))
+    (telega-bridge-bot--apply-bridge-sender msg chat-id bot-id name)))
 
 (defun telega-bridge-bot--download-async-callback (chat-id msg-id)
   "Callback for `telega-bridge-bot--download-async'.
@@ -487,8 +508,7 @@ Will update CHAT-ID MSG-ID when download completed."
 
 (defun telega-bridge-bot--update-fmt-text (msg)
   "Update sender id and remove duplicated username in MSG."
-  (when-let* ((msg-id (telega--tl-get msg :id))
-              (chat-id (telega--tl-get msg :chat_id))
+  (when-let* ((chat-id (telega--tl-get msg :chat_id))
               (bot-id (telega--tl-get (telega-msg-sender msg) :id))
               (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id)) ; check if it is a bridge bot
               (counterparty-type (plist-get counterparty-info :type))
@@ -503,44 +523,43 @@ Will update CHAT-ID MSG-ID when download completed."
               (name-and-body (funcall spliter content-text-text))
               (name (car name-and-body))
               (body (cadr name-and-body))) ; skip if no body
-    (let ((sender-id (telega-bridge-bot--update-user-info msg-id chat-id bot-id name)))
-      ;; replace sender
-      (plist-put msg :sender_id (list :@type "messageSenderUser" :user_id sender-id))
-      ;; remove duplicated username in body
-      ;; we don't use body directly here
-      ;; because then we only need to make sure the name is correct
-      ;; makes it easier to write the split function
-      (plist-put
-       content :text
-       (telega-bridge-bot--remove-username content-text body)))))
+    (let ((sender-id
+           (telega-bridge-bot--apply-bridge-sender msg chat-id bot-id name)))
+      (prog1 sender-id
+        ;; remove duplicated username in body
+        ;; we don't use body directly here
+        ;; because then we only need to make sure the name is correct
+        ;; makes it easier to write the split function
+        (plist-put
+         content :text
+         (telega-bridge-bot--remove-username content-text body))))))
 
 (defun telega-bridge-bot--update-file (msg)
   "Update sender id and remove file caption in MSG."
-  (when-let* ((msg-id (telega--tl-get msg :id))
-              (chat-id (telega--tl-get msg :chat_id))
+  (when-let* ((chat-id (telega--tl-get msg :chat_id))
               (bot-id (telega--tl-get (telega-msg-sender msg) :id))
               (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id)) ; check if it is a bridge bot
               (counterparty-type (plist-get counterparty-info :type))
-              (content (telega--tl-get msg :content))
-              (content-caption (telega--tl-get content :caption))
-              (fmt-text-p (eq (telega--tl-type content-caption) 'formattedText))
-              (content-caption-text (telega--tl-get content-caption :text)) ; get the msg text
-              (spliter (telega--tl-get
-                        telega-bridge-bot--counterparty-handler-plist
-                        counterparty-type :file-spliter))
-              (name-and-body (funcall spliter content-caption-text))
-              (name (car name-and-body))
-              (body (cadr name-and-body))) ; skip if no body
-    (let ((sender-id (telega-bridge-bot--update-user-info msg-id chat-id bot-id name)))
-      ;; replace sender
-      (plist-put msg :sender_id (list :@type "messageSenderUser" :user_id sender-id))
-      ;; remove caption
-      (plist-put content :caption nil))))
+              (content (telega--tl-get msg :content)))
+    (let* ((content-caption (telega--tl-get content :caption))
+           (content-caption-text (telega--tl-get content-caption :text))
+           (spliter (telega--tl-get
+                     telega-bridge-bot--counterparty-handler-plist
+                     counterparty-type :file-spliter))
+           (name-and-body (and content-caption-text
+                               (funcall spliter content-caption-text)))
+           (name (car-safe name-and-body)))
+      (when name
+        (let ((sender-id
+               (telega-bridge-bot--apply-bridge-sender
+                msg chat-id bot-id name)))
+          (prog1 sender-id
+            ;; remove bridge-generated caption when sender came from caption
+            (plist-put content :caption nil)))))))
 
 (defun telega-bridge-bot--update-forwarded (msg)
   "Update forwarded sender id and remove duplicated username in MSG."
-  (when-let* ((msg-id (telega--tl-get msg :id))
-              (forward-info (telega--tl-get msg :forward_info))
+  (when-let* ((forward-info (telega--tl-get msg :forward_info))
               (fwd-info-p (eq (telega--tl-type forward-info) 'messageForwardInfo))
               (bot-id (telega--tl-get forward-info :origin :sender_user_id))
               (chat-id (telega--tl-get forward-info :from_chat_id))
@@ -556,13 +575,16 @@ Will update CHAT-ID MSG-ID when download completed."
               (name-and-body (funcall spliter content-text-text))
               (name (car name-and-body))
               (body (cadr name-and-body))) ; skip if no body
-    (let ((sender-id (telega-bridge-bot--update-user-info msg-id chat-id bot-id name)))
-      ;; replace sender
-      (plist-put forward-info :origin (list :@type "messageOriginUser" :sender_user_id sender-id))
-      ;; remove duplicated username in body
-      (plist-put
-       content :text
-       (telega-bridge-bot--remove-username content-text body)))))
+    (let ((sender-id
+           (telega-bridge-bot--apply-bridge-sender msg chat-id bot-id name)))
+      (prog1 sender-id
+        ;; replace sender
+        (plist-put forward-info :origin
+                   (list :@type "messageOriginUser" :sender_user_id sender-id))
+        ;; remove duplicated username in body
+        (plist-put
+         content :text
+         (telega-bridge-bot--remove-username content-text body))))))
 
 (defun telega-bridge-bot--update-msg (msg &rest _)
   "Replace the sender in MSG with the other party's sender."
