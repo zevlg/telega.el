@@ -31,7 +31,6 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <assert.h>
 
 #ifdef WITH_AYATANA_APPINDICATOR
@@ -134,15 +133,19 @@ telega_appindicator_send(const char* json)
         g_idle_add(appindicator_cmd, json_copy);
 }
 
-bool
-telega_appindicator_init(void)
-{
-        return gtk_init_check(NULL, NULL);
-}
-
 void*
 telega_appindicator_loop(void* data)
 {
+        /* GTK initialization and the GMainLoop driving its events
+         * must run on the same thread (GTK is not thread-safe and
+         * must be used from the thread that called gtk_init).
+         * Otherwise idle callbacks scheduled via g_idle_add from
+         * telega_appindicator_send are not dispatched. */
+        if (!gtk_init_check(NULL, NULL)) {
+                /* No display (e.g. running in tty), nothing to do. */
+                fprintf(stderr, "[telega-appindicator] disabled, no display\n");
+                return NULL;
+        }
         loop = g_main_loop_new(NULL, FALSE);
         g_main_loop_run(loop);
         return NULL;

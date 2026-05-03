@@ -37,7 +37,6 @@ extern int telega_voip_cmd(const char* json);
 #endif /* WITH_VOIP */
 
 #ifdef WITH_APPINDICATOR
-extern bool telega_appindicator_init(void);
 extern void telega_appindicator_send(const char* json);
 extern void* telega_appindicator_loop(void* data);
 extern void telega_appindicator_stop(void);
@@ -463,13 +462,10 @@ main(int ac, char** av)
         assert(rc == 0);
 
 #ifdef WITH_APPINDICATOR
-        bool has_appind = telega_appindicator_init();
         pthread_t appind_thread;
-        if (has_appind) {
-                rc = pthread_create(&appind_thread, NULL,
-                                    telega_appindicator_loop, NULL);
-                assert(rc == 0);
-        }
+        rc = pthread_create(&appind_thread, NULL,
+                            telega_appindicator_loop, NULL);
+        assert(rc == 0);
 #endif /* WITH_APPINDICATOR */
 
         stdin_loop(tdlib_cln);
@@ -482,11 +478,9 @@ main(int ac, char** av)
         td_json_client_destroy(tdlib_cln);
 
 #ifdef WITH_APPINDICATOR
-        if (has_appind) {
-                telega_appindicator_stop();
-                rc = pthread_join(appind_thread, NULL);
-                assert(rc == 0);
-        }
+        telega_appindicator_stop();
+        rc = pthread_join(appind_thread, NULL);
+        assert(rc == 0);
 #endif /* WITH_APPINDICATOR */
 
         return 0;
