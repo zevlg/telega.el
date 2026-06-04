@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.632)
+#+title: Telega Manual (v0.8.640)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -239,7 +239,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.63-8921c22f0.
+version equal to v1.8.64-e0943d068.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:

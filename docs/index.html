@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2026-06-05 Пт 02:11 -->
+<!-- 2026-06-05 Пт 02:21 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.632)</title>
+<title>Telega Manual (v0.8.640)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -68,7 +68,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.632)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.640)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -368,7 +368,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.63-8921c22f0.
+version equal to v1.8.64-e0943d068.
 </p>
 
 <p>
@@ -870,7 +870,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org13c6c54">
+<pre class="example" id="orgdc97222">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -888,7 +888,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orge78eebc">
+<pre class="example" id="orge34bd97">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -977,7 +977,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org8f124d3">
+<pre class="example" id="orgdf1dc92">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1015,7 +1015,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orge3da11b">
+<pre class="example" id="orge0d35a3">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -2447,7 +2447,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org05d3b5f">
+<pre class="example" id="orge7518d6">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2651,7 +2651,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="orgac43918">
+<pre class="example" id="org0c17cbc">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2683,7 +2683,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org15be101">
+<pre class="example" id="org991f161">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3398,7 +3398,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org2250c82">
+<pre class="example" id="orgbc064c4">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4889,7 +4889,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org64f3369">
+<pre class="example" id="org6666e30">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
