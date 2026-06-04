@@ -1147,6 +1147,8 @@ See also [[#telega-alertel--notifications-using-alertel][Notifications using ale
 =contrib/= directory contains packages contributed to =telega=
 project.
 
+#+ELLIT-INCLUDE: ../contrib/telega-company.el
+
 #+ELLIT-INCLUDE: ../contrib/ol-telega.el
 
 #+ELLIT-INCLUDE: ../contrib/telega-status-history.el

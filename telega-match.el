@@ -751,9 +751,17 @@ messages into it. Use `is-known' chat temex to check chat is known."
 ;; - (unread-reactions [ ~N~ ]) ::
 ;;   {{{temexdoc(chat, unread-reactions, 2)}}}
 (define-telega-matcher chat unread-reactions (chat &optional n)
-  "Matches if chat has least N unread reactions.
+  "Matches if chat has at least N unread reactions.
 By default N is 1."
   (>= (or (plist-get chat :unread_reaction_count) 0) (or n 1)))
+
+;;; ellit-org: chat-temex
+;; - (unread-polls [ ~N~ ]) ::
+;;   {{{temexdoc(chat, unread-polls, 2)}}}
+(define-telega-matcher chat unread-polls (chat &optional n)
+  "Matches if chat has at least N unread poll votes messages.
+By default N is 1."
+  (>= (or (plist-get chat :unread_poll_vote_count) 0) (or n 1)))
 
 ;;; ellit-org: chat-temex
 ;; - (has-active-stories [ ~UNREAD-P~ ]) ::

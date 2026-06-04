@@ -1180,7 +1180,7 @@ and chat permission restrictions"
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-before-auth-hook
 ;;           (lambda ()
-;;              (telega--addProxy <PROXY> 'enable)))
+;;              (telega--addProxy <PROXY> :enable-p 'enable :comment <COMMENT>)))
 ;; #+end_src
 ;;
 ;; Where ~PROXY~ has following format:
@@ -1221,14 +1221,18 @@ Call CALLBACK on updates."
     (cl-find enabled-proxy-id (or added-proxies (telega--getProxies))
              :key (telega--tl-prop :id))))
 
-(defun telega-ins--proxy (proxy)
+(defun telega-ins--added-proxy (added-proxy)
   "Inserter for the TL PROXY."
-  (telega-ins-fmt "%s:%d %s"
-    (plist-get proxy :server) (plist-get proxy :port)
-    (substring (telega--tl-get proxy :type :@type)
-               (eval-when-compile
-                 (length "proxyType"))))
-  t)
+  (let ((proxy (plist-get added-proxy :proxy)))
+    (telega-ins-fmt "%s:%d %s"
+      (plist-get proxy :server) (plist-get proxy :port)
+      (substring (telega--tl-get proxy :type :@type)
+                 (eval-when-compile
+                   (length "proxyType"))))
+    (telega-ins-prefix "\n"
+      (telega-ins--with-face 'telega-shadow
+        (telega-ins (telega-tl-str added-proxy :comment))))
+    t))
 
 (defun telega-ins--proxy-ping (proxy-id)
   "Insert ping results for the PROXY-ID."
@@ -1282,7 +1286,7 @@ Call CALLBACK on updates."
                       #'telega-describe-proxies))))
       (telega-ins " ")
       (telega-ins--line-wrap-prefix "   "
-        (telega-ins--proxy (plist-get added-proxy :proxy))
+        (telega-ins--added-proxy added-proxy)
         (telega-ins "\n")
         (telega-ins--proxy-ping (plist-get added-proxy :id)))
       (telega-ins "\n"))
@@ -1299,6 +1303,7 @@ Call CALLBACK on updates."
         (telega-proxies-ping added-proxies #'telega-describe-proxies)
 
         (with-telega-help-win "*Telega Proxies*"
+          (erase-buffer)
           (telega-ins--proxies added-proxies)))
 
     (let ((buffer (get-buffer "*Telega Proxies*")))

@@ -1396,6 +1396,11 @@ and thumbnail are shown."
        (when-let* ((gift-sticker (telega--tl-get lp-type :gift :sticker)))
          (telega-ins--image-slices (telega-sticker--image gift-sticker))
          (telega-ins "\n")))
+      ('linkPreviewTypeTextCompositionStyle
+       (when-let ((ce-sticker (telega-custom-emoji-get
+                               (plist-get lp-type :custom_emoji_id))))
+         (telega-ins--image-slices (telega-sticker--image ce-sticker))
+         (telega-ins "\n")))
       ((or 'linkPreviewTypeMessage
            'linkPreviewTypeInvoice
            'linkPreviewTypeGroupCall
@@ -1520,21 +1525,29 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
            (palette (telega-msg-sender-palette sender))
            (small-image-2slices
             (unless (plist-get link-preview :show_large_media)
-              (when-let* ((lp-type (plist-get link-preview :type))
-                          (lp-photo
-                           (cl-case (telega--tl-type lp-type)
-                             ((linkPreviewTypeApp
-                               linkPreviewTypeArticle
-                               linkPreviewTypeChat
-                               linkPreviewTypePhoto
-                               linkPreviewTypeWebApp)
-                              (plist-get lp-type :photo))
-                             ((linkPreviewTypeEmbeddedAnimationPlayer
-                               linkPreviewTypeEmbeddedAudioPlayer
-                               linkPreviewTypeEmbeddedVideoPlayer)
-                              (plist-get lp-type :thumbnail))
-                             )))
-                (telega-photo--image lp-photo '(2 2 10 2)))))
+              (when-let* ((lp-type (plist-get link-preview :type)))
+                (or (when-let* ((lp-photo
+                                 (cl-case (telega--tl-type lp-type)
+                                   ((linkPreviewTypeApp
+                                     linkPreviewTypeArticle
+                                     linkPreviewTypeChat
+                                     linkPreviewTypePhoto
+                                     linkPreviewTypeWebApp)
+                                    (plist-get lp-type :photo))
+                                   ((linkPreviewTypeEmbeddedAnimationPlayer
+                                     linkPreviewTypeEmbeddedAudioPlayer
+                                     linkPreviewTypeEmbeddedVideoPlayer)
+                                    (plist-get lp-type :thumbnail))
+                                   )))
+                      (telega-photo--image lp-photo '(2 2 10 2)))
+                    (when-let* ((sticker
+                                 (cl-case (telega--tl-type lp-type)
+                                   (linkPreviewTypeTextCompositionStyle
+                                    (telega-custom-emoji-get
+                                     (plist-get lp-type :custom_emoji_id))))))
+                      (telega-sticker--image
+                       sticker #'telega-sticker--create-image-two-lines
+                       :telega-image-ce2))))))
            (media-above-p
             (plist-get link-preview :show_media_above_description))
            )
@@ -1836,8 +1849,8 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
                   (cond (multiple-answers-p telega-symbol-poll-multiple-options)
                         (t telega-symbol-poll-options)))))
     ;; Poll header
-    (telega-ins (telega-symbol 'poll) " ")
     (telega-ins--with-face 'telega-shadow
+      (telega-ins (telega-symbol 'poll))
       (telega-ins-i18n (cond ((and anonymous-p quiz-p) "lng_polls_anonymous_quiz")
                              (anonymous-p "lng_polls_anonymous")
                              (quiz-p "lng_polls_public_quiz")
@@ -3338,6 +3351,13 @@ argument - MSG to insert additional information after header."
             (telega-ins " " (telega-i18n "lng_inline_bot_via"
                               :inline_bot bot-title)))
 
+          ;; For <user>
+          (when-let* ((bot-caller-id (plist-get msg :guest_bot_caller_id))
+                      (bot-caller (telega-msg-sender bot-caller-id)))
+            (telega-ins " " (telega-i18n "lng_guest_chat_for"
+                              :user (telega-ins--as-string
+                                     (telega-ins--msg-sender bot-caller)))))
+
           ;; Edited date
           (let ((edited-date (plist-get msg :edit_date)))
             (unless (telega-zerop edited-date)
@@ -4538,6 +4558,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
   (let* ((unread (or (plist-get chopic :unread_count) 0))
          (mentions (or (plist-get chopic :unread_mention_count) 0))
          (reactions (or (plist-get chopic :unread_reaction_count) 0))
+         (poll-votes (plist-get chopic :unread_poll_vote_count))
          (chat-p (telega-chat-p chopic))
          (muted-p (if chat-p
                       (telega-chat-muted-p chopic)
@@ -4571,6 +4592,13 @@ If REMOVE-CAPTION is specified, then do not insert caption."
         (telega-ins (telega-symbol 'reaction)
                     ;; (format "%d" reactions)
                     ))
+      (setq ret t))
+
+    (unless (telega-zerop poll-votes)
+      (telega-ins--with-face (if muted-p
+                                 'telega-muted-count
+                               'telega-unmuted-count)
+        (telega-ins (telega-symbol 'poll)))
       (setq ret t))
 
     ;; Mark for chats marked as unread

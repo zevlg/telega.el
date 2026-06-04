@@ -283,9 +283,9 @@ If START-MSG-ID is specified, jump to the this message in the topic."
         (telega-button--insert 'telega-chat chat
           :inserter #'telega-ins--chat
           :action #'telega-chat-button-action))
-      (telega-ins-describe-item (telega-i18n "lng_link_header_short")
-        (let* ((msg-link (telega--getForumTopicLink chat topic))
-               (link-url (telega-tl-str msg-link :link)))
+      (when-let* ((msg-link (telega--getForumTopicLink chat topic))
+                  (link-url (telega-tl-str msg-link :link)))
+        (telega-ins-describe-item (telega-i18n "lng_link_header_short")
           (telega-ins--raw-button
               (telega-link-props 'url link-url 'face 'telega-link)
             (telega-ins link-url))))
@@ -322,6 +322,8 @@ If START-MSG-ID is specified, jump to the this message in the topic."
     (set-keymap-parent map button-map)
     (define-key map (kbd "i") 'telega-describe-topic)
     (define-key map (kbd "h") 'telega-describe-topic)
+    (define-key map (kbd "r") 'telega-topic-read-all)
+    (define-key map (kbd "d") 'telega-transient-topic-delete)
     map)
   "The key map for telega topic buttons.")
 
@@ -330,6 +332,28 @@ If START-MSG-ID is specified, jump to the this message in the topic."
   :inserter telega-inserter-for-topic-button
   :action #'telega-topic-button-action
   'keymap telega-topic-button-map)
+
+(defun telega-topic-read-all (topic)
+  "Read all messages/mentions/reactions/votes in the given TOPIC."
+  (interactive (list (telega-topic-at (point))))
+
+  (unless topic
+    (user-error "telega: no topic at point"))
+
+  (let ((chat (telega-topic-chat topic)))
+    (cl-ecase (telega--tl-type topic)
+      (forumTopic
+       (unless (telega-zerop (plist-get topic :unread_count))
+         (telega--viewMessages chat (list (plist-get topic :last_message))
+           :source '(:@type "messageSourceForumTopicHistory")
+           :force t))
+       (telega--readAllForumTopicMentions chat topic)
+       (telega--readAllForumTopicReactions chat topic)
+       (telega--readAllForumTopicPollVotes chat topic))
+      (directMessagesChatTopic
+       (telega--readAllDirectMessagesChatTopicReactions chat topic)
+       )
+      )))
 
 (provide 'telega-topic)
 

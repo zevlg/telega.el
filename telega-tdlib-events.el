@@ -1861,6 +1861,19 @@ For Saved Messages and channel direct messages chat topics only."
                 (plist-get event :styles)))
   )
 
+(defun telega--on-updateMessageContainsUnreadPollVotes (event)
+  "Unread votes were added or removed from a poll message."
+  (with-telega--msg-update-event event (chat msg node)
+    (plist-put msg :contains_unread_poll_votes
+               (plist-get event :contains_unread_poll_votes))
+    (plist-put msg :unread_poll_vote_count
+               (plist-get event :unread_poll_vote_count))
+
+    (when node
+      (with-telega-chatbuf chat
+        (telega-chatbuf--redisplay-node node)))
+    ))
+
 (provide 'telega-tdlib-events)
 
 ;;; telega-tdlib-events.el ends here

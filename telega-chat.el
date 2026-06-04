@@ -1344,9 +1344,11 @@ If MUTED-FOR is specified, set it as `:mute_for' notification setting."
   (let ((unread-count (plist-get chat :unread_count))
         (unread-mentions-count (plist-get chat :unread_mention_count))
         (unread-reactions-count (plist-get chat :unread_reaction_count))
+        (unread-poll-votes (or (plist-get chat :unread_poll_vote_count) 0))
         (marked-unread-p (plist-get chat :is_marked_as_unread)))
     (if (or (> unread-count 0) (> unread-mentions-count 0)
-            (> unread-reactions-count 0) marked-unread-p)
+            (> unread-reactions-count 0) (> unread-poll-votes 0)
+            marked-unread-p)
         (progn
           ;; Toggle chat as readed
           (when marked-unread-p
@@ -1358,7 +1360,8 @@ If MUTED-FOR is specified, set it as `:mute_for' notification setting."
           ;; NOTE: reading messages can change mentions count, so
           ;; force all mentions are read
           (telega--readAllChatMentions chat)
-          (telega--readAllChatReactions chat))
+          (telega--readAllChatReactions chat)
+          (telega--readAllChatPollVotes chat))
 
       ;; Toggle chat is unread
       (unless marked-unread-p
@@ -2604,9 +2607,8 @@ These users can be added to group only via invite link."
       'action (lambda (_ignored)
                 (cl-ecase (telega--tl-type ib-type)
                   (inlineQueryResultsButtonTypeWebApp
-                   (let ((webapp-url (telega--getWebAppUrl ib-user
-                                       :url (plist-get ib-type :url))))
-                     (telega-browse-url (plist-get webapp-url :url))))
+                   (telega-browse-url (telega--getWebAppUrl ib-user
+                                        :url (plist-get ib-type :url))))
                   (inlineQueryResultsButtonTypeStartBot
                    (message "TODO: start bot"))
                   )))
@@ -2929,9 +2931,10 @@ Non-nil USE-SYMBOLS-P to use `reply' and `reply-quote'."
 (defun telega-chatbuf-cancel-input-options ()
   "Cancel any input options."
   (interactive)
-  (setq telega-chatbuf--input-options-plist nil)
-  (telega-chatbuf--chat-update "input-options")
-  (telega-chatbuf--prompt-update))
+  (when telega-chatbuf--input-options-plist
+    (setq telega-chatbuf--input-options-plist nil)
+    (telega-chatbuf--chat-update "input-options")
+    (telega-chatbuf--prompt-update)))
 
 (cl-defun telega-chatbuf-footer-ins-input-options ()
   "Insert additional input options."
@@ -6910,16 +6913,16 @@ To be used in the `telega-chat-input-complete-functions'."
                                  (point))))
     (when (telega-emoji-p emoji)
       ;; NOTE: Do nothing in case sticker's help win is exists and
-      ;; have same emoji
-      (let ((buf (get-buffer "*Telegram Stickers*")))
-        (when (or (called-interactively-p 'interactive)
-                  (not (buffer-live-p buf))
-                  (not (with-current-buffer buf
-                         (string= emoji telega-help-win--emoji))))
-          (telega-sticker-choose-emoji emoji telega-chatbuf--chat
-                                       (not (string= (telega-chatbuf-input-string)
-                                                     emoji)))))
-      t)))
+      ;; have same emoji.  Why so? in this case window won't pop up
+      ;; (let ((buf (get-buffer "*Telegram Stickers*")))
+      ;;   (when (or (called-interactively-p 'interactive)
+      ;;             (not (buffer-live-p buf))
+      ;;             (not (with-current-buffer buf
+      ;;                    (string= emoji telega-help-win--emoji))))
+      (telega-sticker-choose-emoji emoji telega-chatbuf--chat
+                                   (not (string= (telega-chatbuf-input-string)
+                                                 emoji)))))
+      t)
 
 (defun telega-chatbuf-complete ()
   "Complete thing at chatbuf input."

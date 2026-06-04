@@ -2795,8 +2795,12 @@ If FILE is local, then return expanded FILE."
   ;;   On TTY frames, the returned color name can be "unspecified-bg",
   ;;   which stands for the unknown default background color of the
   ;;   display where the frame is displayed.
-  (when (equal color "unspecified-bg")
-    (setq color "black"))
+  (cond ((equal color "unspecified-bg")
+         (setq color "black"))
+        ((equal color "unspecified-fg")
+         (setq color "white"))
+        ((eq color 'unspecified)
+         (setq color "gray50")))
   (apply #'color-rgb-to-hex (append (color-name-to-rgb color) '(2))))
 
 (defun telega-color-name-from-rgb24 (rgb24)

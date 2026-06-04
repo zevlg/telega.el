@@ -102,13 +102,15 @@ If SYNC-P is specified, then set option is sync manner."
                                                      (type-of val))))
                               :value (or val :false)))))
 
-(defun telega--addProxy (tl-proxy &optional enable-p callback)
+(cl-defun telega--addProxy (tl-proxy &key enable-p comment callback)
   "Add PROXY-SPEC to the list of proxies."
-  (declare (indent 2))
+  (declare (indent 1))
   (telega-server--send-or-call
-   (list :@type "addProxy"
-         :proxy tl-proxy
-         :enable (if enable-p t :false))
+   (nconc (list :@type "addProxy"
+                :proxy tl-proxy
+                :enable (if enable-p t :false))
+          (when comment
+            (list :comment comment)))
    callback))
 
 (defun telega--enableProxy (proxy-id &optional callback)
@@ -137,8 +139,19 @@ If SYNC-P is specified, then set option is sync manner."
   "Remove proxy server by PROXY-ID."
   (declare (indent 1))
   (telega-server--send-or-call
-   (list :@type "removeProxy"
-         :proxy_id proxy-id)
+      (list :@type "removeProxy"
+            :proxy_id proxy-id)
+   callback))
+
+(cl-defun telega--editProxy (proxy-id tl-proxy &key enable-p comment callback)
+  "Edit proxy by PROXY-ID."
+  (declare (indent 1))
+  (telega-server--send-or-call
+      (list :@type "editProxy"
+            :proxy_id proxy-id
+            :proxy tl-proxy
+            :comment (or comment "")
+            :enable (if enable-p t :false))
    callback))
 
 (cl-defun telega--searchEmojis (text &key language-codes callback)
@@ -2346,6 +2359,11 @@ be marked as read."
   (telega-server--send
    (list :@type "readAllChatReactions" :chat_id (plist-get chat :id))))
 
+(defun telega--readAllChatPollVotes (chat)
+  "Marks all poll votes in a CHAT as read."
+  (telega-server--send
+   (list :@type "readAllChatPollVotes" :chat_id (plist-get chat :id))))
+
 (defun telega--openChat (chat)
   "Mark CHAT as opened."
   (telega-server--send
@@ -2688,6 +2706,21 @@ Pass non-nil UPDATE-RECENT-REACTIONS-P to update recent reactions."
          :reaction_type (telega--ReactionType tl-reaction-type))
    callback))
 
+(defun telega--deleteAllRecentMessageReactionsFromSender (chat sender)
+  "Delete all recent reactions added by the specified SENDER in a CHAT."
+  (telega-server--send
+   (list :@type "deleteAllRecentMessageReactionsFromSender"
+         :chat_id (plist-get chat :id)
+         :sender_id (telega--MessageSender sender))))
+
+(defun telega--deleteMessageReactionsFromSender (msg sender)
+  "Delete all reactions added by the specified SENDER on a message MSG."
+  (telega-server--send
+   (list :@type "deleteMessageReactionsFromSender"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :sender_id (telega--MessageSender sender))))
+
 (defun telega--setChatAvailableReactions (chat reactions)
   "Change REACTIONS, available in a CHAT."
   (telega-server--send
@@ -2886,6 +2919,12 @@ Requires owner privileges."
 (defun telega--readAllForumTopicReactions (chat forum-topic)
   (telega-server--send
    (list :@type "readAllForumTopicReactions"
+         :chat_id (plist-get chat :id)
+         :forum_topic_id (telega-topic-id forum-topic))))
+
+(defun telega--readAllForumTopicPollVotes (chat forum-topic)
+  (telega-server--send
+   (list :@type "readAllForumTopicPollVotes"
          :chat_id (plist-get chat :id)
          :forum_topic_id (telega-topic-id forum-topic))))
 
@@ -3299,12 +3338,21 @@ PARAMS is a TL WebAppOpenParameters structure."
    callback))
 
 (defun telega--loadDirectMessagesChatTopics (chat &optional limit callback)
-  (declare (indent 1))
   (telega-server--send-or-call
    (list :@type "loadDirectMessagesChatTopics"
          :chat_id (plist-get chat :id)
          :limit (or limit 100))
    callback))
+
+(defun telega--deleteDirectMessagesChatTopicHistory (chat topic &optional
+                                                          callback)
+  "Delete all messages and the TOPIC itself."
+  (declare (indent 2))
+  (telega-server--send-or-call
+      (list :@type "deleteDirectMessagesChatTopicHistory"
+            :chat_id (plist-get chat :id)
+            :topic_id (telega-topic-id topic))
+    callback))
 
 (defun telega--loadSavedMessagesTopics (&optional limit callback)
   (declare (indent 1))
@@ -3670,11 +3718,17 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
           :file_id (plist-get file :id))
     callback))
 
-(cl-defun telega--addProfileAudio (file)
+(cl-defun telega--addProfileAudio (audio-input-file &key duration title performer)
   "Add an audio FILE to the beginning of the profile audio files of me."
   (telega-server--send
-   (list :@type "addProfileAudio"
-         :file_id (plist-get file :id))))
+   (nconc (list :@type "addProfileAudio"
+                :audio audio-input-file)
+          (when duration
+            (list :duration duration))
+          (when title
+            (list :title title))
+          (when performer
+            (list :performer performer)))))
 
 (cl-defun telega--removeProfileAudio (file)
   "Remove an audio FILE from the profile audio files of me."

@@ -112,6 +112,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-transient-keymaps-mode--use-transient-for-telega-keymaps][telega-transient-keymaps-mode -- Use transient for telega keymaps]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
+    - [[#telega-companyel--powerful-completions-with-company][/telega-company.el/ -- Powerful completions with company]]
     - [[#ol-telegael--org-mode-links-to-telegram-chats-and-messages][/ol-telega.el/ -- Org mode links to telegram chats and messages]]
     - [[#telega-status-historyel--global-minore-mode-to-save-users-online-status-history][/telega-status-history.el/ -- Global minore mode to save user's online status history]]
     - [[#telega-url-shortenel--makes-urls-look-nicer][/telega-url-shorten.el/ -- Makes urls look nicer]]
@@ -494,7 +495,7 @@ For example:
 #+begin_src emacs-lisp
   (add-hook 'telega-before-auth-hook
             (lambda ()
-               (telega--addProxy <PROXY> 'enable)))
+               (telega--addProxy <PROXY> :enable-p 'enable :comment <COMMENT>)))
 #+end_src
 
 Where ~PROXY~ has following format:
@@ -1285,7 +1286,11 @@ Use ~telega-chat-match-p~ to match a chat.
      messages into it. Use ~is-known~ chat temex to check chat is known.
 
 - (unread-reactions [ ~N~ ]) :: 
-     Matches if chat has least ~N~ unread reactions.
+     Matches if chat has at least ~N~ unread reactions.
+     By default ~N~ is 1.
+
+- (unread-polls [ ~N~ ]) :: 
+     Matches if chat has at least ~N~ unread poll votes messages.
      By default ~N~ is 1.
 
 - (has-active-stories [ ~UNREAD-P~ ]) :: 
@@ -3347,6 +3352,82 @@ Mode to notify about VoIP call by playing sounds.
 
 =contrib/= directory contains packages contributed to =telega=
 project.
+** /telega-company.el/ -- Powerful completions with company
+:PROPERTIES:
+:CUSTOM_ID: telega-companyel--powerful-completions-with-company
+:END:
+
+There are two operating modes: active and passive. In active mode,
+=company-mode= is enabled, detects input context automatically and
+pops up completion candidates if completion at point is available.
+With passive mode you need to press
+@@html:<kbd>@@TAB@@html:</kbd>@@ (~telega-chatbuf-complete-or-next-link~)
+explicitly to perform completion at point.  Operating mode is
+customized with:
+- User Option: ~telega-company-active~ 
+
+  Non-nil to use ~telega-company~ in active mode. 
+
+  Default value: ~t~
+
+Enable company completions with:
+
+
+- telega-company-emoji :: Complete emojis via ~:<emoji>:~
+     syntax. Completion is done using predefined set of emojis.
+
+     Customizable Options:
+  - User Option: ~telega-completions-emoji-fuzzy-match~ 
+
+    Non-nil to use fuzzy matching for local emoji completion. 
+
+    Default value: ~t~
+
+
+- telega-company-telegram-emoji :: Same as ~telega-company-emoji~,
+     but uses Telegram cloud for the emojis completion.
+
+
+- telega-company-username :: Complete user mentions via ~@<username>~
+     syntax. Here is the screenshot, showing use of this backend:
+     [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
+
+     Use ~@@~ prefix to complete chat admins only.
+
+Customizable options:
+- User Option: ~telega-completions-username-prefer-name~ 
+
+  Preferred name formats when inserting a completed username. 
+
+  Default value: ~(username first-name last-name)~
+- User Option: ~telega-completions-username-show-avatars~ 
+
+  Non-nil to show avatars in username completion annotations. 
+
+  Default value: ~nil~
+- User Option: ~telega-completions-username-markup~ 
+
+  Markup format for completed usernames. 
+
+  Default value: ~nil~
+
+
+- telega-company-hashtag :: Complete common hashtags via
+     ~#<hashtag>~ syntax.
+
+
+- telega-company-botcmd :: Complete bot commands via ~/<botcmd>~
+     syntax.  This backend does not complete if ~/<botcmd>~ syntax is
+     used in the middle of the chatbuf input, only if ~/<botcmd>~
+     starts chatbuf input.
+
+
+- telega-company-quick-reply :: Complete quick replies via
+     ~/<shortcut>~ syntax in private chats.
+
+
+- telega-company-markdown-precode :: Complete language name for
+     code blocks via ~```~ syntax.
 ** /ol-telega.el/ -- Org mode links to telegram chats and messages
 :PROPERTIES:
 :CUSTOM_ID: ol-telegael--org-mode-links-to-telegram-chats-and-messages

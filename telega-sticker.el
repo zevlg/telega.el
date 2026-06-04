@@ -392,6 +392,11 @@ Return path to png file."
   (let ((telega-sticker-size (cons 1 (cdr telega-sticker-size))))
     (telega-sticker--create-image sticker file)))
 
+(defun telega-sticker--create-image-two-lines (sticker &optional file)
+  "Create image for two-lines STICKER usage."
+  (let ((telega-sticker-size (cons 2 (cdr telega-sticker-size))))
+    (telega-sticker--create-image sticker file)))
+
 (defun telega-sticker--image (sticker &optional image-create-fun cache-prop)
   "Return image for the STICKER."
   (unless (plist-get sticker :telega-image)

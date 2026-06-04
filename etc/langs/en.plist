@@ -546,6 +546,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Send polls")
  ("lng_rights_chat_add_members"
   :value "Add members")
+ ("lng_rights_chat_send_reactions"
+  :value "Reactions")
  ("lng_rights_group_pin"
   :value "Pin messages")
  ("lng_rights_group_topics"
@@ -1109,6 +1111,9 @@ Example: 23 y.o. designer from San Francisco")
   :value "Show Topics List")
  ("lng_forum_topic_created_body"
   :value "Send a message to start the topic.")
+ ("lng_forum_topic_delete_sure"
+  :value "Are you sure you want to delete this topic?")
+
  ("lng_action_topic_placeholder"
   :value "topic")
  ("lng_info_topic_title"
@@ -1385,6 +1390,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "View collectible")
  ("lng_view_button_call"
   :value "Join call")
+ ("lng_view_button_style"
+  :value "View Style")
  ("lng_auction_preview_view_results"
   :value "View Results")
 
@@ -2456,6 +2463,8 @@ this channel?")
   :value "AI Editor")
  ("lng_ai_compose_tooltip"
   :value "Rewrite, translate and correct your text using AI.")
+ ("lng_ai_compose_tab_translate"
+  :value "Translate")
  ("lng_ai_compose_tab_style"
   :value "Style")
  ("lng_ai_compose_tab_fix"
@@ -2485,4 +2494,10 @@ this channel?")
 
  ("lng_polls_add_option"
   :value "Add an Option")
+ ("lng_guest_chat_for"
+  :value "for {user}")
+ ("lng_delete_sub_messages"
+  :value "Delete all messages")
+ ("lng_delete_sub_reactions"
+  :value "Delete all reactions")
  )

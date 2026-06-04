@@ -300,8 +300,9 @@ Actually return STICKER's full type info."
           :ascent 'center
           :base-uri (expand-file-name "dummy" base-dir))))))
 
-(defun telega-custom-emoji--image (sticker)
-  "Return one line image for the custom emoji STICKER."
+(defun telega-custom-emoji--image (sticker &optional cheight)
+  "Return image for the custom emoji STICKER.
+CHEIGHT by default is 1."
   ;; TODO: 
   (telega-sticker--image sticker #'telega-custom-emoji--create-image
                          :telega-image-ce1))
@@ -374,6 +375,13 @@ Where is the list of `content', `reactions' or `reply-markup'."
            (messageForumTopicEdited
             (when (plist-get content :edit_icon_custom_emoji_id)
               (list (plist-get content :icon_custom_emoji_id))))))
+
+       ;; Custom emojis for link preview
+      (when-let* ((link-preview (telega--tl-get content :link_preview))
+                  (lp-type (plist-get link-preview :type)))
+        (cl-case (telega--tl-type lp-type)
+          (linkPreviewTypeTextCompositionStyle
+           (list (plist-get lp-type :custom_emoji_id)))))
        )))))
 
 (defun telega-msg--custom-emojis-fetch (msg)

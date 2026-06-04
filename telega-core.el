@@ -102,6 +102,7 @@ Use FILENAME as is if resulting file does not exist."
     (:can_send_polls . "lng_rights_chat_send_polls")
     (:can_send_other_messages . "lng_rights_chat_send_stickers")
     (:can_add_link_previews . "lng_rights_chat_send_links")
+    (:can_react_to_messages . "lng_rights_chat_send_reactions")
     (:can_edit_tag . "lng_rights_edit_tag_title")
     (:can_change_info . "lng_rights_group_info")
     (:can_invite_users . "lng_rights_chat_add_members")

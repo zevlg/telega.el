@@ -363,7 +363,31 @@ If DEFAULT-VALUE is not specified, then nil is used."
         (telega-chatbuf-match-p
          '(my-permission :can_delete_messages)))
   :class 'telega-transient--checkbox-switch
-  :variable :msg-sender-delete-all-p)
+  :variable :msg-sender-delete-all-p
+  :deps-list '((t t :msg-sender-delete-messages-p)
+               (t t :msg-sender-delete-reactions-p)
+               (nil nil :msg-sender-delete-messages-p)
+               (nil nil :msg-sender-delete-reactions-p)))
+
+(transient-define-infix telega-transient--infix-msg-sender-delete-messages ()
+  :format "   %k %v %d"
+  :description (lambda ()
+                 (telega-i18n "lng_delete_sub_messages"))
+  :if (lambda ()
+        (telega-chatbuf-match-p
+         '(my-permission :can_delete_messages)))
+  :class 'telega-transient--checkbox-switch
+  :variable :msg-sender-delete-messages-p)
+
+(transient-define-infix telega-transient--infix-msg-sender-delete-reactions ()
+  :format "   %k %v %d"
+  :description (lambda ()
+                 (telega-i18n "lng_delete_sub_reactions"))
+  :if (lambda ()
+        (telega-chatbuf-match-p
+         '(my-permission :can_delete_messages)))
+  :class 'telega-transient--checkbox-switch
+  :variable :msg-sender-delete-reactions-p)
 
 (transient-define-infix telega-transient--infix-msg-sender-block ()
   :description (lambda ()
@@ -439,9 +463,13 @@ If DEFAULT-VALUE is not specified, then nil is used."
     (cond ((telega-transient-args-get args :msg-sender-block-p)
            (telega--banChatMember telega-chatbuf--chat sender
                                   (telega-transient-args-get
-                                   args :msg-sender-delete-all-p)))
-          ((telega-transient-args-get args :msg-sender-delete-all-p)
-           (telega--deleteChatMessagesBySender telega-chatbuf--chat sender))))
+                                   args :msg-sender-delete-messages-p)))
+          ((telega-transient-args-get args :msg-sender-delete-messages-p)
+           (telega--deleteChatMessagesBySender telega-chatbuf--chat sender)))
+
+    (when (telega-transient-args-get args :msg-sender-delete-reactions-p)
+      (telega--deleteAllRecentMessageReactionsFromSender
+       telega-chatbuf--chat sender)))
 
   (when telega-chatbuf--marked-messages
     (setq telega-chatbuf--marked-messages nil)
@@ -466,6 +494,8 @@ If DEFAULT-VALUE is not specified, then nil is used."
                            (telega-transient-scope))))
    ("s" telega-transient--infix-msg-report-spam)
    ("a" telega-transient--infix-msg-sender-delete-all)
+   ("m" telega-transient--infix-msg-sender-delete-messages)
+   ("r" telega-transient--infix-msg-sender-delete-reactions)
    ("b" telega-transient--infix-msg-sender-block)
    ]
   [:description
@@ -495,6 +525,51 @@ If DEFAULT-VALUE is not specified, then nil is used."
       (user-error "telega: Message MSG-ID=%S can't be deleted"
                   (plist-get msg :id))))
   (transient-setup 'telega-transient-msg-delete nil nil :scope messages)
+  )
+
+
+;;; Topic deletion
+(transient-define-infix telega-transient--infix-topic-delete-about ()
+  "Help for topic deletion"
+  :format "  %d"
+  :description (lambda ()
+                 (propertize "This will delete all messages in this topic"
+                             'face 'telega-shadow))
+  :if (lambda ()
+        (when-let* ((topic (telega-transient-scope)))
+          (memq (telega--tl-type topic)
+                '(directMessagesChatTopic))))
+  :class 'telega-transient-information)
+
+(transient-define-suffix telega-transient--suffix-topic-delete (topic)
+  "Delete topic."
+  :description (lambda ()
+                 (propertize (telega-i18n "lng_forum_topic_delete")
+                             'face 'error))
+
+  (interactive (list (telega-transient-scope)))
+  (cl-ecase (telega--tl-type topic)
+    (forumTopic
+     (telega--deleteForumTopic 
+      (telega-topic-chat topic) topic))
+    (directMessagesChatTopic
+     (telega--deleteDirectMessagesChatTopicHistory
+      (telega-topic-chat topic) topic))
+    ))
+
+(transient-define-prefix telega-transient-topic-delete (topic)
+  "Delete topic at point."
+  [:description (lambda ()
+                  (telega-i18n "lng_forum_topic_delete_sure"))
+   (telega-transient--infix-topic-delete-about)
+   " "
+   ("D" telega-transient--suffix-topic-delete)
+   ]
+
+  (interactive (list (telega-topic-at (point))))
+  (unless topic
+    (user-error "telega: no topic at point"))
+  (transient-setup 'telega-transient-topic-delete nil nil :scope topic)
   )
 
 
@@ -1479,40 +1554,61 @@ Return fake chat suitable for `telega-ins--msg-sender'."
 
 ;; Chatbuf's input options
 ;; TODO
-(defun telega-transient-input-options-cap-self-destruct-p ()
+(defun telega-transient--input-option-applicable-p (&rest im-types)
+  "Return non-nil if input option is applicable.
+Return first applicable imc."
+  (seq-some (lambda (text)
+              (when-let ((attach (get-text-property 0 'telega-attach text)))
+                (memq (telega--tl-type attach) im-types)))
+            (telega-transient-scope)))
+
+(defun telega-transient--input-options-can-self-destruct-p ()
+  "Return non-nil if self destruction is applicable to input."
   (and (telega-chatbuf-match-p '(type private bot))
-       (seq-some (lambda (text)
-                   (when-let ((attach (get-text-property 0 'telega-attach text)))
-                     (memq (telega--tl-type attach)
-                           '(inputMessagePhoto
-                             inputMessageVideo
-                             inputMessageVideoNote
-                             inputMessageVoiceNote))))
-                 (telega-transient-scope))))
+       (telega-transient--input-option-applicable-p
+        'inputMessagePhoto
+        'inputMessageVideo
+        'inputMessageVideoNote
+        'inputMessageVoiceNote)))
 
-(defun telega-transient-input-options-has-spoiler-p ()
-  (seq-some (lambda (text)
-              (when-let ((attach (get-text-property 0 'telega-attach text)))
-                (memq (telega--tl-type attach)
-                      '(inputMessageAnimation
-                        inputMessagePhoto
-                        inputMessageVideo))))
-            (telega-transient-scope)))
+(defun telega-transient--input-options-can-spoiler-p ()
+  "Retrun non-nil if spoiler is applicable."
+  (telega-transient--input-option-applicable-p
+   'inputMessageAnimation
+   'inputMessagePhoto
+   'inputMessageVideo))
 
-(defun telega-transient-input-options-caption-above-p ()
-  (seq-some (lambda (text)
-              (when-let ((attach (get-text-property 0 'telega-attach text)))
-                (memq (telega--tl-type attach)
-                      '(inputMessageAnimation
-                        inputMessagePaidMedia
-                        inputMessagePhoto
-                        inputMessageVideo))))
-            (telega-transient-scope)))
+(defun telega-transient--input-options-can-caption-above-p ()
+  "Return non-nil if caption above is applicable."
+  (telega-transient--input-option-applicable-p
+   'inputMessageAnimation
+   'inputMessagePaidMedia
+   'inputMessagePhoto
+   'inputMessageVideo))
+
+(defun telega-transient--input-options-can-schedule-p ()
+  "Return non-nil if scheduling is applicable."
+  ;; NOTE from TDLib docs:
+  ;;   Messages sent to a secret chat, to a chat with paid messages, to
+  ;;   a channel direct messages chat, live location messages and
+  ;;   self-destructing messages can't be scheduled
+  (when (and (not (telega-chatbuf-match-p '(or (type secret)
+                                               paid-message
+                                               is-direct-messages-group)))
+             (not (telega-transient-args-get
+                   (transient-args
+                    (or transient-current-command
+                        'telega-transient-chatbuf-input-options))
+                   :option-self-destruct-p)))
+    (let ((imc (telega-transient--input-option-applicable-p
+                'inputMessageLocation)))
+      (or (not imc)
+          (telega-zerop (plist-get imc :live_period))))))
 
 (transient-define-infix telega-transient--infix-input-option-spoiler ()
   "Hide media content under spoiler."
   :description (lambda () (telega-i18n "lng_context_spoiler_effect"))
-  :if #'telega-transient-input-options-has-spoiler-p
+  :if #'telega-transient--input-options-can-spoiler-p
   :class 'telega-transient--checkbox-switch
   :global-p nil
   :variable :option-hide-with-spoiler-p)
@@ -1520,7 +1616,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
 (transient-define-infix telega-transient--infix-input-option-self-destruct ()
   "Self-destruct media after viewed by peer."
   :description (lambda () "self-destructing media")
-  :if #'telega-transient-input-options-cap-self-destruct-p
+  :if #'telega-transient--input-options-can-self-destruct-p
   :class 'telega-transient--checkbox-switch
   :global-p nil
   :variable :option-self-destruct-p)
@@ -1539,7 +1635,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
 
 (transient-define-prefix telega-transient-chatbuf-input-options (attaches)
   "Edit chatbuf input options before sending message."
-  [:description (lambda () "Input Options")
+  [
    ["Media Options"             
     ("s" telega-transient--infix-input-option-spoiler)
     ("d" telega-transient--infix-input-option-self-destruct)
@@ -1547,11 +1643,11 @@ Return fake chat suitable for `telega-ins--msg-sender'."
    ["Link Preview Options"
     ("l" telega-transient-link-preview-options)
     ]
-
-   " "
-   ("RET" telega-transient--suffix-input-option-apply)
+   ]
+  [("RET" telega-transient--suffix-input-option-apply)
    ("D" telega-chatbuf-cancel-input-options
-    :description (propertize "Cancel Options" 'face 'error)
+    :description (lambda ()
+                   (propertize (telega-i18n "lng_cancel") 'face 'error))
     :if (lambda ()
           telega-chatbuf--input-options-plist))
    ]
@@ -1588,6 +1684,16 @@ Return fake chat suitable for `telega-ins--msg-sender'."
   :global-p nil
   :variable :proxy-enable-p)
 
+(transient-define-infix telega-transient--infix-proxy-comment ()
+  "Comment for the proxy."
+  :description (lambda () (telega-i18n "lng_photos_comment"))
+  :class 'telega-transient--variable
+  :format " %k %d (%v)"
+  :argument ""
+  :prompt (lambda (_obj) (concat (telega-i18n "lng_photos_comment") ": "))
+  :global-p nil
+  :variable :proxy-comment)
+
 (transient-define-suffix telega-transient--suffix-add-proxy (tl-proxy args)
   :description (lambda ()
                  (telega-i18n "lng_proxy_add"))
@@ -1596,7 +1702,9 @@ Return fake chat suitable for `telega-ins--msg-sender'."
                      (transient-args
                       (or transient-current-command
                           'telega-transient-add-proxy))))
-  (telega--addProxy tl-proxy (telega-transient-args-get args :proxy-enable-p)))
+  (telega--addProxy tl-proxy
+    :enable-p (telega-transient-args-get args :proxy-enable-p)
+    :comment (telega-transient-args-get args :proxy-comment)))
 
 (transient-define-suffix telega-transient--suffix-check-proxy-status (tl-proxy)
   "Check proxy status."
@@ -1636,6 +1744,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
    (telega-transient--infix-about-proxy)
    ("s" telega-transient--suffix-check-proxy-status)
    ("x" telega-transient--infix-enable-proxy)
+   ("c" telega-transient--infix-proxy-comment)
    " "
    ("RET" telega-transient--suffix-add-proxy)
    ]
@@ -1652,23 +1761,29 @@ Return fake chat suitable for `telega-ins--msg-sender'."
 ;;; AI text composition
 (transient-define-infix telega-transient--infix-input-ai-compose-translate ()
   "Translate"
-  :description "Translate"
-  :class 'telega-transient--checkbox-switch
+  :description (lambda () (telega-i18n "lng_ai_compose_tab_translate"))
+  :class 'telega-transient--radiobox-switch
   :variable :ai-compose-translate-p
+  :deps-list '((t nil :ai-compose-style-p)
+               (t nil :ai-compose-fix-p))
   )
 
 (transient-define-infix telega-transient--infix-input-ai-compose-fix ()
   "Fix"
-  :description "Fix"
-  :class 'telega-transient--checkbox-switch
+  :description (lambda () (telega-i18n "lng_ai_compose_tab_fix"))
+  :class 'telega-transient--radiobox-switch
   :variable :ai-compose-fix-p
+  :deps-list '((t nil :ai-compose-style-p)
+               (t nil :ai-compose-translate-p))
   )
 
 (transient-define-infix telega-transient--infix-input-ai-compose-style ()
   "Style"
-  :description "Style"
-  :class 'telega-transient--checkbox-switch
+  :description (lambda () (telega-i18n "lng_ai_compose_tab_style"))
+  :class 'telega-transient--radiobox-switch
   :variable :ai-compose-style-p
+  :deps-list '((t nil :ai-compose-fix-p)
+               (t nil :ai-compose-translate-p))
   )
 
 (transient-define-infix telega-transient--infix-input-ai-compose-emojify ()
@@ -1701,18 +1816,17 @@ Return fake chat suitable for `telega-ins--msg-sender'."
 (transient-define-prefix telega-transient-chatbuf-input-ai-compose (imc)
   "Compose text input for the chatbuf."
   [:description (lambda () (telega-i18n "lng_ai_compose_title"))
-;   [
-    ;;:pad-keys t
-    ""
-    ("t" telega-transient--infix-input-ai-compose-translate)
-    ("f" telega-transient--infix-input-ai-compose-fix)
-    ("s" telega-transient--infix-input-ai-compose-style)
-;    ]
+   [("t" telega-transient--infix-input-ai-compose-translate)]
+   [("f" telega-transient--infix-input-ai-compose-fix)]
+   [("s" telega-transient--infix-input-ai-compose-style)]
+   ]
+  [
    ("e" telega-transient--infix-input-ai-compose-emojify)
    " "
    (telega-transient--infix-input-ai-compose-preview)
+   ]
 
-   " "
+  [
    ("RET" telega-transient--suffix-input-ai-compose-apply)
    ]
 

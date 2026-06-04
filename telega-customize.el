@@ -3089,7 +3089,10 @@ Used in one line message inserter."
        (telega-etc-file-create-image "outline-open.svg" 1)))
     pause pending phone photo
     pin
-    poll play
+    (poll
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "symbols/poll.svg" 2)))
+    play
     (premium (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "symbols/premium.svg" 2)))
     (radiobox-off

@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2026-04-24 Пт 11:49 -->
+<!-- 2026-06-05 Пт 02:11 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.8.632)</title>
@@ -183,6 +183,7 @@
 </li>
 <li><a href="#contributed-packages">Contributed packages</a>
 <ul>
+<li><a href="#telega-companyel--powerful-completions-with-company"><i>telega-company.el</i> &#x2013; Powerful completions with company</a></li>
 <li><a href="#ol-telegael--org-mode-links-to-telegram-chats-and-messages"><i>ol-telega.el</i> &#x2013; Org mode links to telegram chats and messages</a></li>
 <li><a href="#telega-status-historyel--global-minore-mode-to-save-users-online-status-history"><i>telega-status-history.el</i> &#x2013; Global minore mode to save user's online status history</a></li>
 <li><a href="#telega-url-shortenel--makes-urls-look-nicer"><i>telega-url-shorten.el</i> &#x2013; Makes urls look nicer</a></li>
@@ -747,7 +748,7 @@ For example:
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">(add-hook 'telega-before-auth-hook
           (<span style="font-weight: bold;">lambda</span> ()
-             (telega--addProxy &lt;PROXY&gt; 'enable)))
+             (telega--addProxy &lt;PROXY&gt; <span style="font-weight: bold;">:enable-p</span> 'enable <span style="font-weight: bold;">:comment</span> &lt;COMMENT&gt;)))
 </pre>
 </div>
 
@@ -869,7 +870,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org547dd07">
+<pre class="example" id="org13c6c54">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -887,7 +888,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org9284c27">
+<pre class="example" id="orge78eebc">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -976,7 +977,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgcd76fa8">
+<pre class="example" id="org8f124d3">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1014,7 +1015,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org2ad3e2d">
+<pre class="example" id="orge3da11b">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1706,7 +1707,10 @@ You don't need te be a chat member to be able to send messages.
 Chat might not be known (i.e. in your Main or Archive list) to post
 messages into it. Use <code>is-known</code> chat temex to check chat is known.</dd>
 
-<dt>(unread-reactions [ <code>N</code> ])</dt><dd>Matches if chat has least <code>N</code> unread reactions.
+<dt>(unread-reactions [ <code>N</code> ])</dt><dd>Matches if chat has at least <code>N</code> unread reactions.
+By default <code>N</code> is 1.</dd>
+
+<dt>(unread-polls [ <code>N</code> ])</dt><dd>Matches if chat has at least <code>N</code> unread poll votes messages.
 By default <code>N</code> is 1.</dd>
 
 <dt>(has-active-stories [ <code>UNREAD-P</code> ])</dt><dd>Matches if chat has non-expired stories available to you.
@@ -2443,7 +2447,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgce838d0">
+<pre class="example" id="org05d3b5f">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2647,7 +2651,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="orgd61d12e">
+<pre class="example" id="orgac43918">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2679,7 +2683,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org343b486">
+<pre class="example" id="org15be101">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3394,7 +3398,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="orgb7740bb">
+<pre class="example" id="org2250c82">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4657,6 +4661,146 @@ Mode to notify about VoIP call by playing sounds.
 project.
 </p>
 </div>
+<div id="outline-container-telega-companyel--powerful-completions-with-company" class="outline-3">
+<h3 id="telega-companyel--powerful-completions-with-company"><a class="self-link" href="#telega-companyel--powerful-completions-with-company"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-company.el</i> &#x2013; Powerful completions with company</h3>
+<div class="outline-text-3" id="text-telega-companyel--powerful-completions-with-company">
+<p>
+There are two operating modes: active and passive. In active mode,
+<code>company-mode</code> is enabled, detects input context automatically and
+pops up completion candidates if completion at point is available.
+With passive mode you need to press
+<kbd>TAB</kbd> (<code>telega-chatbuf-complete-or-next-link</code>)
+explicitly to perform completion at point.  Operating mode is
+customized with:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-company-active</code> 
+</p>
+
+<p>
+Non-nil to use <code>telega-company</code> in active mode. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul>
+
+<p>
+Enable company completions with:
+</p>
+
+
+<dl class="org-dl">
+<dt>telega-company-emoji</dt><dd><p>
+Complete emojis via <code>:&lt;emoji&gt;:</code>
+syntax. Completion is done using predefined set of emojis.
+</p>
+
+<p>
+Customizable Options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-completions-emoji-fuzzy-match</code> 
+</p>
+
+<p>
+Non-nil to use fuzzy matching for local emoji completion. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul></dd>
+</dl>
+
+
+<dl class="org-dl">
+<dt>telega-company-telegram-emoji</dt><dd>Same as <code>telega-company-emoji</code>,
+but uses Telegram cloud for the emojis completion.</dd>
+</dl>
+
+
+<dl class="org-dl">
+<dt>telega-company-username</dt><dd><p>
+Complete user mentions via <code>@&lt;username&gt;</code>
+syntax. Here is the screenshot, showing use of this backend:
+<img src="https://zevlg.github.io/telega/completing-usernames.jpg" alt="completing-usernames.jpg" />
+</p>
+
+<p>
+Use <code>@@</code> prefix to complete chat admins only.
+</p></dd>
+</dl>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-completions-username-prefer-name</code> 
+</p>
+
+<p>
+Preferred name formats when inserting a completed username. 
+</p>
+
+<p>
+Default value: <code>(username first-name last-name)</code>
+</p></li>
+<li><p>
+User Option: <code>telega-completions-username-show-avatars</code> 
+</p>
+
+<p>
+Non-nil to show avatars in username completion annotations. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+<li><p>
+User Option: <code>telega-completions-username-markup</code> 
+</p>
+
+<p>
+Markup format for completed usernames. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+</ul>
+
+
+<dl class="org-dl">
+<dt>telega-company-hashtag</dt><dd>Complete common hashtags via
+<code>#&lt;hashtag&gt;</code> syntax.</dd>
+</dl>
+
+
+<dl class="org-dl">
+<dt>telega-company-botcmd</dt><dd>Complete bot commands via <code>/&lt;botcmd&gt;</code>
+syntax.  This backend does not complete if <code>/&lt;botcmd&gt;</code> syntax is
+used in the middle of the chatbuf input, only if <code>/&lt;botcmd&gt;</code>
+starts chatbuf input.</dd>
+</dl>
+
+
+<dl class="org-dl">
+<dt>telega-company-quick-reply</dt><dd>Complete quick replies via
+<code>/&lt;shortcut&gt;</code> syntax in private chats.</dd>
+</dl>
+
+
+<dl class="org-dl">
+<dt>telega-company-markdown-precode</dt><dd>Complete language name for
+code blocks via <code>```</code> syntax.</dd>
+</dl>
+</div>
+</div>
 <div id="outline-container-ol-telegael--org-mode-links-to-telegram-chats-and-messages" class="outline-3">
 <h3 id="ol-telegael--org-mode-links-to-telegram-chats-and-messages"><a class="self-link" href="#ol-telegael--org-mode-links-to-telegram-chats-and-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>ol-telega.el</i> &#x2013; Org mode links to telegram chats and messages</h3>
 <div class="outline-text-3" id="text-ol-telegael--org-mode-links-to-telegram-chats-and-messages">
@@ -4745,7 +4889,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgc68d785">
+<pre class="example" id="org64f3369">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
