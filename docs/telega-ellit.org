@@ -838,6 +838,20 @@ To enable ~capf~ completions use:
 ~capf~ functions to be used to complete input:
 - {{{user-option(telega-completions-capf-functions, 2)}}}
 
+The available capf functions are:
+-  {{{where-is(telega-capf-emoji,telega-chat-mode-map)}}}: ~:<name>:~ emoji (local list)
+-  {{{where-is(telega-capf-telegram-emoji,telega-chat-mode-map)}}}: ~:<name>:~ emoji via TDLib searchEmojis
+-  {{{where-is(telega-capf-username,telega-chat-mode-map)}}}: ~@username~ / ~@@admin~ mentions
+-  {{{where-is(telega-capf-hashtag,telega-chat-mode-map)}}}: ~#hashtag~ via searchHashtags
+-  {{{where-is(telega-capf-botcmd,telega-chat-mode-map)}}}: ~/bot-command~ at start of input
+-  {{{where-is(telega-capf-quick-reply,telega-chat-mode-map)}}}: ~/shortcut~ in private chats
+-  {{{where-is(telega-capf-markdown-precode,telega-chat-mode-map)}}}: ~```language~ blocks
+
+If there is one emoji in the chatbuf's input, pressing ~TAB~ will
+show a temporary window showing all stickers associated with that
+emoji. You can enter emoji in the chatbuf using the capf functions
+above, or by using Emacs' emoji picker (~C-x 8 e e~).
+
 ** Sending messages via bots
 
 If chatbuf input starts with =@<botname> <query>= and mentioned bot
