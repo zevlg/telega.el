@@ -1,0 +1,13 @@
+* How to contribute to this documentation
+
+In order to contribute to Telega.el's documentation, follow these steps:
+
+1. Clone https://github.com/zevlg/ellit-org.el as a sibling directory next to this repository.
+
+2. Install these emacs packages from MELPA:
+   - ~all-the-icons~
+   - ~alert~
+   - ~dashboard~
+   - ~esxml~
+
+3. Run ~make~ to compile the changes into ~index.html~
