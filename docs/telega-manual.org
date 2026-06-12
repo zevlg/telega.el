@@ -765,12 +765,10 @@ Telega prefix map bindings:
     Default value: ~(and main unread)~
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 * Root Buffer
 :PROPERTIES:
 :CUSTOM_ID: root-buffer
@@ -2362,18 +2360,19 @@ To enable ~capf~ completions use:
 
 
 The available capf functions are:
-- (~telega-capf-emoji~): ~:<name>:~ emoji (local list)
-- (~telega-capf-telegram-emoji~): ~:<name>:~ emoji via TDLib searchEmojis
-- (~telega-capf-username~): ~@username~ / ~@@admin~ mentions
-- (~telega-capf-hashtag~): ~#hashtag~ via searchHashtags
-- (~telega-capf-botcmd~): ~/bot-command~ at start of input
-- (~telega-capf-quick-reply~): ~/shortcut~ in private chats
-- (~telega-capf-markdown-precode~): ~```language~ blocks
+- ~telega-capf-emoji~             -- ~:<name>:~ emoji (local list)
+- ~telega-capf-telegram-emoji~    -- ~:<name>:~ emoji via TDLib searchEmojis
+- ~telega-capf-username~          -- ~@username~ / ~@@admin~ mentions
+- ~telega-capf-hashtag~           -- ~#hashtag~ via searchHashtags
+- ~telega-capf-botcmd~            -- ~/bot-command~ at start of input
+- ~telega-capf-quick-reply~       -- ~/shortcut~ in private chats
+- ~telega-capf-markdown-precode~  -- ~```language~ blocks
 
-If there is one emoji in the chatbuf's input, pressing ~TAB~ will
-show a temporary window showing all stickers associated with that
-emoji. You can enter emoji in the chatbuf using the capf functions
-above, or by using Emacs' emoji picker (~C-x 8 e e~).
+If there is one emoji in the chatbuf's input,
+@@html:<kbd>@@TAB@@html:</kbd>@@ (~telega-chatbuf-complete-or-next-link~) will
+show a temporary window showing all stickers associated with that emoji. You can
+enter emoji in the chatbuf using the capf functions above, or by using Emacs'
+emoji picker (@@html:<kbd>@@C-x 8 e e@@html:</kbd>@@).
 ** Sending messages via bots
 :PROPERTIES:
 :CUSTOM_ID: sending-messages-via-bots
@@ -2590,27 +2589,17 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 - @@html:<kbd>@@0@@html:</kbd>@@ (~telega-msg--vvnote-stop~) :: 
      Stop playing media message.
-
-     (fn MSG)
 - @@html:<kbd>@@<@@html:</kbd>@@, @@html:<kbd>@@,@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-backward~) :: 
      Rewind 10 seconds backward.
-
-     (fn MSG)
 - @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
      Rewind 10 seconds forward.
-
-     (fn MSG)
 - @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
      Cycle playback speed for the media message.
      Cycles through speeds defined in ~telega-vvnote-play-speeds~.
-
-     (fn MSG)
 - @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
      Rewind to the N's 10 part of the message duration.
      I.e. if you press 7, then you will jump to 70% of the message
      duration.
-
-     (fn MSG)
 
 To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
 @@html:<kbd>@@l@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <copy-link>@@html:</kbd>@@ (~telega-msg-copy-link~) command

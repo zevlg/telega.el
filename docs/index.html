@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2026-06-11 Thu 00:14 -->
+<!-- 2026-06-11 Thu 20:30 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.8.640)</title>
@@ -1047,7 +1047,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org3f93a18">
+<pre class="example" id="orgd9f62bb">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -1065,7 +1065,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org8c04637">
+<pre class="example" id="orgaeaeb59">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1154,7 +1154,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org2d89d9a">
+<pre class="example" id="org400d09c">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1192,7 +1192,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgfcf8470">
+<pre class="example" id="org2a95893">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1306,16 +1306,10 @@ Default value: <code>(and main unread)</code>
 </p></li>
 </ul></dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
-Open the URL.
-If URL can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
+If <code>URL</code> can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If IN-WEB-BROWSER is non-nil then force opening in web browser.
-</p>
-
-<p>
-(fn URL &amp;optional IN-WEB-BROWSER)
-</p></dd>
+If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
 </dl>
 </div>
 </div>
@@ -2630,7 +2624,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org2adf6b8">
+<pre class="example" id="orge67cb00">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2834,7 +2828,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org98ed924">
+<pre class="example" id="org608f842">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2866,7 +2860,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orgc4bf300">
+<pre class="example" id="org978bb8a">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3282,20 +3276,21 @@ Default value:
 The available capf functions are:
 </p>
 <ul class="org-ul">
-<li>(<code>telega-capf-emoji</code>): <code>:&lt;name&gt;:</code> emoji (local list)</li>
-<li>(<code>telega-capf-telegram-emoji</code>): <code>:&lt;name&gt;:</code> emoji via TDLib searchEmojis</li>
-<li>(<code>telega-capf-username</code>): <code>@username</code> / <code>@@admin</code> mentions</li>
-<li>(<code>telega-capf-hashtag</code>): <code>#hashtag</code> via searchHashtags</li>
-<li>(<code>telega-capf-botcmd</code>): <code>/bot-command</code> at start of input</li>
-<li>(<code>telega-capf-quick-reply</code>): <code>/shortcut</code> in private chats</li>
-<li>(<code>telega-capf-markdown-precode</code>): <code>```language</code> blocks</li>
+<li><code>telega-capf-emoji</code>             &#x2013; <code>:&lt;name&gt;:</code> emoji (local list)</li>
+<li><code>telega-capf-telegram-emoji</code>    &#x2013; <code>:&lt;name&gt;:</code> emoji via TDLib searchEmojis</li>
+<li><code>telega-capf-username</code>          &#x2013; <code>@username</code> / <code>@@admin</code> mentions</li>
+<li><code>telega-capf-hashtag</code>           &#x2013; <code>#hashtag</code> via searchHashtags</li>
+<li><code>telega-capf-botcmd</code>            &#x2013; <code>/bot-command</code> at start of input</li>
+<li><code>telega-capf-quick-reply</code>       &#x2013; <code>/shortcut</code> in private chats</li>
+<li><code>telega-capf-markdown-precode</code>  &#x2013; <code>```language</code> blocks</li>
 </ul>
 
 <p>
-If there is one emoji in the chatbuf's input, pressing <code>TAB</code> will
-show a temporary window showing all stickers associated with that
-emoji. You can enter emoji in the chatbuf using the capf functions
-above, or by using Emacs' emoji picker (<code>C-x 8 e e</code>).
+If there is one emoji in the chatbuf's input,
+<kbd>TAB</kbd> (<code>telega-chatbuf-complete-or-next-link</code>) will
+show a temporary window showing all stickers associated with that emoji. You can
+enter emoji in the chatbuf using the capf functions above, or by using Emacs'
+emoji picker (<kbd>C-x 8 e e</kbd>).
 </p>
 </div>
 </div>
@@ -3602,7 +3597,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org2daf91a">
+<pre class="example" id="orgd6df3b8">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3610,44 +3605,14 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 </p>
 <dl class="org-dl">
-<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd><p>
-Stop playing media message.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd><p>
-Rewind 10 seconds backward.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd><p>
-Rewind 10 seconds forward.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd><p>
-Cycle playback speed for the media message.
-Cycles through speeds defined in <code>telega-vvnote-play-speeds</code>.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd><p>
-Rewind to the N's 10 part of the message duration.
+<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd>Stop playing media message.</dd>
+<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd>Rewind 10 seconds backward.</dd>
+<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd>Rewind 10 seconds forward.</dd>
+<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Cycle playback speed for the media message.
+Cycles through speeds defined in <code>telega-vvnote-play-speeds</code>.</dd>
+<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd>Rewind to the N's 10 part of the message duration.
 I.e. if you press 7, then you will jump to 70% of the message
-duration.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
+duration.</dd>
 </dl>
 
 <p>
@@ -5123,7 +5088,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org4436b94">
+<pre class="example" id="org1a2e5de">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
