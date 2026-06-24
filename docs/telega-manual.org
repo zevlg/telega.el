@@ -1,6 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
 #+title: Telega Manual (v0.8.640)
-#+author: Zajcev Evgeny
 #+startup: showall
 
 #+macro: nl          (eval (concat "\n" (make-string (1- (string-to-number $1)) ?\s)))
@@ -2358,6 +2357,22 @@ To enable ~capf~ completions use:
                        telega-capf-hashtag telega-capf-markdown-precode
                        telega-capf-quick-reply telega-capf-botcmd)
   #+end_src
+
+
+The available capf functions are:
+- ~telega-capf-emoji~             -- ~:<name>:~ emoji (local list)
+- ~telega-capf-telegram-emoji~    -- ~:<name>:~ emoji via TDLib searchEmojis
+- ~telega-capf-username~          -- ~@username~ / ~@@admin~ mentions
+- ~telega-capf-hashtag~           -- ~#hashtag~ via searchHashtags
+- ~telega-capf-botcmd~            -- ~/bot-command~ at start of input
+- ~telega-capf-quick-reply~       -- ~/shortcut~ in private chats
+- ~telega-capf-markdown-precode~  -- ~```language~ blocks
+
+If there is one emoji in the chatbuf's input,
+@@html:<kbd>@@TAB@@html:</kbd>@@ (~telega-chatbuf-complete-or-next-link~) will
+show a temporary window showing all stickers associated with that emoji. You can
+enter emoji in the chatbuf using the capf functions above, or by using Emacs'
+emoji picker (@@html:<kbd>@@C-x 8 e e@@html:</kbd>@@).
 ** Sending messages via bots
 :PROPERTIES:
 :CUSTOM_ID: sending-messages-via-bots

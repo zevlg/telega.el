@@ -32,14 +32,15 @@
 ;; and the buffer-local cache is returned instead.
 ;;
 ;; Provides:
-;;  `telega-capf-emoji'            -- :<name>: emoji (local list)
-;;  `telega-capf-telegram-emoji'   -- :<name>: emoji via TDLib searchEmojis
-;;  `telega-capf-username'         -- @username / @@admin mentions
-;;  `telega-capf-hashtag'          -- #hashtag via searchHashtags
-;;  `telega-capf-botcmd'           -- /bot-command at start of input
-;;  `telega-capf-quick-reply'      -- /shortcut in private chats
-;;  `telega-capf-markdown-precode' -- ```language blocks
-;;
+;;; ellit-org: telega-capf-functions
+;; - ~telega-capf-emoji~             -- ~:<name>:~ emoji (local list)
+;; - ~telega-capf-telegram-emoji~    -- ~:<name>:~ emoji via TDLib searchEmojis
+;; - ~telega-capf-username~          -- ~@username~ / ~@@admin~ mentions
+;; - ~telega-capf-hashtag~           -- ~#hashtag~ via searchHashtags
+;; - ~telega-capf-botcmd~            -- ~/bot-command~ at start of input
+;; - ~telega-capf-quick-reply~       -- ~/shortcut~ in private chats
+;; - ~telega-capf-markdown-precode~  -- ~```language~ blocks
+
 ;; Setup:
 ;;   (add-hook 'telega-chat-mode-hook #'telega-completions-setup-capf)
 

@@ -3,18 +3,195 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2026-06-05 Пт 02:21 -->
+<!-- 2026-06-11 Thu 20:30 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.8.640)</title>
-<meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
-<link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
-<link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="https://zevlg.github.io/org-html-themes/src/lib/js/jquery.stickytableheaders.min.js"></script>
-<script type="text/javascript" src="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+<style type="text/css">
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { }
+</style>
 <style> #content{max-width:1800px;}</style>
 <style>h1, h2, h3, h4, h5, h6 { margin: 16px 0px 0px 0px; }</style>
 <style>#table-of-contents h2 { margin: 0; }</style>
@@ -408,7 +585,7 @@ Move into the folder with <code>$ cd ./td</code> or wherever you checked out
 Prepare a folder for building the library:
 </p>
 <div class="org-src-container">
-<pre class="src src-shell">$ mkdir build &amp;&amp; <span style="font-weight: bold;">cd</span> build &amp;&amp; cmake ../
+<pre class="src src-shell">$ mkdir build &amp;&amp; cd build &amp;&amp; cmake ../
 </pre>
 </div>
 
@@ -549,8 +726,8 @@ might look like:
 </p>
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">(add-to-list 'package-archives
-             '(<span style="font-style: italic;">"melpa-stable"</span> . <span style="font-style: italic;">"https://stable.melpa.org/packages/"</span>))
-(add-to-list 'package-pinned-packages '(telega . <span style="font-style: italic;">"melpa-stable"</span>))
+             '("melpa-stable" . "https://stable.melpa.org/packages/"))
+(add-to-list 'package-pinned-packages '(telega . "melpa-stable"))
 </pre>
 </div>
 
@@ -567,10 +744,10 @@ Or you could use git repository with this melpa-style recipe for <a href="https:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(quelpa '(telega <span style="font-weight: bold;">:fetcher</span> github
-                 <span style="font-weight: bold;">:repo</span> <span style="font-style: italic;">"zevlg/telega.el"</span>
-                 <span style="font-weight: bold;">:branch</span> <span style="font-style: italic;">"master"</span>
-                 <span style="font-weight: bold;">:files</span> (<span style="font-weight: bold;">:defaults</span> <span style="font-style: italic;">"contrib"</span> <span style="font-style: italic;">"etc"</span> <span style="font-style: italic;">"server"</span> <span style="font-style: italic;">"Makefile"</span>)))
+<pre class="src src-emacs-lisp">(quelpa '(telega :fetcher github
+                 :repo "zevlg/telega.el"
+                 :branch "master"
+                 :files (:defaults "contrib" "etc" "server" "Makefile")))
 </pre>
 </div>
 </div>
@@ -596,10 +773,10 @@ $ make compile
 Finally load <code>telega</code> into Emacs using:
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">use-package</span> telega
-  <span style="font-weight: bold;">:load-path</span>  <span style="font-style: italic;">"~/telega.el"</span>
-  <span style="font-weight: bold;">:commands</span> (telega)
-  <span style="font-weight: bold;">:defer</span> t)
+<pre class="src src-emacs-lisp">(use-package telega
+  :load-path  "~/telega.el"
+  :commands (telega)
+  :defer t)
 </pre>
 </div>
 
@@ -607,8 +784,8 @@ Finally load <code>telega</code> into Emacs using:
 Or with:
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(add-to-list 'load-path <span style="font-style: italic;">"~/telega.el"</span>)
-(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega</span>)
+<pre class="src src-emacs-lisp">(add-to-list 'load-path "~/telega.el")
+(require 'telega)
 </pre>
 </div>
 
@@ -633,7 +810,7 @@ Pull latest <code>telega-server</code> image:
 Make <code>telega</code> know you want to use docker by adding this to your <code>init.el</code>:
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">setq</span> telega-use-docker t)
+<pre class="src src-emacs-lisp">(setq telega-use-docker t)
 </pre>
 </div>
 
@@ -689,8 +866,8 @@ See <a href="https://core.telegram.org/tdlib/options">https://core.telegram.org/
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">:online</span> t <span style="font-weight: bold;">:localization_target</span> <span style="font-style: italic;">"tdesktop"</span> <span style="font-weight: bold;">:language_pack_id</span> <span style="font-style: italic;">"en"</span>
-         <span style="font-weight: bold;">:use_storage_optimizer</span> <span style="font-weight: bold;">:false</span> <span style="font-weight: bold;">:ignore_file_names</span> <span style="font-weight: bold;">:false</span>)
+<pre class="src src-emacs-lisp">(:online t :localization_target "tdesktop" :language_pack_id "en"
+         :use_storage_optimizer :false :ignore_file_names :false)
 </pre>
 </div></li>
 
@@ -747,8 +924,8 @@ For example:
 </p>
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">(add-hook 'telega-before-auth-hook
-          (<span style="font-weight: bold;">lambda</span> ()
-             (telega--addProxy &lt;PROXY&gt; <span style="font-weight: bold;">:enable-p</span> 'enable <span style="font-weight: bold;">:comment</span> &lt;COMMENT&gt;)))
+          (lambda ()
+             (telega--addProxy &lt;PROXY&gt; :enable-p 'enable :comment &lt;COMMENT&gt;)))
 </pre>
 </div>
 
@@ -870,7 +1047,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgdc97222">
+<pre class="example" id="orgd9f62bb">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -888,7 +1065,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orge34bd97">
+<pre class="example" id="orgaeaeb59">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -936,11 +1113,11 @@ This filters are displayed as filter buttons at the top of rootbuf.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Main"</span> . main) (<span style="font-style: italic;">"Important"</span> . important)
- (<span style="font-style: italic;">"Online"</span> and (not saved-messages) (user is-online))
- (<span style="font-style: italic;">"lng_filters_type_groups"</span> type basicgroup supergroup)
- (<span style="font-style: italic;">"lng_filters_type_channels"</span> type channel)
- (<span style="font-style: italic;">"lng_filters_type_no_archived"</span> . archive))
+<pre class="src src-emacs-lisp">(("Main" . main) ("Important" . important)
+ ("Online" and (not saved-messages) (user is-online))
+ ("lng_filters_type_groups" type basicgroup supergroup)
+ ("lng_filters_type_channels" type channel)
+ ("lng_filters_type_no_archived" . archive))
 </pre>
 </div></li>
 
@@ -977,7 +1154,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgdf1dc92">
+<pre class="example" id="org400d09c">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1015,7 +1192,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orge0d35a3">
+<pre class="example" id="org2a95893">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1374,8 +1551,8 @@ List of top categories with limits.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Users"</span> . 10) (<span style="font-style: italic;">"Groups"</span> . 10) (<span style="font-style: italic;">"Channels"</span> . 10) (<span style="font-style: italic;">"Bots"</span> . 10)
- (<span style="font-style: italic;">"InlineBots"</span> . 10) (<span style="font-style: italic;">"Calls"</span> . 10) (<span style="font-style: italic;">"ForwardChats"</span> . 10))
+<pre class="src src-emacs-lisp">(("Users" . 10) ("Groups" . 10) ("Channels" . 10) ("Bots" . 10)
+ ("InlineBots" . 10) ("Calls" . 10) ("ForwardChats" . 10))
 </pre>
 </div></li>
 </ul></dd>
@@ -2018,11 +2195,11 @@ This filters are displayed as filter buttons at the top of rootbuf.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Main"</span> . main) (<span style="font-style: italic;">"Important"</span> . important)
- (<span style="font-style: italic;">"Online"</span> and (not saved-messages) (user is-online))
- (<span style="font-style: italic;">"lng_filters_type_groups"</span> type basicgroup supergroup)
- (<span style="font-style: italic;">"lng_filters_type_channels"</span> type channel)
- (<span style="font-style: italic;">"lng_filters_type_no_archived"</span> . archive))
+<pre class="src src-emacs-lisp">(("Main" . main) ("Important" . important)
+ ("Online" and (not saved-messages) (user is-online))
+ ("lng_filters_type_groups" type basicgroup supergroup)
+ ("lng_filters_type_channels" type channel)
+ ("lng_filters_type_no_archived" . archive))
 </pre>
 </div></li>
 
@@ -2164,13 +2341,13 @@ See list of all available icon names in <code>telega-folder-icon-names</code>.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"All"</span> . <span style="font-style: italic;">"&#128172;"</span>) (<span style="font-style: italic;">"Unread"</span> . <span style="font-style: italic;">"&#9989;"</span>) (<span style="font-style: italic;">"Unmuted"</span> . <span style="font-style: italic;">"&#128276;"</span>) (<span style="font-style: italic;">"Bots"</span> . <span style="font-style: italic;">"&#129302;&#65039;"</span>)
- (<span style="font-style: italic;">"Channels"</span> . <span style="font-style: italic;">"&#128226;"</span>) (<span style="font-style: italic;">"Groups"</span> . <span style="font-style: italic;">"&#128101;"</span>) (<span style="font-style: italic;">"Private"</span> . <span style="font-style: italic;">"&#128100;"</span>)
- (<span style="font-style: italic;">"Setup"</span> . <span style="font-style: italic;">"&#128203;"</span>) (<span style="font-style: italic;">"Cat"</span> . <span style="font-style: italic;">"&#128049;"</span>) (<span style="font-style: italic;">"Crown"</span> . <span style="font-style: italic;">"&#128081;"</span>) (<span style="font-style: italic;">"Favorite"</span> . <span style="font-style: italic;">"&#11088;&#65039;"</span>)
- (<span style="font-style: italic;">"Flower"</span> . <span style="font-style: italic;">"&#127801;"</span>) (<span style="font-style: italic;">"Game"</span> . <span style="font-style: italic;">"&#127918;"</span>) (<span style="font-style: italic;">"Home"</span> . <span style="font-style: italic;">"&#127968;"</span>) (<span style="font-style: italic;">"Love"</span> . <span style="font-style: italic;">"&#10084;&#65039;"</span>)
- (<span style="font-style: italic;">"Mask"</span> . <span style="font-style: italic;">"&#127917;"</span>) (<span style="font-style: italic;">"Party"</span> . <span style="font-style: italic;">"&#127864;"</span>) (<span style="font-style: italic;">"Sport"</span> . <span style="font-style: italic;">"&#9917;&#65039;"</span>) (<span style="font-style: italic;">"Study"</span> . <span style="font-style: italic;">"&#127891;"</span>)
- (<span style="font-style: italic;">"Trade"</span> . <span style="font-style: italic;">"&#128202;"</span>) (<span style="font-style: italic;">"Travel"</span> . <span style="font-style: italic;">"&#128747;&#65039;"</span>) (<span style="font-style: italic;">"Work"</span> . <span style="font-style: italic;">"&#128188;"</span>) (<span style="font-style: italic;">"Airplane"</span> . <span style="font-style: italic;">"&#9992;&#65039;&#65039;"</span>)
- (<span style="font-style: italic;">"Book"</span> . <span style="font-style: italic;">"&#128214;"</span>) (<span style="font-style: italic;">"Like"</span> . <span style="font-style: italic;">"&#128077;"</span>) (<span style="font-style: italic;">"Money"</span> . <span style="font-style: italic;">"&#128176;"</span>) (<span style="font-style: italic;">"Note"</span> . <span style="font-style: italic;">"&#128466;&#65039;"</span>))
+<pre class="src src-emacs-lisp">(("All" . "💬") ("Unread" . "✅") ("Unmuted" . "🔔") ("Bots" . "🤖️")
+ ("Channels" . "📢") ("Groups" . "👥") ("Private" . "👤")
+ ("Setup" . "📋") ("Cat" . "🐱") ("Crown" . "👑") ("Favorite" . "⭐️")
+ ("Flower" . "🌹") ("Game" . "🎮") ("Home" . "🏠") ("Love" . "❤️")
+ ("Mask" . "🎭") ("Party" . "🍸") ("Sport" . "⚽️") ("Study" . "🎓")
+ ("Trade" . "📊") ("Travel" . "🛫️") ("Work" . "💼") ("Airplane" . "✈️️")
+ ("Book" . "📖") ("Like" . "👍") ("Money" . "💰") ("Note" . "🗒️"))
 </pre>
 </div></li>
 </ul>
@@ -2447,7 +2624,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orge7518d6">
+<pre class="example" id="orge67cb00">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2651,7 +2828,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org0c17cbc">
+<pre class="example" id="org608f842">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2683,7 +2860,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org991f161">
+<pre class="example" id="org978bb8a">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2733,9 +2910,9 @@ List of markups to use on <code>C-c C-a markup RET</code>.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"markdown2"</span> . telega-markup-markdown2-fmt)
- (<span style="font-style: italic;">"org"</span> . telega-markup-org-fmt) (<span style="font-style: italic;">"html"</span> . telega-markup-html-fmt)
- (<span style="font-style: italic;">"markdown1"</span> . telega-markup-markdown1-fmt))
+<pre class="src src-emacs-lisp">(("markdown2" . telega-markup-markdown2-fmt)
+ ("org" . telega-markup-org-fmt) ("html" . telega-markup-html-fmt)
+ ("markdown1" . telega-markup-markdown1-fmt))
 </pre>
 </div></li>
 </ul>
@@ -2884,9 +3061,9 @@ List of markups to use on <code>C-c C-a markup RET</code>.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"markdown2"</span> . telega-markup-markdown2-fmt)
- (<span style="font-style: italic;">"org"</span> . telega-markup-org-fmt) (<span style="font-style: italic;">"html"</span> . telega-markup-html-fmt)
- (<span style="font-style: italic;">"markdown1"</span> . telega-markup-markdown1-fmt))
+<pre class="src src-emacs-lisp">(("markdown2" . telega-markup-markdown2-fmt)
+ ("org" . telega-markup-org-fmt) ("html" . telega-markup-html-fmt)
+ ("markdown1" . telega-markup-markdown1-fmt))
 </pre>
 </div></li>
 </ul>
@@ -2989,7 +3166,7 @@ For example, to show deleted messages in all chats except for "Saved
 Messages", use next:
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">setq</span> telega-chat-show-deleted-messages-for '(not saved-messages))
+<pre class="src src-emacs-lisp">(setq telega-chat-show-deleted-messages-for '(not saved-messages))
 </pre>
 </div>
 </div>
@@ -3093,6 +3270,28 @@ Default value:
 </pre>
 </div></li>
 </ul>
+
+
+<p>
+The available capf functions are:
+</p>
+<ul class="org-ul">
+<li><code>telega-capf-emoji</code>             &#x2013; <code>:&lt;name&gt;:</code> emoji (local list)</li>
+<li><code>telega-capf-telegram-emoji</code>    &#x2013; <code>:&lt;name&gt;:</code> emoji via TDLib searchEmojis</li>
+<li><code>telega-capf-username</code>          &#x2013; <code>@username</code> / <code>@@admin</code> mentions</li>
+<li><code>telega-capf-hashtag</code>           &#x2013; <code>#hashtag</code> via searchHashtags</li>
+<li><code>telega-capf-botcmd</code>            &#x2013; <code>/bot-command</code> at start of input</li>
+<li><code>telega-capf-quick-reply</code>       &#x2013; <code>/shortcut</code> in private chats</li>
+<li><code>telega-capf-markdown-precode</code>  &#x2013; <code>```language</code> blocks</li>
+</ul>
+
+<p>
+If there is one emoji in the chatbuf's input,
+<kbd>TAB</kbd> (<code>telega-chatbuf-complete-or-next-link</code>) will
+show a temporary window showing all stickers associated with that emoji. You can
+enter emoji in the chatbuf using the capf functions above, or by using Emacs'
+emoji picker (<kbd>C-x 8 e e</kbd>).
+</p>
 </div>
 </div>
 <div id="outline-container-sending-messages-via-bots" class="outline-3">
@@ -3299,13 +3498,13 @@ Default value: <code>nil</code>
 For example, to play youtube videos using <code>mpv</code> player, add this to config:
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-watch-in-mpv</span> (url)
-  (async-shell-command (format <span style="font-style: italic;">"mpv -v %S"</span> url)))
+<pre class="src src-emacs-lisp">(defun my-watch-in-mpv (url)
+  (async-shell-command (format "mpv -v %S" url)))
 
 (add-to-list 'telega-browse-url-alist
-             '(<span style="font-style: italic;">"https?://</span><span style="font-weight: bold; font-style: italic;">\\</span><span style="font-weight: bold; font-style: italic;">(</span><span style="font-style: italic;">www\\.</span><span style="font-weight: bold; font-style: italic;">\\</span><span style="font-weight: bold; font-style: italic;">)</span><span style="font-style: italic;">?youtube.com/watch"</span> . my-watch-in-mpv))
+             '("https?://\\(www\\.\\)?youtube.com/watch" . my-watch-in-mpv))
 (add-to-list 'telega-browse-url-alist
-             '(<span style="font-style: italic;">"https?://youtu.be/"</span> . my-watch-in-mpv))
+             '("https?://youtu.be/" . my-watch-in-mpv))
 </pre>
 </div>
 </div>
@@ -3327,7 +3526,7 @@ you could add next code:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-ignore-12345-user</span> (msg)
+<pre class="src src-emacs-lisp">(defun my-telega-ignore-12345-user (msg)
   (telega-msg-match-p msg '(sender (ids 12345))))
 
 (add-hook 'telega-msg-ignore-predicates 'my-telega-ignore-12345-user)
@@ -3398,7 +3597,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="orgbc064c4">
+<pre class="example" id="orgd6df3b8">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3735,10 +3934,10 @@ Default value: <code>nil</code>
 For example:
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">setq</span> telega-accounts (list
-  (list <span style="font-style: italic;">"zevlg"</span> 'telega-database-dir telega-database-dir)
-  (list <span style="font-style: italic;">"Evgen2"</span> 'telega-database-dir
-    (expand-file-name <span style="font-style: italic;">"evgen2"</span> telega-database-dir))))
+<pre class="src src-emacs-lisp">(setq telega-accounts (list
+  (list "zevlg" 'telega-database-dir telega-database-dir)
+  (list "Evgen2" 'telega-database-dir
+    (expand-file-name "evgen2" telega-database-dir))))
 </pre>
 </div>
 
@@ -3914,13 +4113,13 @@ Format in mode-line-format for <code>telega-mode-line-string</code>.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-style: italic;">"   "</span> (<span style="font-weight: bold;">:eval</span> (telega-mode-line-icon))
- (<span style="font-weight: bold;">:eval</span> (car (telega-account-current)))
- (<span style="font-weight: bold;">:eval</span> (telega-mode-line-online-status))
- (<span style="font-weight: bold;">:eval</span> (<span style="font-weight: bold;">when</span> telega-use-tracking-for (telega-mode-line-tracking)))
- (<span style="font-weight: bold;">:eval</span> (telega-mode-line-unread-unmuted))
- (<span style="font-weight: bold;">:eval</span> (telega-mode-line-mentions 'messages))
- (<span style="font-weight: bold;">:eval</span> (telega-mode-line-active-video-chats)))
+<pre class="src src-emacs-lisp">("   " (:eval (telega-mode-line-icon))
+ (:eval (car (telega-account-current)))
+ (:eval (telega-mode-line-online-status))
+ (:eval (when telega-use-tracking-for (telega-mode-line-tracking)))
+ (:eval (telega-mode-line-unread-unmuted))
+ (:eval (telega-mode-line-mentions 'messages))
+ (:eval (telega-mode-line-active-video-chats)))
 </pre>
 </div></li>
 </ul>
@@ -3983,8 +4182,8 @@ Alist with <code>offline</code>, <code>online</code> or <code>connecting</code> 
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">((offline <span style="font-style: italic;">"white"</span> <span style="font-style: italic;">"black"</span> nil) (online <span style="font-style: italic;">"#7739aa"</span> <span style="font-style: italic;">"white"</span> <span style="font-style: italic;">"#00ff00"</span>)
- (connecting <span style="font-style: italic;">"gray"</span> <span style="font-style: italic;">"white"</span> <span style="font-style: italic;">"white"</span>))
+<pre class="src src-emacs-lisp">((offline "white" "black" nil) (online "#7739aa" "white" "#00ff00")
+ (connecting "gray" "white" "white"))
 </pre>
 </div></li>
 
@@ -4026,8 +4225,8 @@ Set to nil to use plain number.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-style: italic;">"&#10102;"</span> <span style="font-style: italic;">"&#10103;"</span> <span style="font-style: italic;">"&#10104;"</span> <span style="font-style: italic;">"&#10105;"</span> <span style="font-style: italic;">"&#10106;"</span> <span style="font-style: italic;">"&#10107;"</span> <span style="font-style: italic;">"&#10108;"</span> <span style="font-style: italic;">"&#10109;"</span> <span style="font-style: italic;">"&#10110;"</span> <span style="font-style: italic;">"&#10111;"</span> <span style="font-style: italic;">"&#9451;"</span> <span style="font-style: italic;">"&#9452;"</span> <span style="font-style: italic;">"&#9453;"</span> <span style="font-style: italic;">"&#9454;"</span> <span style="font-style: italic;">"&#9455;"</span> <span style="font-style: italic;">"&#9456;"</span> <span style="font-style: italic;">"&#9457;"</span>
- <span style="font-style: italic;">"&#9458;"</span> <span style="font-style: italic;">"&#9459;"</span> <span style="font-style: italic;">"&#9460;"</span>)
+<pre class="src src-emacs-lisp">("❶" "❷" "❸" "❹" "❺" "❻" "❼" "❽" "❾" "❿" "⓫" "⓬" "⓭" "⓮" "⓯" "⓰" "⓱"
+ "⓲" "⓳" "⓴")
 </pre>
 </div></li>
 </ul>
@@ -4443,8 +4642,8 @@ TDLib's autoDownloadSettings structure.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">((roaming-mobile . <span style="font-weight: bold;">:disabled</span>) (mobile . <span style="font-weight: bold;">:low</span>) (wi-fi . <span style="font-weight: bold;">:medium</span>)
- (other . <span style="font-weight: bold;">:high</span>))
+<pre class="src src-emacs-lisp">((roaming-mobile . :disabled) (mobile . :low) (wi-fi . :medium)
+ (other . :high))
 </pre>
 </div></li>
 </ul>
@@ -4647,7 +4846,7 @@ Mode to notify about VoIP call by playing sounds.
 <code>telega-voip-sounds-mode</code> is enabled by default.  Disable it with:
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook (<span style="font-weight: bold;">lambda</span> () (telega-voip-sounds-mode -1)))
+<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook (lambda () (telega-voip-sounds-mode -1)))
 </pre>
 </div>
 </div>
@@ -4889,7 +5088,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org6666e30">
+<pre class="example" id="org1a2e5de">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -5037,7 +5236,7 @@ Can be enabled globally in all chats matching
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-mnz</span>)
+<pre class="src src-emacs-lisp">(require 'telega-mnz)
 (add-hook 'telega-load-hook 'global-telega-mnz-mode)
 </pre>
 </div>
@@ -5142,7 +5341,7 @@ Display important telega chats in the Emacs dashboard.  Enable it with:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-dashboard</span>)
+<pre class="src src-emacs-lisp">(require 'telega-dashboard)
 (add-to-list 'dashboard-items '(telega-chats . 5))
 </pre>
 </div>
@@ -5194,11 +5393,11 @@ dashboard.  Enable it with:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-emacs-stories</span>)
+<pre class="src src-emacs-lisp">(require 'telega-emacs-stories)
 (telega-emacs-stories-mode 1)
-<span style="font-weight: bold; font-style: italic;">;; </span><span style="font-weight: bold; font-style: italic;">"Emacs Stories" rootview</span>
-(define-key telega-root-mode-map (kbd <span style="font-style: italic;">"v e"</span>) 'telega-view-emacs-stories)
-<span style="font-weight: bold; font-style: italic;">;; </span><span style="font-weight: bold; font-style: italic;">Emacs Dashboard</span>
+;; "Emacs Stories" rootview
+(define-key telega-root-mode-map (kbd "v e") 'telega-view-emacs-stories)
+;; Emacs Dashboard
 (add-to-list 'dashboard-items '(telega-emacs-stories . 5))
 </pre>
 </div>
@@ -5479,7 +5678,7 @@ Enable it with:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-bridge-bot</span>)
+<pre class="src src-emacs-lisp">(require 'telega-bridge-bot)
 </pre>
 </div>
 
@@ -5495,11 +5694,11 @@ For example, if you want to replace the bridge bot
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">setq</span> telega-bridge-bot-bridge-info-plist
-      '(-1001773572820 <span style="font-weight: bold; font-style: italic;">; </span><span style="font-weight: bold; font-style: italic;">id of the @emacs_china</span>
-        (420415423 <span style="font-weight: bold; font-style: italic;">; </span><span style="font-weight: bold; font-style: italic;">id of the @matrix_t2bot</span>
-         <span style="font-weight: bold; font-style: italic;">;; </span><span style="font-weight: bold; font-style: italic;">will fetch member info with this matrix room id</span>
-         (<span style="font-weight: bold;">:type</span> <span style="font-weight: bold;">:matrix</span> <span style="font-weight: bold;">:chat-id</span> <span style="font-style: italic;">"!EGzPXoyqkJdTByDCjD:mozilla.org"</span>))))
+<pre class="src src-emacs-lisp">(setq telega-bridge-bot-bridge-info-plist
+      '(-1001773572820 ; id of the @emacs_china
+        (420415423 ; id of the @matrix_t2bot
+         ;; will fetch member info with this matrix room id
+         (:type :matrix :chat-id "!EGzPXoyqkJdTByDCjD:mozilla.org"))))
 </pre>
 </div>
 

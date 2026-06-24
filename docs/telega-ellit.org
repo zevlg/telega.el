@@ -838,6 +838,15 @@ To enable ~capf~ completions use:
 ~capf~ functions to be used to complete input:
 - {{{user-option(telega-completions-capf-functions, 2)}}}
 
+The available capf functions are:
+#+ELLIT-INCLUDE: ../telega-completions.el :label telega-capf-functions
+
+If there is one emoji in the chatbuf's input,
+{{{where-is(telega-chatbuf-complete-or-next-link,telega-chat-mode-map)}}} will
+show a temporary window showing all stickers associated with that emoji. You can
+enter emoji in the chatbuf using the capf functions above, or by using Emacs'
+emoji picker ({{{kbd(C-x 8 e e)}}}).
+
 ** Sending messages via bots
 
 If chatbuf input starts with =@<botname> <query>= and mentioned bot
