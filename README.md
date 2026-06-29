@@ -124,20 +124,32 @@ in-built (and faster) `image-transforms` for those versions.
 
 **Q**: **Does telega have proxy support?**
 
-**A**: Yes, use `telega-proxies` custom variable, for example:
+**A**: Yes, use `telega-before-auth-hook` to add and optionally enable
+a proxy before authorizing with Telegram, e.g.:
 
 ```elisp
-(setq telega-proxies
-      (list
-       '(:server "1.2.3.4" :port 8080 :enable :false
-                 :type (:@type "proxyTypeSocks5"
-                               :username "rkn" :password "jopa"))
-       '(:server "2.3.4.5" :port 8088 :enable t
-                 :type (:@type "proxyTypeSocks5"
-                               :username "rkn" :password "jopa"))
-       ))
+(add-hook 'telega-before-auth-hook
+          (lambda ()
+            (telega--addProxy
+                '(:server "1.2.3.4"
+                  :port 8080
+                  :type (:@type "proxyTypeSocks5"
+                                :username "rkn"
+                                :password "jopa"))
+              :enable-p t
+              :comment "my socks5 proxy")))
 ```
-See `C-h v telega-proxies RET` for full range of proxy types.
+
+See M-x telega-describe-proxies RET to list already added proxies.
+
+Proxy specs have the form `(:server "<ADDRESS>" :port <PORT> :type <PROXY-TYPE>)`.
+`<PROXY-TYPE>` can be one of:
+
+- `(:@type "proxyTypeSocks5" :username "<USER>" :password "<PASSWORD>")`
+- `(:@type "proxyTypeHttp" :username "<USER>" :password "<PASSWORD>" :http_only t)`
+- `(:@type "proxyTypeMtproto" :secret "<SECRET-STRING>")`
+
+For SOCKS5 and HTTP proxies, `:username` and `:password` are optional.
 
 **Q**: **Stickers are not shown.**
 
