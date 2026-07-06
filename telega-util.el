@@ -3305,7 +3305,13 @@ COLUMN is the column to aligned to."
        ;; property it is displayed as single unit (ref: 40.16.1
        ;; Display Specs That Replace The Text)
        (concat emoji
-               (when-let ((emoji-name (telega-emoji-name emoji)))
+               (when-let ((emoji-name
+                           (or (telega-emoji-name emoji)
+                               ;; NOTE: Workaround for non-standard emojis
+                               ;; (missing U+FE0F variation selector) used by
+                               ;; Android/iOS keyboards.
+                               ;; ref. https://t.me/tdlibchat/42441
+                               (telega-emoji-name (concat emoji "\xfe0f")))))
                  (propertize emoji-name
                              'display (get-text-property 0 'display emoji))))))
     (reactionTypeCustomEmoji
