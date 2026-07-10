@@ -1873,8 +1873,9 @@ Return first applicable imc."
   :type '(repeat symbol)
   :group 'telega-modes)
 
-(defun telega-transient--keymap-prefix-name (keymap-symbol)
-  (intern (format "telega-transient--prefix-%S" keymap-symbol)))
+(eval-and-compile
+  (defun telega-transient--keymap-prefix-name (keymap-symbol)
+    (intern (format "telega-transient--prefix-%S" keymap-symbol))))
 
 (defun telega-transient--keymap-setup-children (keymap-symbol)
   (let ((keymap (symbol-value keymap-symbol)))
