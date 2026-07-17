@@ -6921,8 +6921,8 @@ To be used in the `telega-chat-input-complete-functions'."
       ;;                    (string= emoji telega-help-win--emoji))))
       (telega-sticker-choose-emoji emoji telega-chatbuf--chat
                                    (not (string= (telega-chatbuf-input-string)
-                                                 emoji)))))
-      t)
+                                                 emoji)))
+      t)))
 
 (defun telega-chatbuf-complete ()
   "Complete thing at chatbuf input."
