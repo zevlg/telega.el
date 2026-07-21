@@ -1474,10 +1474,72 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
     (setq telega--help-win-inserter #'telega-describe-quick-replies--inserter)
     ))
 
+(defvar-local telega-describe-chat-join-requests--processing nil
+  "Identifiers of chats with join requests currently being processed.")
+
+(defun telega-describe-chat-join-requests--process-all-next
+    (chat previous-count approve-p buffer)
+  "Process the next batch of CHAT join requests.
+PREVIOUS-COUNT is the number before this batch, APPROVE-P specifies
+the action, and BUFFER is the join requests buffer."
+  (let* ((chat-id (plist-get chat :id))
+         (finish
+          (lambda (&optional error-message)
+            (when (buffer-live-p buffer)
+              (with-current-buffer buffer
+                (setq telega-describe-chat-join-requests--processing
+                      (delete chat-id
+                              telega-describe-chat-join-requests--processing)))
+              (telega-describe-chat-join-requests chat))
+            (when error-message
+              (message "telega: %s" error-message)))))
+    (telega--processChatJoinRequests chat approve-p
+      (lambda (reply)
+        (if (telega--tl-error-p reply)
+            (funcall finish (plist-get reply :message))
+          (telega--getChatJoinRequests chat :limit 1
+            :callback
+            (lambda (join-requests)
+              (if (telega--tl-error-p join-requests)
+                  (funcall finish (plist-get join-requests :message))
+                (let ((remaining (plist-get join-requests :total_count)))
+                  (if (or (zerop remaining)
+                          (>= remaining previous-count))
+                      (funcall finish)
+                    (telega-describe-chat-join-requests--process-all-next
+                     chat remaining approve-p buffer)))))))))))
+
+(defun telega-describe-chat-join-requests--process-all
+    (chat nrequests approve-p)
+  "Process all NREQUESTS pending join requests in CHAT.
+APPROVE-P is non-nil to approve the requests and nil to decline them."
+  (let ((chat-id (plist-get chat :id)))
+    (if (member chat-id telega-describe-chat-join-requests--processing)
+        (message "%s" (telega-i18n "telega_group_requests_processing"))
+      (when (yes-or-no-p
+             (concat
+              (unless approve-p
+                (concat (telega-i18n "telega_action_cant_undone") "\n"))
+              (telega-i18n
+                  (if approve-p
+                      "telega_query_group_requests_approve_all"
+                    "telega_query_group_requests_decline_all")
+                :count nrequests
+                :title (telega-chat-title chat))
+              " "))
+        (push chat-id telega-describe-chat-join-requests--processing)
+        (let ((buffer (current-buffer)))
+          (telega-describe-chat-join-requests chat)
+          (telega-describe-chat-join-requests--process-all-next
+           chat nrequests approve-p buffer))))))
+
 (defun telega-describe-chat-join-requests--inserter (chat)
   "Inserter for the CHAT's pending join requests."
   (let* ((join-requests (telega--getChatJoinRequests chat))
-         (nrequests (plist-get join-requests :total_count)))
+         (nrequests (plist-get join-requests :total_count))
+         (processing-p
+          (member (plist-get chat :id)
+                  telega-describe-chat-join-requests--processing)))
     (telega-ins-describe-item "Chat"
       (telega-ins--msg-sender chat
         :with-brackets-p t
@@ -1488,7 +1550,25 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
           (telega-ins-i18n "lng_group_requests_none"))
 
       (telega-ins-describe-item (telega-i18n "lng_manage_peer_requests")
-        (telega-ins-fmt "%d" nrequests))
+        (telega-ins-fmt "%d" nrequests)
+        (cond (processing-p
+               (telega-ins " ")
+               (telega-ins--with-face 'telega-shadow
+                 (telega-ins-i18n "telega_group_requests_processing")))
+              ((> nrequests 1)
+               (telega-ins " ")
+               (telega-ins--ui-button
+                   (telega-i18n "telega_group_requests_approve_all")
+                 'action (lambda (_button)
+                           (telega-describe-chat-join-requests--process-all
+                            chat nrequests t)))
+               (telega-ins " ")
+               (telega-ins--text-button
+                   (telega-i18n "telega_group_requests_decline_all")
+                 'face 'telega-link
+                 'action (lambda (_button)
+                           (telega-describe-chat-join-requests--process-all
+                            chat nrequests nil))))))
       (seq-doseq (jr (plist-get join-requests :requests))
         (let ((user (telega-user-get (plist-get jr :user_id))))
           (telega-ins--raw-button
@@ -1501,31 +1581,35 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
                                 (telega-ins--date (plist-get jr :date))))
             (telega-ins--help-message
              (telega-ins (telega-tl-str jr :bio))))
-          (telega-ins--line-wrap-prefix "  "
-            (telega-ins--ui-button (telega-i18n "lng_group_requests_add")
-              'action (lambda (_button)
-                        (telega--processChatJoinRequest chat user t
-                          (lambda (_reply)
-                            (telega-describe-chat-join-requests chat)))))
-            (telega-ins " ")
-            (telega-ins--text-button (telega-i18n "lng_group_requests_dismiss")
-              'face 'telega-link
-              'action (lambda (_button)
-                        (telega--processChatJoinRequest chat user nil
-                          (lambda (_reply)
-                            (telega-describe-chat-join-requests chat)))))
-            (telega-ins "\n"))
+          (unless processing-p
+            (telega-ins--line-wrap-prefix "  "
+              (telega-ins--ui-button (telega-i18n "lng_group_requests_add")
+                'action (lambda (_button)
+                          (telega--processChatJoinRequest chat user t
+                            (lambda (_reply)
+                              (telega-describe-chat-join-requests chat)))))
+              (telega-ins " ")
+              (telega-ins--text-button
+                  (telega-i18n "lng_group_requests_dismiss")
+                'face 'telega-link
+                'action (lambda (_button)
+                          (telega--processChatJoinRequest chat user nil
+                            (lambda (_reply)
+                              (telega-describe-chat-join-requests chat)))))
+              (telega-ins "\n")))
           ))
       )))
 
-(defun telega-describe-chat-join-requests (chat)
-  "Describe list of pending requests."
+(defun telega-describe-chat-join-requests (chat &optional show-p)
+  "Describe list of pending requests.
+When SHOW-P is non-nil, display the join requests buffer even when
+this function is called non-interactively."
   (interactive
    (list (telega-completing-read-chat
           "Chat: " (telega-filter-chats (telega-chats-list)
                      '(prop :pending_join_requests)))))
 
-  (if (called-interactively-p 'interactive)
+  (if (or show-p (called-interactively-p 'interactive))
       (let ((help-window-select t))
         (with-telega-help-win "*Telega Join Requests*"
           (telega-describe-chat-join-requests--inserter chat)))

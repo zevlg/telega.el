@@ -2304,8 +2304,9 @@ Use this to surrond header with some prefix and suffix."
                   (plist-put telega-chatbuf--hidden-headers
                              :pending-join-requests nrequests)
                   (telega-chatbuf--chat-update "updateChatPendingJoinRequests")))
-      (telega-ins " " (telega-i18n "lng_manage_peer_requests") ": ")
-      (telega-ins--chat-pending-join-requests telega-chatbuf--chat jr-info)
+      (telega-ins " ")
+      (telega-ins--chat-pending-join-requests
+       telega-chatbuf--chat jr-info 'with-title)
       (telega-ins "\n"))))
 
 (defun telega-chatbuf-footer-ins-action-bar ()

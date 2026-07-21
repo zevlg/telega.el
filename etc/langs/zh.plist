@@ -1372,6 +1372,21 @@
  ("lng_group_requests_dismiss"
   :value "忽略")
 
+ ("telega_group_requests_approve_all"
+  :value "全部批准")
+
+ ("telega_group_requests_decline_all"
+  :value "全部拒绝")
+
+ ("telega_group_requests_processing"
+  :value "正在处理…")
+
+ ("telega_query_group_requests_approve_all"
+  :value "是否批准 «{title}» 的全部 {count} 个入群申请？")
+
+ ("telega_query_group_requests_decline_all"
+  :value "是否拒绝 «{title}» 的全部 {count} 个入群申请？")
+
  ("lng_group_requests_none"
   :value "暂无待处理的加入请求。")
 
