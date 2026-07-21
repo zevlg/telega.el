@@ -1201,6 +1201,17 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_group_requests_dismiss"
   :value "Dismiss")
 
+ ("telega_group_requests_approve_all"
+  :value "Approve All")
+ ("telega_group_requests_decline_all"
+  :value "Decline All")
+ ("telega_query_group_requests_approve_all"
+  :one_value "Approve all {count} request to join «{title}»?"
+  :other_value "Approve all {count} requests to join «{title}»?")
+ ("telega_query_group_requests_decline_all"
+  :one_value "Decline all {count} request to join «{title}»?"
+  :other_value "Decline all {count} requests to join «{title}»?")
+
  ("lng_channel_invite_subscription_title"
   :value "Subscribe to the Channel")
  ("lng_channel_invite_subscription_about"

@@ -3768,6 +3768,16 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
          :approve (if approve-p t :false))
    callback))
 
+(defun telega--processChatJoinRequests (chat approve-p &optional callback)
+  "Handle all pending join requests in CHAT."
+  (declare (indent 2))
+  (telega-server--send-or-call
+   (list :@type "processChatJoinRequests"
+         :chat_id (plist-get chat :id)
+         :invite_link ""
+         :approve (if approve-p t :false))
+   callback))
+
 (defun telega--searchChatAffiliateProgram (username referrer &optional callback)
   "Searche a chat with an affiliate program."
   (declare (indent 2))

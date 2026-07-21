@@ -54,7 +54,8 @@
 (declare-function telega-chat-admin-get "telega-chat" (chat user))
 
 (declare-function telega--full-info "telega-info" (tlobj &optional _callback))
-(declare-function telega-describe-chat-join-requests "telega-info" (chat))
+(declare-function telega-describe-chat-join-requests
+                  "telega-info" (chat &optional show-p))
 (declare-function telega-topic-button-action "telega-root" (chat-topic))
 
 (defun telega-ins--text-button (label &rest props)
@@ -4890,22 +4891,29 @@ Return non-nil if restrictions has been inserted."
               )
         t))))
 
-(defun telega-ins--chat-pending-join-requests (chat &optional jr-info)
-  "Inserter for CHAT's pending join requests"
+(defun telega-ins--chat-pending-join-requests
+    (chat &optional jr-info with-title-p)
+  "Inserter for CHAT's pending join requests.
+Use JR-INFO instead of CHAT's cached join request information when
+it is non-nil.  If WITH-TITLE-P is non-nil, also insert the join
+requests title as part of the button."
   (unless jr-info
     (setq jr-info (plist-get chat :pending_join_requests)))
   (when jr-info
-    (seq-doseq (user-id (plist-get jr-info :user_ids))
-      (telega-ins--image
-       (telega-msg-sender-avatar-image-one-line (telega-user-get user-id))))
-    (telega-ins " ")
-    (telega-ins--text-button
+    (telega-ins--raw-button
+        (list 'face 'telega-link
+              'follow-link t
+              'action (lambda (_button)
+                        (telega-describe-chat-join-requests chat 'show)))
+      (when with-title-p
+        (telega-ins (telega-i18n "lng_manage_peer_requests") ": "))
+      (seq-doseq (user-id (plist-get jr-info :user_ids))
+        (telega-ins--image
+         (telega-msg-sender-avatar-image-one-line (telega-user-get user-id))))
+      (telega-ins " ")
+      (telega-ins
         (telega-i18n "lng_group_requests_pending"
-          :count (plist-get jr-info :total_count))
-      'face 'telega-link
-      'action (lambda (_button)
-                (funcall-interactively
-                 #'telega-describe-chat-join-requests chat)))
+          :count (plist-get jr-info :total_count))))
     t))
 
 (defun telega-ins--chat-join-button (chat &optional bot-start-param)
