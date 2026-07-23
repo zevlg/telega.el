@@ -872,6 +872,7 @@ Specify non-nil BAN to ban this user in this CHAT."
                (telega-ins-fmt "%d" price)))))
 
   (telega-ins "\n")
+
   (telega-ins-describe-item "Id"
     (telega-ins-fmt (if telega-debug
                         "(telega-chat-get %d)"
@@ -883,6 +884,12 @@ Specify non-nil BAN to ban this user in this CHAT."
               (when (telega-chat-uaprop chat :order)
                 (concat " (" (propertize "custom" 'face 'telega-shadow) ")")))
     (telega-ins (telega-chat-order chat)))
+
+  (when-let ((community (telega-chat-match-p chat 'has-community)))
+    (telega-ins-describe-item (telega-i18n "lng_community_title")
+      ;; TODO: ins photo
+      (telega-ins (telega-tl-str community :name))
+      ))
 
   (when-let ((sender-id (telega-chat-match-p chat 'has-default-sender)))
     (telega-ins-describe-item "Default sender"
@@ -2687,7 +2694,7 @@ These users can be added to group only via invite link."
 
   (when-let* ((pending-msg
                (plist-get telega-chatbuf--chat :pending-message))
-              (text (telega-tl-str pending-msg :text)))
+              (content (plist-get pending-msg :content)))
     (let* ((sender (telega-chat-user telega-chatbuf--chat))
            (avatar (telega-msg-sender-avatar-image sender))
            (awidth (length (telega-image--telega-text avatar 1)))
@@ -2711,7 +2718,7 @@ These users can be added to group only via invite link."
       (telega-ins--line-wrap-prefix (cons header-prefix nil)
         (telega-ins--message-header nil telega-chatbuf--chat sender))
       (telega-ins--line-wrap-prefix (cons content-prefix content-wrap)
-        (telega-ins text)
+        (telega-ins--content pending-msg)
         (telega-ins "\n"))
 
       ;; TODO: autoplay custom emojis if pending message is observable
@@ -4941,21 +4948,23 @@ Return valid \"messageSendOptions\"."
              :disable_notification (plist-get imc :disable_notification)))
     ))
 
-(defun telega-chatbuf--input-imc-cancel-upload-ahead (imc)
-  "For file used in IMC cancel its ahead uploading."
-  (when-let* ((file-prop-alist '((inputMessageDocument  . :document)
-                                 (inputMessagePhoto     . :photo)
-                                 (inputMessageVideo     . :video)
-                                 (inputMessageAudio     . :audio)
-                                 (inputMessageVideoNote . :video_note)
-                                 (inputMessageVoiceNote . :voice_note)
-                                 (inputMessageAnimation . :animation)))
-              (file-prop (cdr (assq (telega--tl-type imc) file-prop-alist)))
-              (ifile (plist-get imc file-prop))
-              (upload-ahead-file
-               (get-text-property 0 'telega-upload-ahead-file
-                                  (plist-get ifile :@type))))
-    (telega--cancelPreliminaryUploadFile upload-ahead-file)))
+(defun telega-chatbuf--input-imc-file (imc)
+  "Return input file associated with IMC."
+  (cl-case (telega--tl-type imc)
+    (inputMessageDocument
+     (telega--tl-get imc :document :document))
+    (inputMessagePhoto
+     (telega--tl-get imc :photo :photo))
+    (inputMessageVideo
+     (telega--tl-get imc :video :video))
+    (inputMessageAudio
+     (telega--tl-get imc :audio :audio))
+    (inputMessageAnimation
+     (telega--tl-get imc :animation :animation))
+    (inputMessageVideoNote
+     (plist-get imc :video_note))
+    (inputMessageVoiceNote
+     (plist-get imc :voice_note))))
 
 (defun telega-chatbuf-input-send (arg &optional preview-p)
   "Send chatbuf input to the chat.
@@ -5169,7 +5178,11 @@ use.  For example `C-u RET' will use
       ;; NOTE: Currently this does not cancel uploads, as noted in
       ;; https://github.com/tdlib/td/issues/1348#issuecomment-752654650
       (dolist (imc send-imcs)
-        (telega-chatbuf--input-imc-cancel-upload-ahead imc))
+        (when-let* ((ifile (telega-chatbuf--input-imc-file imc))
+                    (upload-ahead-file
+                     (get-text-property 0 'telega-upload-ahead-file
+                                        (plist-get ifile :@type))))
+          (telega--cancelPreliminaryUploadFile upload-ahead-file)))
 
       ;; Continue traversing, stripping SEND-IMCS from IMCS
       ;; Each cond clause above must set SEND-IMCS
@@ -5761,10 +5774,11 @@ automatically detected."
   (interactive (list (telega-read-file-name "Attach file: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Document preview-p)))
     (telega-chatbuf-input-insert
-     (list :@type "inputMessageDocument"
-           :document ifile
-           :disable_content_type_detection
-           (if content-type-detect-p :false t)))))
+     `(:@type "inputMessageDocument"
+              :document (:@type "inputDocument"
+                                :document ,ifile
+                                :disable_content_type_detection
+                                ,(if content-type-detect-p :false t))))))
 
 (defun telega-chatbuf-attach-photo (filename &optional tl-ttl spoiler-p)
   "Attach FILENAME as photo to the chatbuf input."
@@ -5778,15 +5792,16 @@ automatically detected."
                        :scale 1.0)
                      t (telega-x-frame)))))
     (telega-chatbuf-input-insert
-     (nconc (list :@type "inputMessagePhoto"
-                  :photo ifile)
-            (when img-size
-              (list :width (car img-size)
-                    :height (cdr img-size)))
-            (when tl-ttl
-              (list :self_destruct_type tl-ttl))
-            (when spoiler-p
-              (list :has_spoiler t))))))
+     `(:@type "inputMessagePhoto"
+              :photo (:@type "inputPhoto"
+                             :photo ,ifile
+                             ,@(when img-size
+                                 (list :width (car img-size)
+                                       :height (cdr img-size))))
+              ,@(when tl-ttl
+                  (list :self_destruct_type tl-ttl))
+              ,@(when spoiler-p
+                  (list :has_spoiler t))))))
 
 (defun telega-chatbuf-attach-spoiler-photo (filename)
   "Attach photo marked with spoiler."
@@ -5814,16 +5829,19 @@ This attachment can be used only in private chats."
          (i-filename (plist-get ifile :path))
          (resolution (telega-ffplay-get-resolution i-filename)))
     (telega-chatbuf-input-insert
-     (nconc (list :@type "inputMessageVideo"
-                  :video ifile
-                  :duration (round (telega-ffplay-get-duration i-filename))
-                  :supports_streaming t)
-            (when resolution
-              (list :width (car resolution) :height (cdr resolution)))
-            (when tl-ttl
-              (list :self_destruct_type tl-ttl))
-            (when spoiler-p
-              (list :has_spoiler t))))))
+     `(:@type "inputMessageVideo"
+              :video (:type "inputVideo"
+                            :video ,ifile
+                            :duration ,(round (telega-ffplay-get-duration
+                                               i-filename))
+                            :supports_streaming t
+                            ,@(when resolution
+                                (list :width (car resolution)
+                                      :height (cdr resolution))))
+              ,@(when tl-ttl
+                  (list :self_destruct_type tl-ttl))
+              ,@(when spoiler-p
+                  (list :has_spoiler t))))))
 
 (defun telega-chatbuf-attach-spoiler-video (filename)
   "Attach video marked with spoiler."
@@ -5849,10 +5867,11 @@ This attachment can be used only in private chats."
          (metadata (telega-ffplay-get-metadata i-filename)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageAudio"
-           :audio ifile
-           :title (cdr (assoc "title" metadata))
-           :performer (cdr (assoc "artist" metadata))
-           :duration (round (telega-ffplay-get-duration i-filename))
+           :audio (list :@type "inputAudio"
+                        :audio ifile
+                        :title (cdr (assoc "title" metadata))
+                        :performer (cdr (assoc "artist" metadata))
+                        :duration (round (telega-ffplay-get-duration i-filename)))
            ))))
 
 (defun telega-chatbuf-attach-media (filename &optional as-file-p)
@@ -6045,22 +6064,22 @@ EMOJI - emoji string to use instead of emoji associated with the STICKER."
     (plist-put (cdr preview) :scale (/ 1.0 telega-animation-height))
 
     (telega-chatbuf-input-insert
-     (list :@type "inputMessageAnimation"
-           :width (plist-get animation :width)
-           :height (plist-get animation :height)
-           :duration (plist-get animation :duration)
-           ;; Use remote thumbnail and animation files
-           :thumbnail (list :@type "inputThumbnail"
-                            :width (plist-get thumb :width)
-                            :height (plist-get thumb :height)
-                            :thumbnail (list :@type "inputFileId"
-                                             :id (telega--tl-get thumb :photo :id)))
-           ;; NOTE: 'telega-preview used in `telega-ins--input-file'
-           ;; to insert document/photo/sticker/animation preview
-           :animation (list :@type (propertize "inputFileId"
-                                               'telega-preview preview)
-                            :id (telega--tl-get animation :animation :id))
-           ))
+     `(:@type "inputMessageAnimation"
+           :animation
+           (:@type "inputAnimation"
+            ;; NOTE: 'telega-preview used in `telega-ins--input-file'
+            ;; to insert document/photo/sticker/animation preview
+            :animation (:@type ,(propertize "inputFileId" 'telega-preview preview)
+                        :id ,(telega--tl-get animation :animation :id))
+            ;; Use remote thumbnail and animation files
+            :thumbnail (:@type "inputThumbnail"
+                        :width ,(plist-get thumb :width)
+                        :height ,(plist-get thumb :height)
+                        :thumbnail (:@type "inputFileId"
+                                    :id ,(telega--tl-get thumb :photo :id)))
+            :duration ,(plist-get animation :duration)
+            :width ,(plist-get animation :width)
+            :height ,(plist-get animation :height))))
     ))
 
 (defun telega-chatbuf-attach-custom-emoji ()
@@ -6110,12 +6129,15 @@ a file, otherwise choose animation from list of saved animations."
              (i-filename (plist-get ifile :path))
              (resolution (telega-ffplay-get-resolution i-filename)))
         (telega-chatbuf-input-insert
-         (nconc (list :@type "inputMessageAnimation"
-                      :animation ifile
-                      :duration
-                      (round (telega-ffplay-get-duration i-filename)))
-                (when resolution
-                  (list :width (car resolution) :height (cdr resolution))))))
+         `(:@type "inputMessageAnimation"
+                  :animation
+                  (:@type "inputAnimation"
+                          :animation ,ifile
+                          :duration
+                          ,(round (telega-ffplay-get-duration i-filename))
+                          ,@(when resolution
+                              (list :width (car resolution)
+                                    :height (cdr resolution)))))))
 
     (telega-animation-choose-saved telega-chatbuf--chat)))
 
@@ -6537,7 +6559,13 @@ Return non-nil if message MSG has been redisplayed."
 
 (defun telega-chatbuf--input-text-quote ()
   "Return TL inputTextQuote from currently selected region."
-  (when (region-active-p)
+  (when (and (region-active-p)
+             (when-let ((msg (telega-msg-at)))
+               ;; 1. Check message has some text to work with
+               ;; 2. Check region spans on the same message
+               (and (telega-msg-content-text msg)
+                    (eq msg (telega-msg-at (region-beginning)))
+                    (eq msg (telega-msg-at (region-end))))))
     ;; NOTE: Check reply quote limits first, to avoid "400: Message is
     ;; too long" errors
     (when-let ((quote-limit

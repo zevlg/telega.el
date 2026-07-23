@@ -404,6 +404,15 @@ DATE is a unix timestamp."
           :message_ids (apply #'vector message-ids))
     callback))
 
+(defun telega--getFullRichMessage (msg &optional callback)
+  "Return the full version of a rich message MSG."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getFullRichMessage"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))
+   callback))
+
 (defun telega--getMessageProperties (msg &optional callback)
   "Return properties of a message."
   (declare (indent 1))
@@ -2869,7 +2878,7 @@ TONE is one of \"formal\", \"neutral\", \"casual\"."
       (plist-get reply :text)
     (list :@type "getCountryCode")
     callback))
-  
+
 (defun telega--setNetworkType (tdlib-network-type &optional callback)
   (telega-server--send-or-call
    (list :@type "setNetworkType"
@@ -3354,6 +3363,15 @@ PARAMS is a TL WebAppOpenParameters structure."
             :topic_id (telega-topic-id topic))
     callback))
 
+(defun telega--readAllDirectMessagesChatTopicReactions (chat topic &optional callback)
+  "Removes all unread reactions in the TOPIC of the direct messages CHAT."
+  (declare (indent 2))
+  (telega-server--send-or-call
+      (list :@type "readAllDirectMessagesChatTopicReactions"
+            :chat_id (plist-get chat :id)
+            :topic_id (telega-topic-id topic))
+    callback))
+
 (defun telega--loadSavedMessagesTopics (&optional limit callback)
   (declare (indent 1))
   (telega-server--send-or-call
@@ -3468,7 +3486,7 @@ Saved Messages topic is specified by SM-TOPIC-ID."
   (telega-server--send
    (list :@type "hideSuggestedAction"
          :action tl-suggested-action)))
-  
+
 (defun telega--hideContactCloseBirthdays ()
   (telega-server--send
    (list :@type "hideContactCloseBirthdays")))
@@ -3796,7 +3814,7 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
          :chat_id (plist-get chat :id)
          :member_id (telega--MessageSender sender))
    callback))
-  
+
 (defun telega--setChatMemberTag (chat user tag)
   "Change the tag or custom title of a chat member."
   (telega-server--send

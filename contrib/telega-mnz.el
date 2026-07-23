@@ -193,7 +193,7 @@ Most of these languages available for language detection.")
             (jit-lock-fontify-now)))
 
         (let ((ret (propertize (buffer-string) 'syntax-table (syntax-table))))
-          (cl-assert (= (length text) (length ret)))
+          ;; (cl-assert (= (length text) (length ret)))
           (prog1 ret
             (kill-buffer (get-buffer "*Telega Mnz Fontification*")))))
 

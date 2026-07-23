@@ -435,6 +435,10 @@ Favorite message is a plist with at least `:chat_id', `:id' properties.
            :key (lambda (qr) (telega-tl-str qr :name))
            :test #'string=))
 
+;; Communities
+(defvar telega--communities-alist nil
+  "Id -> community alist.")
+
 ;; Searching
 (defvar telega-search-history nil
   "List of recent search queries.")
@@ -1869,7 +1873,7 @@ Return list of two values - (LIVE-FOR UPDATED-AGO)."
   (let* ((content (plist-get msg :content))
          (live-period (plist-get content :live_period))
          (expires-in (plist-get content :expires_in)))
-    (unless (or (zerop live-period) (zerop expires-in))
+    (unless (or (telega-zerop live-period) (telega-zerop expires-in))
       (let ((current-ts (telega-time-seconds))
             (since (if (zerop (plist-get msg :edit_date))
                        (plist-get msg :date)

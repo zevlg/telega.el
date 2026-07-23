@@ -2411,7 +2411,7 @@ If message is already translated, then disable translation unless
 TONE of the summarization."
   (interactive (list (telega-msg-for-interactive)))
 
-  (unless (plist-get msg :summary_language_code)
+  (unless (telega-tl-str msg :summary_language_code)
     (user-error "Can't summarize this message"))
 
   (plist-put msg :telega-translated nil)
@@ -2470,6 +2470,17 @@ TONE of the summarization."
     (plist-put msg :telega-media-spoiler-removed
                (not (plist-get msg :telega-media-spoiler-removed)))
     (telega-msg-redisplay msg)))
+
+(defun telega-msg-rich-message-show-full (msg)
+  "For rich message show full message."
+  (let ((content (plist-get msg :content)))
+    (plist-put (plist-get content :message) :is_full 'loading)
+    (telega-msg-redisplay msg)
+
+    (telega--getFullRichMessage msg
+      (lambda (rich-msg)
+        (plist-put content :message rich-msg)
+        (telega-msg-redisplay msg)))))
 
 (defun telega-msg--set-link-preview-options (msg tl-lp-options)
   "Set `:link_preview_options' for the message MSG."

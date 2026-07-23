@@ -404,6 +404,18 @@ For secret chats return nil."
     ;; Bot Info & Bot Commands
     (when-let ((bot-info (plist-get full-info :bot_info)))
       ;; TODO: insert info from BOT-INFO
+      (let ((short-desc (telega-tl-str bot-info :short_description))
+            (desc (telega-tl-str bot-info :description)))
+        (when (or short-desc desc)
+          (telega-ins-describe-item "About"
+            (telega-ins--line-wrap-prefix "       "
+              (telega-ins short-desc)
+              (when (and short-desc desc)
+                (telega-ins "\n")
+                (telega-ins--with-face 'telega-shadow
+                  (telega-ins--inline-delim)))
+              (telega-ins desc)))))
+
       (when-let ((bot-menu (plist-get bot-info :menu_button)))
         (telega-ins-describe-item (telega-i18n "lng_bot_menu_button")
           (telega-ins--bot-menu-button bot-menu)))

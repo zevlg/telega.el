@@ -2511,4 +2511,7 @@ this channel?")
   :value "Delete all messages")
  ("lng_delete_sub_reactions"
   :value "Delete all reactions")
+
+ ("lng_community_title"
+  :value "Community")
  )

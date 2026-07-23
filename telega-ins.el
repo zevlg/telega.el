@@ -32,6 +32,7 @@
 (require 'transient)
 
 (require 'telega-core)
+(require 'telega-rich-text)
 (require 'telega-tdlib)
 (require 'telega-inline)
 (require 'telega-folders)
@@ -399,6 +400,40 @@ FORCE-RELATIVE-P forces relative formatting, used to format
                     (telega-ins--date timestamp 'date-long))
              :time formatted-time)))
     ))
+
+(defun telega-ins--date-time-formatting (timestamp ts-fmt)
+  "Inserter for the timestamp formatted with `dateTimeFormattingType' TS-FMT."
+  (cl-ecase (telega--tl-type ts-fmt)
+    (dateTimeFormattingTypeRelative
+     (telega-ins--date-relative timestamp 'force))
+    (dateTimeFormattingTypeAbsolute
+     (let* ((time-how
+             (telega--tl-type (plist-get ts-fmt :time_precision)))
+            (date-how
+             (telega--tl-type (plist-get ts-fmt :date_precision)))
+            (week-fmt
+             (when (plist-get ts-fmt :show_day_of_week)
+               (cl-case date-how
+                 (dateTimePartPrecisionShort "%a")
+                 (t "%A"))))
+            (date-fmt
+             (cl-case date-how
+               (dateTimePartPrecisionShort "%d.%m.%y")
+               (dateTimePartPrecisionLong "%d %B %Y")))
+            (time-fmt
+             (cl-case time-how
+               (dateTimePartPrecisionShort "%H:%M")
+               (dateTimePartPrecisionLong "%H:%M:%S")))
+            (ret-fmt
+             (concat week-fmt
+                     (when (and date-fmt week-fmt)
+                       " ")
+                     date-fmt
+                     (when (and time-fmt (or date-fmt week-fmt))
+                       " ")
+                     time-fmt)))
+       (unless (string-empty-p ret-fmt)
+         (telega-ins--date timestamp ret-fmt))))))
 
 (cl-defun telega-ins--msg-sender (msg-sender &key
                                              with-title
@@ -1496,6 +1531,8 @@ and thumbnail are shown."
               (linkPreviewTypeShareableChatFolder
                ;; No i18n string for this
                "View Chat List")
+              (linkPreviewTypeTextCompositionStyle
+               (telega-i18n "lng_view_button_style"))
               ))))
     (when button-label
       ;; Adjust button-label
@@ -2363,6 +2400,34 @@ Return number of done tasks."
             :total ntasks))))
     ))
 
+(defun telega-ins--rich-message (rich-msg &optional msg)
+  "Inserterted for the richMessage RICH-MSG."
+  (let ((pos (point)))
+    (telega-ins--with-face 'telega-rich-text-face
+      (seq-doseq (pb (plist-get rich-msg :blocks))
+        (telega-rich-text--ins-pb pb)))
+    (let ((full-p (plist-get rich-msg :is_full)))
+      (cond ((eq full-p 'loading)
+             (telega-ins-from-newline
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins-i18n "telega_loading"))))
+            ((not full-p)
+             (telega-ins-from-newline
+              (telega-ins--text-button (telega-i18n "lng_stories_show_more")
+                'face 'telega-link
+                :value msg
+                :action #'telega-msg-rich-message-show-full)))))
+
+    ;; NOTE: if first line starts with a section block heading, fix
+    ;; its `line-height' to not have gap above the heading
+    (save-excursion
+      (goto-char pos)
+      (when-let* ((pos-eol (pos-eol))
+                  (lh (get-text-property pos-eol 'line-height)))
+        (put-text-property pos-eol (1+ pos-eol)
+                           'line-height (list 1 (nth 1 lh)))))
+    t))
+
 (defun telega-ins--input-file (document &optional attach-symbol trailing-text)
   "Insert input file."
   (telega-ins (or attach-symbol (telega-symbol 'attachment)) " ")
@@ -2440,6 +2505,8 @@ Return number of done tasks."
           messageSuggestBirthdate
           messagePollOptionAdded
           messagePollOptionDeleted
+          messageChatAddedToCommunity
+          messageChatRemovedFromCommunity
           telegaInternal)))
 
 (defun telega-ins--special-replied-msg (msg &optional _attrs)
@@ -2860,6 +2927,10 @@ Special messages are determined with `telega-msg-special-p'."
                           "lng_action_poll_deleted_answer")
          :from sender-name
          :option (telega-tl-str content :text)))
+      (messageChatAddedToCommunity
+       )
+      (messageChatRemovedFromCommunity
+       )
 
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))
@@ -2935,6 +3006,8 @@ Special messages are determined with `telega-msg-special-p'."
          (when (and link-preview (not (plist-get link-preview :show_above_text)))
            (telega-ins "\n")
            (telega-ins--link-preview msg link-preview))))
+      ('messageRichMessage
+       (telega-ins--rich-message (plist-get content :message) msg))
       ('messageDocument
        (telega-ins--document msg))
       ('messageGame
@@ -3388,7 +3461,7 @@ argument - MSG to insert additional information after header."
                           (telega-duration-human-readable auto-delete-in 1))))
 
           ;; AI summary
-          (when (plist-get msg :summary_language_code)
+          (when (telega-tl-str msg :summary_language_code)
             (telega-ins " ")
             (telega-ins--text-button
                 (if (plist-get msg :telega-summary)
@@ -3813,7 +3886,7 @@ If SENDER is specified, use it instead of messageOrigin from FWD-INFO."
               (telega-ins " & " (telega-i18n "lng_context_translate"))
               (telega-ins " ("
                       (telega-i18n-translate-language-code-to-language
-                       (plist-get msg :summary_language_code))
+                       (telega-tl-str msg :summary_language_code))
                       " " (telega-symbol 'right-arrow) " "
                       (telega-i18n-translate-language-code-to-language
                        lang-code)
@@ -4088,12 +4161,15 @@ If SHORT-P is non-nil then use short version."
       (telega-ins--contact (plist-get imc :contact)
         :with-avatar-p telega-user-show-avatars))
      (inputMessageDocument
-      (telega-ins--input-file (plist-get imc :document)))
+      (let ((input-document (plist-get imc :document)))
+        (telega-ins--input-file
+         (plist-get input-document :document))))
      (inputMessagePhoto
-      (telega-ins--input-file
-       (plist-get imc :photo) (telega-symbol 'photo)
-       (let ((width (plist-get imc :width))
-             (height (plist-get imc :height)))
+      (let* ((input-photo (plist-get imc :photo))
+             (width (plist-get input-photo :width))
+             (height (plist-get input-photo :height)))
+        (telega-ins--input-file
+         (plist-get input-photo :photo) (telega-symbol 'photo)
          (concat " "
                  (when (and width height)
                    (format "%dx%d" width height))
@@ -4103,8 +4179,9 @@ If SHORT-P is non-nil then use short version."
                       (telega-ins ", "))
                     (telega-ins--self-destruct-type tl-ttl 'short)))))))
      (inputMessageAudio
-      (let* ((title (plist-get imc :title))
-             (artist (plist-get imc :performer))
+      (let* ((input-audio (plist-get imc :audio))
+             (title (plist-get input-audio :title))
+             (artist (plist-get input-audio :performer))
              (audio-description (concat (when title
                                           (propertize title 'face 'bold))
                                         (when artist
@@ -4113,13 +4190,14 @@ If SHORT-P is non-nil then use short version."
         (telega-ins (telega-symbol 'audio) " ")
         (when (telega-ins audio-description)
           (telega-ins ","))
-        (telega-ins--input-file (plist-get imc :audio) "")))
+        (telega-ins--input-file (plist-get input-audio :audio) "")))
      (inputMessageVideo
-      (let ((duration (or (plist-get imc :duration) 0))
-            (width (plist-get imc :width))
-            (height (plist-get imc :height)))
+      (let* ((input-video (plist-get imc :video))
+             (duration (or (plist-get input-video :duration) 0))
+             (width (plist-get input-video :width))
+             (height (plist-get input-video :height)))
         (telega-ins--input-file
-         (plist-get imc :video) (telega-symbol 'video)
+         (plist-get input-video :video) (telega-symbol 'video)
          (concat " "
                  (when (and width height)
                    (format "%dx%d " width height))
@@ -4153,11 +4231,12 @@ If SHORT-P is non-nil then use short version."
      (inputMessageSticker
       (telega-ins--input-file (plist-get imc :sticker) "Sticker"))
      (inputMessageAnimation
-      (let ((duration (or (plist-get imc :duration) 0))
-            (width (plist-get imc :width))
-            (height (plist-get imc :height)))
+      (let* ((input-animation (plist-get imc :animation))
+             (duration (or (plist-get input-animation :duration) 0))
+             (width (plist-get input-animation :width))
+             (height (plist-get input-animation :height)))
         (telega-ins--input-file
-         (plist-get imc :animation) "GIF"
+         (plist-get input-animation :animation) "GIF"
          (concat " (" (when (and width height)
                         (format "%dx%d " width height))
                  (telega-duration-human-readable duration)
@@ -4790,16 +4869,19 @@ If TOPIC is given, insert chat status for the TOPIC."
              (telega-ins--actions actions)))
 
           (draft-msg
-           (let ((inmsg (plist-get draft-msg :input_message_text)))
-             (cl-assert (eq (telega--tl-type inmsg) 'inputMessageText) nil
-                        "tdlib states that draft must be `inputMessageText'")
+           (let ((draft-content (plist-get draft-msg :content)))
+           ;; (let ((inmsg (plist-get draft-msg :input_message_text)))
+           ;;   (cl-assert (eq (telega--tl-type inmsg) 'inputMessageText) nil
+           ;;              "tdlib states that draft must be `inputMessageText'")
              (telega-ins--with-attrs (list :align 'left
                                            :max max-width
                                            :elide t)
                (telega-ins--with-face 'error
                  (telega-ins (telega-i18n "lng_from_draft") ": "))
-               (telega-ins--one-lined
-                (telega-ins--fmt-text (plist-get inmsg :text))))))
+               (telega-ins "TODO draft msg")
+               ;; (telega-ins--one-lined
+               ;;  (telega-ins--fmt-text (plist-get inmsg :text)))
+               )))
 
           (last-msg
            (if (telega-msg-match-p last-msg 'ignored)

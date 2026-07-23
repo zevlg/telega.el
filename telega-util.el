@@ -872,6 +872,12 @@ See `puny-decode-domain' for details."
        (puny-decode-domain (match-string 1 url))))
    url nil 'literal 1))
 
+(defun telega-code-block-highlight (lang code-text &optional context)
+  "Return highlighted CODE string for language LANG.
+CONTEXT is one of: `textEntityTypePreCode', `pageBlockPreformatted'
+Advise this function to add highlighting functionality."
+  code-text)
+
 (defun telega--change-text-property (start end prop value how &optional object)
   "Change a property of the text from START to END.
 Arguments PROP and VALUE specify the property and value to add/remove
@@ -971,14 +977,19 @@ buffer) or a string."
         beg end (telega-link-props 'url ent-text) object)
        (add-face-text-property beg end 'telega-entity-type-texturl nil object)
        (unless (telega--inhibit-telega-display-p 'telega-core)
-         ;; - Unhexify url, using `telega-display' property to be
-         ;;   substituted at `telega--desurrogate-apply' time
+         ;; - Unhexify url
          ;; - Convert "xn--" domains to non-ascii version
-         (put-text-property
-          beg end 'telega-display (telega-puny-decode-url
-                                   (decode-coding-string
-                                    (url-unhex-string ent-text) 'utf-8))
-          object)))
+         ;; NOTE: Do not process url if url starts with emoji, having
+         ;; its own `telega-display', see https://t.me/emacs_china/335515
+         (unless (get-text-property 0 'telega-display ent-text )
+           (put-text-property
+            beg end 'telega-display (telega-puny-decode-url
+                                     (decode-coding-string
+                                      (url-unhex-string
+                                       (telega--desurrogate-apply ent-text))
+                                      'utf-8))
+            object))
+         ))
       (textEntityTypeTextUrl
        (add-text-properties
         beg end
@@ -1002,38 +1013,8 @@ buffer) or a string."
               (ts-fmt (plist-get ent-type :formatting_type))
               (timestamp-str
                (when ts-fmt
-               (telega-ins--as-string
-                (cl-ecase (telega--tl-type ts-fmt)
-                  (dateTimeFormattingTypeRelative
-                   (telega-ins--date-relative timestamp 'force))
-                  (dateTimeFormattingTypeAbsolute
-                   (let* ((time-how
-                           (telega--tl-type (plist-get ts-fmt :time_precision)))
-                          (date-how
-                           (telega--tl-type (plist-get ts-fmt :date_precision)))
-                          (week-fmt
-                           (when (plist-get ts-fmt :show_day_of_week)
-                             (cl-case date-how
-                               (dateTimePartPrecisionShort "%a")
-                               (t "%A"))))
-                         (date-fmt
-                          (cl-case date-how
-                            (dateTimePartPrecisionShort "%d.%m.%y")
-                            (dateTimePartPrecisionLong "%d %B %Y")))
-                         (time-fmt
-                          (cl-case time-how
-                            (dateTimePartPrecisionShort "%H:%M")
-                            (dateTimePartPrecisionLong "%H:%M:%S")))
-                         (ret-fmt
-                          (concat week-fmt
-                                  (when (and date-fmt week-fmt)
-                                    " ")
-                                  date-fmt
-                                  (when (and time-fmt (or date-fmt week-fmt))
-                                    " ")
-                                  time-fmt)))
-                     (unless (string-empty-p ret-fmt)
-                       (telega-ins--date timestamp ret-fmt)))))))))
+                 (telega-ins--as-string
+                  (telega-ins--date-time-formatting timestamp ts-fmt)))))
          (unless (string-empty-p timestamp-str)
            (add-text-properties
             beg end
@@ -1704,7 +1685,9 @@ Return text string with applied faces."
     (seq-doseq (ent (plist-get fmt-text :entities))
       (if (telega-match-p (plist-get ent :type)
             '(tl-type textEntityTypeBlockQuote
-                      textEntityTypeExpandableBlockQuote))
+                      textEntityTypeExpandableBlockQuote
+;                      textEntityTypeUrl
+                      ))
           (setq complex-ents (cons ent complex-ents))
         (telega--text-entity-apply ent text)))
 

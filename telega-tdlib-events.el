@@ -1830,7 +1830,7 @@ For Saved Messages and channel direct messages chat topics only."
     (plist-put qr :messages messages))
   (telega-describe-quick-replies--maybe-redisplay))
 
-(defun telega--on-updatePendingTextMessage (event)
+(defun telega--on-updatePendingMessage (event)
   "Pending message has been updated."
   (let* ((chat (telega-chat-get (plist-get event :chat_id)))
          (topic (telega-topic-get chat (plist-get event :forum_topic_id))))
@@ -1838,14 +1838,14 @@ For Saved Messages and channel direct messages chat topics only."
     (telega-chat--mark-dirty chat event)
 
     ;; Fetch custom emojis used by pending text message and redisplay it
-    (when-let ((ce-ids (seq-remove #'telega-custom-emoji-get
-                                   (telega-custom-emoji--ids-for-fmt-text
-                                    (plist-get event :text)))))
-      (telega--getCustomEmojiStickers ce-ids
-        (lambda (stickers)
-          (seq-doseq (sticker stickers)
-            (telega-custom-emoji--ensure sticker))
-          (telega-chat--mark-dirty chat event))))
+    ;; (when-let ((ce-ids (seq-remove #'telega-custom-emoji-get
+    ;;                                (telega-custom-emoji--ids-for-fmt-text
+    ;;                                 (plist-get event :text)))))
+    ;;   (telega--getCustomEmojiStickers ce-ids
+    ;;     (lambda (stickers)
+    ;;       (seq-doseq (sticker stickers)
+    ;;         (telega-custom-emoji--ensure sticker))
+    ;;       (telega-chat--mark-dirty chat event))))
 
     ;; TODO: support for
     ;; (plist-get telega--options :pending_text_message_period)
@@ -1872,6 +1872,14 @@ For Saved Messages and channel direct messages chat topics only."
     (when node
       (with-telega-chatbuf chat
         (telega-chatbuf--redisplay-node node)))
+    ))
+
+(defun telega--on-updateCommunity (event)
+  "Community has been updated."
+  (let ((community (plist-get event :community)))
+    (setf (alist-get (plist-get community :id)
+                     telega--communities-alist)
+          community)
     ))
 
 (provide 'telega-tdlib-events)

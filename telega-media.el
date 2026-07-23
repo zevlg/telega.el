@@ -248,7 +248,7 @@ If SYNC-P is specified, wait for file being canceled to download."
               (let ((nfile (telega--getFile file-id)))
                 (telega-file--ensure nfile)
                 (funcall update-callback nfile)))
-          
+
           (funcall update-callback dfile 'chunk-done)
           (when other-parts
             (telega-file--download-incrementally dfile other-parts
@@ -754,19 +754,19 @@ Default is `:telega-image'."
                 (force-window-update)))))))
     cached-image))
 
-(cl-defun telega-media--image-updateNEW (obj)
-  "Update media image for the OBJ."
-  (let* ((media-spec (plist-get obj :telega-media-spec))
-         (image-create-func (plist-get media-spec :image-create-func))
-         (cache-prop (plist-get media-spec :cache-prop))
+(cl-defun telega-media--image-updateNEW (obj-spec)
+  "Update media image for the OBJ-SPEC.
+OBJ-SPEC is a plist."
+  (let* ((obj (plist-get obj-spec :object))
+         (cache-prop (plist-get obj-spec :cache-prop))
          (cached-image (plist-get obj cache-prop))
-         (simage (funcall image-create-func obj)))
+         (simage (funcall (plist-get obj-spec :create-image-fun) obj-spec)))
     ;; NOTE: Sometimes `create' function returns nil results
     ;; Probably, because Emacs has no access to the image file while
     ;; trying to convert sticker from webp to png
     (when (and telega-use-images (not simage))
-      (error "telega: [BUG] Image create (%S %S) -> nil"
-             image-create-func obj))
+      (error "telega: [BUG] Create image (%S %S) -> nil"
+             (plist-get obj-spec :create-image-fun) obj))
 
     (unless (equal cached-image simage)
       ;; NOTE: We call `image-flush' because only filename in
@@ -789,26 +789,22 @@ Default is `:telega-image'."
       (plist-put obj cache-prop cached-image))
     cached-image))
 
-(cl-defun telega-media--imageNEW (obj &key create-image-function cheight
-                                      cache-prop)
-  (let ((cached-image (plist-get (car obj-spec) (or cache-prop :telega-image))))
-    (when (or force-update (not cached-image))
-      (let ((media-file (telega-file--renew (car file-spec) (cdr file-spec))))
-        ;; First time image is created or update is forced
-        (setq cached-image
-              (telega-media--image-update obj-spec media-file cache-prop))
+(defun telega-media--imageNEW (obj create-image-fun &rest obj-plist)
+  "Create cached image for the OBJ."
+  (declare (indent 2))
+  (let ((obj-spec (append (list :object obj :create-image-fun create-image-fun)
+                          obj-plist)))
+    (unless (plist-get obj-spec :cache-prop)
+      (plist-put obj-spec :cache-prop
+                 (intern (format ":telega-image-%S"
+                                 (plist-get obj-spec :cheight)))))
 
-        ;; Possibly initiate file downloading
-        (when (and telega-use-images
-                   (or (telega-file--need-download-p media-file)
-                       (telega-file--downloading-p media-file)))
-          (telega-file--download media-file
-            :update-callback
-            (lambda (dfile)
-              (when (telega-file--downloaded-p dfile)
-                (telega-media--image-update obj-spec dfile cache-prop)
-                (force-window-update)))))))
-    cached-image))
+    (let ((cached-image (plist-get obj (plist-get obj-spec :cache-prop))))
+      (when (not cached-image)
+        (setq cached-image
+              (telega-media--image-updateNEW obj-spec)))
+
+      cached-image)))
 
 (defun telega-photo--image (photo limits)
   "Return best suitable image for the PHOTO."
@@ -1247,6 +1243,22 @@ Return non-nil if zoom has been changed."
 
 
 ;;; Media layout
+(defmacro telega-ins--side-by-side (delim &rest forms)
+  `(seq-doseq (str (apply #'seq-mapn (lambda (&rest strings)
+                                       (mapconcat #'identity strings ,delim))
+                          (list
+                           ,@(mapcar (lambda (form)
+                                       `(split-string
+                                         (telega-ins--as-string ,form) "\n"))
+                                     forms))
+                          ))
+     (telega-ins str "\n")))
+
+(defun telega-media-layout--min-limit (&rest limits)
+  "Choose smallest limit across LIMITS."
+
+  )
+
 (defun telega-media-layout--ratio (w h)
   (/ (float w) h))
 

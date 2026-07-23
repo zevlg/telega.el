@@ -898,6 +898,19 @@ Return number of stars to be paid for a message."
     (let ((full-info (telega--full-info (telega-chat--info-locally chat))))
       (plist-get full-info prop-name))))
 
+;;; ellit-org: chat-temex
+;; - has-community ::
+;;   {{{temexdoc(chat, has-community, 2)}}}
+(define-telega-matcher chat has-community (chat)
+  "Matches if chat has a community.
+Return community."
+  (when (telega-chat-match-p chat '(type supergroup channel))
+    (let* ((full-info (telega--full-info
+                       (telega-chat--supergroup-locally chat)))
+           (community-id (plist-get full-info :community_id)))
+      (unless (telega-zerop community-id)
+        (alist-get community-id telega--communities-alist)))))
+
 
 ;;; User Temexes
 ;;; ellit-org: user-temex

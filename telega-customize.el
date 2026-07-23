@@ -433,7 +433,7 @@ cell of endings for the button with LABEL."
 
 ;;; ellit-org: inline-bot-options
 ;; - {{{user-option(telega-known-inline-bots,2)}}}
-(defcustom telega-known-inline-bots '("@gif" "@youtube" "@pic")
+(defcustom telega-known-inline-bots '("@gif" "@youtube" "@pic" "@mira")
   "List of known bots for everyday use."
   :type '(repeat string)
   :group 'telega)
@@ -1457,10 +1457,10 @@ Set to 0 to disable description in a link preview."
   :group 'telega)
 
 (defcustom telega-user-completing-temex
-  '(or contact (chat (return t)))
+  '(or is-contact (chat (return t)))
   "Only users matching this user temex are listed when reading user.
 Used by `telega-completing-read-user-list'."
-  :package-version '(telega . "0.8.121")
+  :package-version '(telega . "0.8.650")
   :type 'telega-user-temex
   :group 'telega-user)
 
@@ -3480,7 +3480,23 @@ non-nil if symbol gets emojification."
   "Face to display link preview title."
   :group 'telega-faces)
 
-(defface telega-webpage-strike-through
+;; Rich text faces
+(defface telega-rich-text-face
+  '((t :inherit default))
+  "Face for all rich text."
+  :group 'telega-faces)
+
+(defface telega-rich-text-section-heading
+  '((t :inherit fixed-pitch-serif :weight bold))
+  "Face for section header."
+  :group 'telega-faces)
+
+(defface telega-rich-text-pull-quote
+  '((t :inherit italic))
+  "Face to display pageBlockPullQuote RichText."
+  :group 'telega-faces)
+
+(defface telega-rich-text-strike-through
   '((t :strike-through t))
   "Face to display strike through RichText."
   :group 'telega-faces)
@@ -3520,7 +3536,8 @@ non-nil if symbol gets emojification."
   :group 'telega-faces)
 
 (defface telega-webpage-preformatted
-  '((t :inherit telega-webpage-fixed :inherit telega-webpage-outline))
+  '((t :inherit telega-webpage-fixed :inherit telega-webpage-outline
+       :extend t))
   "Face to display preformatted text in webpage instant view."
   :group 'telega-faces)
 

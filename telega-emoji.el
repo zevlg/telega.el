@@ -300,12 +300,57 @@ Actually return STICKER's full type info."
           :ascent 'center
           :base-uri (expand-file-name "dummy" base-dir))))))
 
-(defun telega-custom-emoji--image (sticker &optional cheight)
-  "Return image for the custom emoji STICKER.
-CHEIGHT by default is 1."
-  ;; TODO: 
-  (telega-sticker--image sticker #'telega-custom-emoji--create-image
-                         :telega-image-ce1))
+(cl-defun telega-custom-emoji--image (obj &key (prop-name :custom_emoji_id)
+                                          (cheight 1)
+                                          alt-text)
+  "Return image for object with custom emoji.
+Custom emoji is addressed with PROP-NAME or `:custom_emoji_id' if
+ommited.
+CHEIGHT by default is 1.
+ALT-TEXT is alternative text to use while custom emoji is downloading."
+  (declare (indent 1))
+  (telega-media--imageNEW obj
+      (lambda (obj-spec)
+        (let* ((ce-id (telega--tl-get obj-spec :object prop-name))
+               (ce-sticker (telega-custom-emoji-get ce-id)))
+          (if ce-sticker
+              (telega-media--imageNEW ce-sticker
+                  #'telega-sticker--create-imageNEW
+                :cheight (plist-get obj-spec :cheight))
+
+            ;; Download sticker and update image
+            (telega--getCustomEmojiStickers (list ce-id)
+              (lambda (stickers)
+                (seq-doseq (custom-emoji stickers)
+                  (telega-custom-emoji--ensure custom-emoji)
+                  (telega-media--image-updateNEW obj-spec))))
+
+            ;; TODO: create placeholder image for the custom emoji
+            (let* ((cheight (plist-get obj-spec :cheight))
+                   (xh (telega-chars-xheight cheight))
+                   (w-chars (telega-chars-in-width xh))
+                   (xw (telega-chars-xwidth w-chars))
+                   (font-size (/ xh 2))
+                   (svg (telega-svg-create xw xh)))
+              (when alt-text
+                ;; draw emoji and progress circle
+                (svg-text svg alt-text
+                          :font-size font-size
+                          :font-weight "bold"
+                          :fill "white"
+                          :font-family "monospace"
+                          :x "50%"
+                          :text-anchor "middle"
+                          ;; Insane Y calculation
+                          :y (+ (/ xh 2) (/ font-size 3))))
+
+              (telega-svg-image svg
+                :scale 1.0
+                :height (telega-ch-height cheight)
+                :telega-nslices cheight
+                :ascent 'center
+                :mask 'heuristic)))))
+    :cheight cheight))
 
 (defun telega-custom-emoji--ids-for-fmt-text (fmt-text)
   "Return list of custom emoji ids for formatted text FMT-TEXT."
@@ -607,7 +652,7 @@ current buffer."
   "StickerSet used to lookup emojis in it.")
 
 (defun telega-emoji-from-sticker (emoji &optional cheight)
-  "Create image "
+  "Create EMOJI image from sticker."
   (unless cheight
     (setq cheight 1))
 

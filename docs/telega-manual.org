@@ -1,5 +1,6 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.640)
+#+title: Telega Manual (v0.8.660)
+#+author: Zajcev Evgeny
 #+startup: showall
 
 #+macro: nl          (eval (concat "\n" (make-string (1- (string-to-number $1)) ?\s)))
@@ -238,7 +239,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.64-e0943d068.
+version equal to v1.8.66-1b08c83bc.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -1338,6 +1339,10 @@ Use ~telega-chat-match-p~ to match a chat.
 - (info [ ~PROP-NAME~ ]) :: 
      Matches if chat's locally available info has non-nil ~PROP-NAME~.
 
+- has-community :: 
+     Matches if chat has a community.
+     Return community.
+
 - (paid-message [ ~STARS~ ]) :: 
      Matches if user has at least ~STARS~ count to be paid for a message to user.
      By default ~STARS~ is 1.
@@ -2401,7 +2406,7 @@ Customizable options for inline bots:
 
   List of known bots for everyday use. 
 
-  Default value: ~("@gif" "@youtube" "@pic")~
+  Default value: ~("@gif" "@youtube" "@pic" "@mira")~
 
 - User Option: ~telega-inline-query-window-select~ 
 

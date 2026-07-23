@@ -256,11 +256,11 @@ CALLBACK is called without arguments"
       (apply #'telega-sticker--svg-outline-path
              svg outline-path factor args))))
 
-(defun telega-sticker--progress-svg (sticker)
+(defun telega-sticker--progress-svg (sticker &optional cheight)
   "Generate svg for STICKER showing download progress."
   (let* ((emoji (telega-sticker-emoji sticker 'no-props))
          (sticker-size (telega-sticker-size sticker))
-         (cheight (car sticker-size))
+         (cheight (or cheight (car sticker-size)))
          (xh (telega-chars-xheight cheight))
          (w-chars (telega-chars-in-width xh))
          (xw (telega-chars-xwidth w-chars))
@@ -384,8 +384,62 @@ Return path to png file."
                         ))
                 (t
                  ;; Fallback to svg
-                 (telega-sticker--progress-svg sticker)))))
+                 (telega-sticker--progress-svg sticker cheight)))))
     img))
+
+(defun telega-sticker--create-imageNEW (obj-spec)
+  "Create image function for `telega-media--imageNEW` API."
+  ;; Three cases:
+  ;;   1) Sticker downloaded (in case if static)
+  ;;      Just show (and cache) sticker image
+  ;;
+  ;;   2) Thumbnail is downloaded, while sticker still downloading
+  ;;      Show thumbnail (caching temporary), waiting for sticker to
+  ;;      be downloaded
+  ;;
+  ;;   3) Thumbnail and sticker downloading
+  ;;      Fallback to `telega-sticker--progress-svg', waiting for
+  ;;      thumbnail or sticker to be downloaded
+  (let* ((sticker (plist-get obj-spec :object))
+         (cheight (or (plist-get obj-spec :cheight)
+                      (telega-sticker-size sticker)))
+         (sfile (telega-sticker--file sticker))
+         (tfile (telega-sticker--thumb-file sticker))
+         (filename (or (and (or telega-sticker--use-thumbnail
+                                (not (telega-sticker-static-p sticker)))
+                            (telega-file--downloaded-p tfile) tfile)
+                       (and (telega-sticker-static-p sticker)
+                            (telega-file--downloaded-p sfile) sfile)
+                       (and (telega-file--downloaded-p tfile) tfile)))
+         (img-file (or (plist-get sticker :telega-ffplay-frame-filename)
+                       (when-let ((fn (telega--tl-get filename :local :path)))
+                         (if (or (fboundp 'imagemagick-types)
+                                 (image-type-available-p 'webp)
+                                 (not (equal (file-name-extension fn) "webp")))
+                             fn
+                           (telega-sticker--webp-to-png fn))))))
+    (if img-file
+        (apply #'telega-create-image img-file nil nil
+               :height (telega-ch-height cheight)
+               :telega-nslices cheight
+               :scale 1.0
+               :ascent 'center
+               (when (telega-sticker-favorite-p sticker)
+                 (list :background telega-sticker-favorite-background)))
+
+      ;; Start downloading sticker/thumbnail, and fallback to
+      ;; downloading progress image
+      (seq-doseq (file (list tfile sfile))
+        (unless (telega-file--downloading-p file)
+          (telega-file--download file
+            :priority 32
+            :update-callback
+            (lambda (dfile)
+              (when (telega-file--downloaded-p dfile)
+                (telega-media--image-updateNEW obj-spec)
+                (force-window-update))))))
+
+      (telega-sticker--progress-svg sticker cheight))))
 
 (defun telega-sticker--create-image-one-line (sticker &optional file)
   "Create image for one-line STICKER usage."

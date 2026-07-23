@@ -149,9 +149,9 @@ Keymap:
 (defun telega-webpage--ins-pb-details (pb)
   "Inserter for `pageBlockDetails' page block PB."
   (let ((open-p (not (plist-get pb :is_closed))))
-    (telega-ins (funcall (if open-p 'cdr 'car)
-                         telega-symbol-webpage-details)
-                " ")
+    (telega-ins--with-face 'telega-shadow
+      (telega-ins (telega-symbol (if open-p 'outline-open 'outline-close))
+                  " "))
     (telega-webpage--ins-rt (plist-get pb :header))
     (telega-ins "\n")
     (telega-ins--with-face 'telega-webpage-strike-through
@@ -197,78 +197,83 @@ Keymap:
 
 (defun telega-webpage--ins-rt (rt)
   "Insert RichText RT."
-  (cl-ecase (telega--tl-type rt)
-    (richTextAnchor
-     (telega-webpage--add-anchor (telega-tl-str rt :name)))
-    (richTextReference
-     ;; TDLib 1.6.2
-     (let ((ref-url (telega-tl-str rt :url)))
-       (telega-ins--raw-button
-           (list 'action #'telega-button--action
-                 :help-echo (concat "Reference: " ref-url)
-                 :value ref-url
-                 :action #'telega-browse-url)
-         (telega-ins--with-face 'telega-link
-           (telega-webpage--ins-rt (plist-get rt :text))))))
-    (richTextAnchorLink
-     ;; TDLib 1.6.2
-     (let ((anchor (telega-tl-str rt :anchor_name)))
-       (telega-ins--raw-button
-           (list 'action #'telega-button--action
-                 :help-echo (concat "Anchor: #" anchor)
-                 :value anchor
-                 :action #'telega-webpage-goto-anchor)
-         (telega-ins--with-face 'telega-link
-           (telega-webpage--ins-rt (plist-get rt :text))))))
-    (richTextIcon
-     (telega-ins--image-slices
-      (telega-webpage-rticon--image rt)))
-    (richTextPlain
-     (telega-ins (funcall (if telega-webpage-strip-nl
-                              #'telega-strip-newlines
-                            #'identity)
-                          (telega-tl-str rt :text))))
-    (richTexts
-     (mapc #'telega-webpage--ins-rt (plist-get rt :texts)))
-    (richTextBold
-     (telega-ins--with-face 'bold
-       (telega-webpage--ins-rt (plist-get rt :text))))
-    (richTextItalic
-     (telega-ins--with-face 'italic
-       (telega-webpage--ins-rt (plist-get rt :text))))
-    (richTextUnderline
-     (telega-ins--with-face 'underline
-       (telega-webpage--ins-rt (plist-get rt :text))))
-    (richTextStrikethrough
-     (telega-ins--with-face 'telega-webpage-strike-through
-       (telega-webpage--ins-rt (plist-get rt :text))))
-    (richTextFixed
-     (telega-ins--with-face 'telega-webpage-fixed
-       (telega-webpage--ins-rt (plist-get rt :text))))
-    (richTextUrl
-     (let ((url (telega-tl-str rt :url)))
-       (telega-ins--raw-button
-           (list 'action #'telega-button--action
-                 :help-echo (concat "URL: " url)
-                 :value url
-                 :action #'telega-browse-url)
-         (telega-ins--with-face 'telega-link
-           (telega-webpage--ins-rt (plist-get rt :text))))))
-    (richTextEmailAddress
-     (telega-ins--with-face 'telega-link
-       (telega-webpage--ins-rt (plist-get rt :text))))
-    (richTextSubscript
-     (telega-ins--with-props '(display (raise -0.25))
-       (telega-ins--with-face '(:height 0.5)
-         (telega-webpage--ins-rt (plist-get rt :text)))))
-    (richTextSuperscript
-     (telega-ins--with-props '(display (raise 0.75))
-       (telega-ins--with-face '(:height 0.5)
-         (telega-webpage--ins-rt (plist-get rt :text)))))
-    (richTextMarked
-     (telega-ins--with-face 'telega-webpage-marked
-       (telega-webpage--ins-rt (plist-get rt :text))))
-    ))
+  (when rt
+    (cl-case (telega--tl-type rt)
+      (richTextAnchor
+       (telega-webpage--add-anchor (telega-tl-str rt :name)))
+      (richTextReference
+       ;; TDLib 1.6.2
+       (let ((ref-url (telega-tl-str rt :url)))
+         (telega-ins--raw-button
+             (list 'action #'telega-button--action
+                   :help-echo (concat "Reference: " ref-url)
+                   :value ref-url
+                   :action #'telega-browse-url)
+           (telega-ins--with-face 'telega-link
+             (telega-webpage--ins-rt (plist-get rt :text))))))
+      (richTextAnchorLink
+       ;; TDLib 1.6.2
+       (let ((anchor (telega-tl-str rt :anchor_name)))
+         (telega-ins--raw-button
+             (list 'action #'telega-button--action
+                   :help-echo (concat "Anchor: #" anchor)
+                   :value anchor
+                   :action #'telega-webpage-goto-anchor)
+           (telega-ins--with-face 'telega-link
+             (telega-webpage--ins-rt (plist-get rt :text))))))
+      (richTextIcon
+       (telega-ins--image-slices
+           (telega-webpage-rticon--image rt)))
+      (richTextPlain
+       (telega-ins (funcall (if telega-webpage-strip-nl
+                                #'telega-strip-newlines
+                              #'identity)
+                            (telega-tl-str rt :text))))
+      (richTexts
+       (mapc #'telega-webpage--ins-rt (plist-get rt :texts)))
+      (richTextBold
+       (telega-ins--with-face 'bold
+         (telega-webpage--ins-rt (plist-get rt :text))))
+      (richTextItalic
+       (telega-ins--with-face 'italic
+         (telega-webpage--ins-rt (plist-get rt :text))))
+      (richTextUnderline
+       (telega-ins--with-face 'underline
+         (telega-webpage--ins-rt (plist-get rt :text))))
+      (richTextStrikethrough
+       (telega-ins--with-face 'telega-webpage-strike-through
+         (telega-webpage--ins-rt (plist-get rt :text))))
+      (richTextFixed
+       (telega-ins--with-face 'telega-webpage-fixed
+         (telega-webpage--ins-rt (plist-get rt :text))))
+      (richTextUrl
+       (let ((url (telega-tl-str rt :url)))
+         (telega-ins--raw-button
+             (list 'action #'telega-button--action
+                   :help-echo (concat "URL: " url)
+                   :value url
+                   :action #'telega-browse-url)
+           (telega-ins--with-face 'telega-link
+             (telega-webpage--ins-rt (plist-get rt :text))))))
+      (richTextEmailAddress
+       (telega-ins--with-face 'telega-link
+         (telega-webpage--ins-rt (plist-get rt :text))))
+      (richTextSubscript
+       (telega-ins--with-props '(display (raise -0.25))
+         (telega-ins--with-face '(:height 0.5)
+           (telega-webpage--ins-rt (plist-get rt :text)))))
+      (richTextSuperscript
+       (telega-ins--with-props '(display (raise 0.75))
+         (telega-ins--with-face '(:height 0.5)
+           (telega-webpage--ins-rt (plist-get rt :text)))))
+      (richTextMarked
+       (telega-ins--with-face 'telega-webpage-marked
+         (telega-webpage--ins-rt (plist-get rt :text))))
+
+      (t
+       (telega-ins-fmt "<TODO: inserter for RT %S>" (telega--tl-type rt)))
+      )
+    t))
 
 (defun telega-webpage--ins-related-article (pageblock)
   "Inserter for pageBlockRelatedArticle PAGEBLOCK."
@@ -360,189 +365,194 @@ Keymap:
 
 (defun telega-webpage--ins-pb (pb)
   "Insert PageBlock PB for the instant view."
-  (cl-ecase (telega--tl-type pb)
-    (pageBlockTitle
-     (telega-ins--with-face 'telega-webpage-title
-       (telega-webpage--ins-rt (plist-get pb :title))))
-    (pageBlockSubtitle
-     (telega-ins--with-face 'telega-webpage-subtitle
-       (telega-webpage--ins-rt (plist-get pb :subtitle))))
-    (pageBlockAuthorDate
-     (telega-ins--with-face 'telega-shadow
-       (telega-ins-prefix "By "
-         (when (telega-webpage--ins-rt (plist-get pb :author))
-           (telega-ins " • ")))
-       (let ((publish-date (plist-get pb :publish_date)))
-         (when (zerop publish-date)
-           (setq publish-date (time-to-seconds)))
-         (telega-ins--date publish-date 'date-long)))
-     (telega-ins "\n"))
-    (pageBlockHeader
-     (telega-ins "\n")
-     (telega-ins--with-face 'telega-webpage-header
-       (telega-webpage--ins-rt (plist-get pb :header))
-       (telega-ins "\n")))
-    (pageBlockSubheader
-     (telega-ins "\n")
-     (telega-ins--with-face 'telega-webpage-subheader
-       (telega-webpage--ins-rt (plist-get pb :subheader))
-       (telega-ins "\n")))
-    (pageBlockParagraph
-     (unless (looking-back "\n\n" nil)
+  (when pb
+    (cl-case (telega--tl-type pb)
+      (pageBlockTitle
+       (telega-ins--with-face 'telega-webpage-title
+         (telega-webpage--ins-rt (plist-get pb :title))))
+      (pageBlockSubtitle
+       (telega-ins--with-face 'telega-webpage-subtitle
+         (telega-webpage--ins-rt (plist-get pb :subtitle))))
+      (pageBlockAuthorDate
+       (telega-ins--with-face 'telega-shadow
+         (telega-ins-prefix "By "
+           (when (telega-webpage--ins-rt (plist-get pb :author))
+             (telega-ins " • ")))
+         (let ((publish-date (plist-get pb :publish_date)))
+           (when (zerop publish-date)
+             (setq publish-date (time-to-seconds)))
+           (telega-ins--date publish-date 'date-long)))
        (telega-ins "\n"))
-     (telega-webpage--ins-rt (plist-get pb :text)))
-    (pageBlockPreformatted
-     (telega-ins "\n")
-     (telega-ins--with-face 'telega-webpage-preformatted
-       (telega-webpage--ins-rt (plist-get pb :text))
-       (telega-ins "\n")))
-    (pageBlockFooter
-     (telega-ins--with-face 'telega-shadow
-       (telega-ins (make-string (/ telega-webpage-fill-column 2) ?-) "\n")
-       (telega-webpage--ins-rt (plist-get pb :footer))))
-    (pageBlockDivider
-     (telega-ins--with-face 'telega-webpage-strike-through
-       (telega-ins (make-string telega-webpage-fill-column ?\s))))
-    (pageBlockAnchor
-     (telega-webpage--add-anchor (plist-get pb :name)))
-    (pageBlockListItem
-     (telega-ins-from-newline
-      (let ((label (or (telega-tl-str pb :label) "•")))
-        (telega-ins--line-wrap-prefix
-            (cons (concat (propertize label 'face 'bold) " ")
-                  (concat (make-string (string-width label) ?\s " ") " "))
-          (telega-ins (telega-strip-newlines
-                       (telega-ins--as-string
-                        (mapc #'telega-webpage--ins-pb
-                              (plist-get pb :page_blocks)))))))))
-    (pageBlockList
-     (let ((telega-webpage-strip-nl t))
-       (mapc 'telega-webpage--ins-pb (plist-get pb :items))))
-    (pageBlockBlockQuote
-     (telega-ins "\n")
-     (let ((vbar-prefix (propertize (telega-symbol 'vbar-left) 'face 'bold)))
-       (telega-ins vbar-prefix)
-       (telega-ins--with-attrs (list :fill 'left
-                                     :fill-column telega-webpage-fill-column
-                                     :fill-prefix vbar-prefix)
+      (pageBlockHeader
+       (telega-ins "\n")
+       (telega-ins--with-face 'telega-webpage-header
+         (telega-webpage--ins-rt (plist-get pb :header))
+         (telega-ins "\n")))
+      (pageBlockSubheader
+       (telega-ins "\n")
+       (telega-ins--with-face 'telega-webpage-subheader
+         (telega-webpage--ins-rt (plist-get pb :subheader))
+         (telega-ins "\n")))
+      (pageBlockParagraph
+       (unless (looking-back "\n\n" nil)
+         (telega-ins "\n"))
+       (telega-webpage--ins-rt (plist-get pb :text)))
+      (pageBlockPreformatted
+       (telega-ins "\n")
+       (telega-ins--with-face 'telega-webpage-preformatted
          (telega-webpage--ins-rt (plist-get pb :text))
-         (when-let ((credit-rt (plist-get pb :credit)))
-           (telega-ins "\n")
-           (telega-ins--with-face 'telega-shadow
-             (telega-webpage--ins-rt credit-rt))))
-       (telega-ins "\n")))
-    (pageBlockPullQuote
-     (telega-ins-from-newline
-      (telega-ins "\u00A0\u00A0")
-      (telega-ins--with-attrs (list :fill 'center
-                                    :fill-column (- telega-webpage-fill-column 2)
-                                    :fill-prefix "\u00A0\u00A0")
-        (telega-webpage--ins-rt (plist-get pb :text)))
-      (telega-ins "\n")))
-    (pageBlockAnimation
-     (telega-webpage--ins-animation (plist-get pb :animation))
-     (telega-ins "\n"))
-    (pageBlockAudio
-     (telega-ins "<TODO: pageBlockAudio>\n"))
-    (pageBlockPhoto
-     (telega-ins "\n")
-     (telega-button--insert 'telega (plist-get pb :photo)
-       :inserter (lambda (photo)
-                   (telega-ins--photo photo nil telega-webpage-photo-size-limits))
-       :action 'telega-photo--open)
-     (telega-ins "\n")
-     (let ((telega-webpage-strip-nl t))
-       (telega-webpage--ins-pb (plist-get pb :caption))))
-    (pageBlockVideo
-     (telega-ins "<TODO: pageBlockVideo>\n"))
-    (pageBlockCover
-     (telega-webpage--ins-pb (plist-get pb :cover)))
-    (pageBlockEmbedded
-     (telega-button--insert 'telega pb
-       :inserter (lambda (pb-embedded)
-                   (let ((url (telega-tl-str pb-embedded :url))
-                         (html (plist-get pb-embedded :html))
-                         (poster-photo (plist-get pb-embedded :poster_photo)))
-                     (when (telega-ins--with-face '(bold telega-link)
-                             (telega-ins url))
-                       (telega-ins "\n"))
-                     ;; TODO: use `shr' to render html
-                     (when (telega-ins--with-face 'telega-webpage-fixed
-                             (telega-ins html))
-                       (telega-ins "\n"))
-                     (when poster-photo
-                       (telega-ins--photo
-                        poster-photo nil telega-webpage-photo-size-limits))
-                     (telega-ins-from-newline
-                       (telega-webpage--ins-pb
-                        (plist-get pb-embedded :caption)))
-                     ))
-       :action (lambda (pb-embedded)
-                 (when-let ((url (telega-tl-str pb-embedded :url)))
-                   (telega-browse-url url)))))
-    (pageBlockEmbeddedPost
-     (telega-ins "<TODO: pageBlockEmbeddedPost>\n"))
-    (pageBlockCollage
-     (mapc #'telega-webpage--ins-pb (plist-get pb :page_blocks))
-     (telega-webpage--ins-pb (plist-get pb :caption)))
-    (pageBlockSlideshow
-     (let ((page-blocks (plist-get pb :page_blocks)))
-       (dotimes (n (length page-blocks))
-         (telega-ins-from-newline
-          (telega-webpage--ins-pb (aref page-blocks n))
-          (telega-ins-fmt "%d/%d\n" (1+ n) (length page-blocks)))))
-     (telega-webpage--ins-pb (plist-get pb :caption)))
-    (pageBlockChatLink
-     (telega-ins--with-face 'telega-webpage-chat-link
-       (telega-ins (telega-tl-str pb :title) " "
-                   "@" (telega-tl-str pb :username) " ")
-       (telega-ins--ui-button (telega-i18n "lng_open_link")
-         :value (telega-tl-str pb :username)
-         :action 'telega-tme-open-username)
-       (telega-ins "\n")))
-    (pageBlockCaption
-     (telega-ins--with-face 'telega-shadow
-       (telega-webpage--ins-rt (plist-get pb :text))
-       (telega-ins-prefix " --"
-         (telega-webpage--ins-rt (plist-get pb :credit)))))
-    (pageBlockDetails
-     (telega-button--insert 'telega pb
-       'action (lambda (button)
-                 (let* ((val (button-get button :value))
-                        (new-val (plist-put val :is_closed
-                                            (not (plist-get val :is_closed)))))
-                   (save-excursion
-                     (telega-button--update-value button new-val))))
-       :inserter #'telega-webpage--ins-pb-details
-       :help-echo "Toggle details"))
-    (pageBlockTable
-     (let ((telega-webpage-strip-nl t))
-       (telega-webpage--ins-rt (plist-get pb :caption)))
-     (telega-ins "\n")
-     (telega-ins "<TODO: pageBlockTable>\n"))
-    (pageBlockRelatedArticle
-     (telega-button--insert 'telega pb
-       :inserter 'telega-webpage--ins-related-article
-       :action (lambda (_pbignored)
-                 (telega-browse-url (telega-tl-str pb :url)))
-       :help-echo (concat "URL: " (telega-tl-str pb :url))))
-    (pageBlockRelatedArticles
-     (telega-ins--with-face '(telega-webpage-outline bold)
-       (telega-webpage--ins-rt (plist-get pb :header))
+         (telega-ins "\n")))
+      (pageBlockFooter
+       (telega-ins--with-face 'telega-shadow
+         (telega-ins (make-string (/ telega-webpage-fill-column 2) ?-) "\n")
+         (telega-webpage--ins-rt (plist-get pb :footer))))
+      (pageBlockDivider
+       (telega-ins--with-face 'telega-webpage-strike-through
+         (telega-ins (make-string telega-webpage-fill-column ?\s))))
+      (pageBlockAnchor
+       (telega-webpage--add-anchor (plist-get pb :name)))
+      (pageBlockListItem
+       (telega-ins-from-newline
+        (let ((label (or (telega-tl-str pb :label) "•")))
+          (telega-ins--line-wrap-prefix
+              (cons (concat (propertize label 'face 'bold) " ")
+                    (concat (make-string (string-width label) ?\s " ") " "))
+            (telega-ins (telega-strip-newlines
+                         (telega-ins--as-string
+                          (mapc #'telega-webpage--ins-pb
+                                (plist-get pb :page_blocks)))))))))
+      (pageBlockList
+       (let ((telega-webpage-strip-nl t))
+         (mapc 'telega-webpage--ins-pb (plist-get pb :items))))
+      (pageBlockBlockQuote
+       (telega-ins "\n")
+       (let ((vbar-prefix (propertize (telega-symbol 'vbar-left) 'face 'bold)))
+         (telega-ins vbar-prefix)
+         (telega-ins--with-attrs (list :fill 'left
+                                       :fill-column telega-webpage-fill-column
+                                       :fill-prefix vbar-prefix)
+           (seq-doseq (quote-pb (plist-get pb :blocks))
+             (telega-webpage--ins-pb quote-pb))
+           (when-let ((credit-rt (plist-get pb :credit)))
+             (telega-ins "\n")
+             (telega-ins--with-face 'telega-shadow
+               (telega-webpage--ins-rt credit-rt))))
+         (telega-ins "\n")))
+      (pageBlockPullQuote
+       (telega-ins-from-newline
+        (telega-ins "\u00A0\u00A0")
+        (telega-ins--with-attrs (list :fill 'center
+                                      :fill-column (- telega-webpage-fill-column 2)
+                                      :fill-prefix "\u00A0\u00A0")
+          (telega-webpage--ins-rt (plist-get pb :text)))
+        (telega-ins "\n")))
+      (pageBlockAnimation
+       (telega-webpage--ins-animation (plist-get pb :animation))
        (telega-ins "\n"))
-     (seq-doseq (article-pb (plist-get pb :articles))
-       (telega-webpage--ins-pb article-pb)
-       (telega-ins "\n")))
-    (pageBlockKicker
-     (telega-webpage--ins-rt (plist-get pb :kicker)))
-    )
+      (pageBlockAudio
+       (telega-ins "<TODO: pageBlockAudio>\n"))
+      (pageBlockPhoto
+       (telega-ins "\n")
+       (telega-button--insert 'telega (plist-get pb :photo)
+         :inserter (lambda (photo)
+                     (telega-ins--photo photo nil telega-webpage-photo-size-limits))
+         :action 'telega-photo--open)
+       (telega-ins "\n")
+       (let ((telega-webpage-strip-nl t))
+         (telega-webpage--ins-pb (plist-get pb :caption))))
+      (pageBlockVideo
+       (telega-ins "<TODO: pageBlockVideo>\n"))
+      (pageBlockCover
+       (telega-webpage--ins-pb (plist-get pb :cover)))
+      (pageBlockEmbedded
+       (telega-button--insert 'telega pb
+         :inserter (lambda (pb-embedded)
+                     (let ((url (telega-tl-str pb-embedded :url))
+                           (html (plist-get pb-embedded :html))
+                           (poster-photo (plist-get pb-embedded :poster_photo)))
+                       (when (telega-ins--with-face '(bold telega-link)
+                               (telega-ins url))
+                         (telega-ins "\n"))
+                       ;; TODO: use `shr' to render html
+                       (when (telega-ins--with-face 'telega-webpage-fixed
+                               (telega-ins html))
+                         (telega-ins "\n"))
+                       (when poster-photo
+                         (telega-ins--photo
+                          poster-photo nil telega-webpage-photo-size-limits))
+                       (telega-ins-from-newline
+                        (telega-webpage--ins-pb
+                         (plist-get pb-embedded :caption)))
+                       ))
+         :action (lambda (pb-embedded)
+                   (when-let ((url (telega-tl-str pb-embedded :url)))
+                     (telega-browse-url url)))))
+      (pageBlockEmbeddedPost
+       (telega-ins "<TODO: pageBlockEmbeddedPost>\n"))
+      (pageBlockCollage
+       (mapc #'telega-webpage--ins-pb (plist-get pb :page_blocks))
+       (telega-webpage--ins-pb (plist-get pb :caption)))
+      (pageBlockSlideshow
+       (let ((page-blocks (plist-get pb :page_blocks)))
+         (dotimes (n (length page-blocks))
+           (telega-ins-from-newline
+            (telega-webpage--ins-pb (aref page-blocks n))
+            (telega-ins-fmt "%d/%d\n" (1+ n) (length page-blocks)))))
+       (telega-webpage--ins-pb (plist-get pb :caption)))
+      (pageBlockChatLink
+       (telega-ins--with-face 'telega-webpage-chat-link
+         (telega-ins (telega-tl-str pb :title) " "
+                     "@" (telega-tl-str pb :username) " ")
+         (telega-ins--ui-button (telega-i18n "lng_open_link")
+           :value (telega-tl-str pb :username)
+           :action 'telega-tme-open-username)
+         (telega-ins "\n")))
+      (pageBlockCaption
+       (telega-ins--with-face 'telega-shadow
+         (telega-webpage--ins-rt (plist-get pb :text))
+         (telega-ins-prefix " --"
+           (telega-webpage--ins-rt (plist-get pb :credit)))))
+      (pageBlockDetails
+       (telega-button--insert 'telega pb
+         'action (lambda (button)
+                   (let* ((val (button-get button :value))
+                          (new-val (plist-put val :is_closed
+                                              (not (plist-get val :is_closed)))))
+                     (save-excursion
+                       (telega-button--update-value button new-val))))
+         :inserter #'telega-webpage--ins-pb-details
+         :help-echo "Toggle details"))
+      (pageBlockTable
+       (let ((telega-webpage-strip-nl t))
+         (telega-webpage--ins-rt (plist-get pb :caption)))
+       (telega-ins "\n")
+       (telega-ins "<TODO: pageBlockTable>\n"))
+      (pageBlockRelatedArticle
+       (telega-button--insert 'telega pb
+         :inserter 'telega-webpage--ins-related-article
+         :action (lambda (_pbignored)
+                   (telega-browse-url (telega-tl-str pb :url)))
+         :help-echo (concat "URL: " (telega-tl-str pb :url))))
+      (pageBlockRelatedArticles
+       (telega-ins--with-face '(telega-webpage-outline bold)
+         (telega-webpage--ins-rt (plist-get pb :header))
+         (telega-ins "\n"))
+       (seq-doseq (article-pb (plist-get pb :articles))
+         (telega-webpage--ins-pb article-pb)
+         (telega-ins "\n")))
+      (pageBlockKicker
+       (telega-webpage--ins-rt (plist-get pb :kicker)))
+      
+      (t
+       (telega-ins-fmt "<TODO: inserter for %S>" (telega--tl-type pb)))
+      )
 
-  ;; (unless telega-webpage-strip-nl
-  ;;   (unless (memq (telega--tl-type pb)
-  ;;                 '(pageBlockAnchor pageBlockCover pageBlockListItem
-  ;;                                   pageBlockDetails))
-  ;;     (telega-ins "\n")))
-  t)
+    ;; (unless telega-webpage-strip-nl
+    ;;   (unless (memq (telega--tl-type pb)
+    ;;                 '(pageBlockAnchor pageBlockCover pageBlockListItem
+    ;;                                   pageBlockDetails))
+    ;;     (telega-ins "\n")))
+    t))
 
 (defun telega-webpage--ins-pb-nl (pb)
   "Same as `telega-webpage--ins-PageBlock', but also inserts newline at the end."

@@ -628,6 +628,9 @@ If DEFAULT-VALUE is not specified, then nil is used."
    ("D" telega-msg-save-to-downloads
     :description (lambda () (telega-i18n "lng_context_save_music_folder")))
    ("S" telega-msg-save-to-saved-messages
+    :if-not (lambda ()
+              (telega-msg-match-p (telega-transient-scope)
+                '(chat saved-messages)))
     :description (lambda ()
                    (telega-chat-title (telega-chat-me))))
    ]
@@ -777,7 +780,7 @@ If DEFAULT-VALUE is not specified, then nil is used."
     ("t" telega-transient-msg-translate
      :description (lambda () (telega-i18n "lng_summarize_header_title"))
      :if (lambda ()
-           (plist-get (telega-transient-scope) :summary_language_code)))
+           (telega-tl-str (telega-transient-scope) :summary_language_code)))
     ("T" telega-msg-open-thread-or-topic
      :description (lambda ()
                     (let ((msg (telega-transient-scope)))
@@ -1508,10 +1511,11 @@ Return fake chat suitable for `telega-ins--msg-sender'."
      (telega-ins--with-face 'telega-shadow
        (telega-ins " ("
                    (telega-i18n-translate-language-code-to-language
-                    (plist-get (telega-transient-scope) :summary_language_code))
+                    (telega-tl-str (telega-transient-scope)
+                                   :summary_language_code))
                    ")"))))
   :if (lambda ()
-        (plist-get (telega-transient-scope) :summary_language_code))
+        (telega-tl-str (telega-transient-scope) :summary_language_code))
 
   (interactive (list (telega-transient-scope)))
   (telega-msg-summarize msg nil (telega-transient--translate-ai-tone)))
@@ -1528,7 +1532,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
        (telega-ins--with-face 'telega-shadow
          (telega-ins " " (telega-symbol 'right-arrow) " " to-lang)))))
   :if (lambda ()
-        (plist-get (telega-transient-scope) :summary_language_code))
+        (telega-tl-str (telega-transient-scope) :summary_language_code))
 
   (interactive (list (telega-transient-scope)))
   (telega-msg-summarize msg (telega-transient--translate-language-code)
