@@ -4961,6 +4961,8 @@ Return valid \"messageSendOptions\"."
      (telega--tl-get imc :audio :audio))
     (inputMessageAnimation
      (telega--tl-get imc :animation :animation))
+    (inputMessageSticker
+     (telega--tl-get imc :sticker :sticker))
     (inputMessageVideoNote
      (plist-get imc :video_note))
     (inputMessageVoiceNote
@@ -6033,20 +6035,24 @@ Uses `telega-screenshot-function' to take a screenshot."
     (plist-put (cdr preview) :scale (/ 1.0 (car telega-sticker-size)))
 
     (telega-chatbuf-input-insert
-     (list :@type "inputMessageSticker"
-           :width (plist-get sticker :width)
-           :height (plist-get sticker :height)
-           ;; Use remote thumbnail and sticker files
-           :thumbnail (list :@type "inputThumbnail"
-                            :width (plist-get thumb :width)
-                            :height (plist-get thumb :height)
-                            :thumbnail (list :@type "inputFileId"
-                                             :id (telega--tl-get thumb :photo :id)))
-           ;; NOTE: 'telega-preview used in `telega-ins--input-file'
-           ;; to insert document/photo/sticker preview
-           :sticker (list :@type (propertize "inputFileId" 'telega-preview preview)
-                          :id (telega--tl-get sticker :sticker :id))
-           ))
+     `(:@type "inputMessageSticker"
+           :sticker
+           (:@type "inputSticker"
+            ;; NOTE: 'telega-preview used in `telega-ins--input-file'
+            ;; to insert document/photo/sticker preview
+            :sticker (:@type ,(propertize "inputFileId"
+                                          'telega-preview preview)
+                              :id ,(telega--tl-get sticker :sticker :id))
+            ;; Use remote thumbnail and sticker files
+            :thumbnail (:@type "inputThumbnail"
+                                :width ,(plist-get thumb :width)
+                                :height ,(plist-get thumb :height)
+                                :thumbnail
+                                (:@type "inputFileId"
+                                        :id ,(telega--tl-get thumb :photo :id)))
+            :width ,(plist-get sticker :width)
+            :height ,(plist-get sticker :height))
+           :emoji ,(telega-sticker-emoji sticker 'no-props)))
     ))
 
 (defun telega-chatbuf-custom-emoji-insert (sticker &optional emoji)

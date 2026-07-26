@@ -4229,7 +4229,8 @@ If SHORT-P is non-nil then use short version."
              (telega-vvnote-video--svg thumb-filename))))
         (telega-ins " (" (telega-duration-human-readable duration) ")")))
      (inputMessageSticker
-      (telega-ins--input-file (plist-get imc :sticker) "Sticker"))
+      (telega-ins--input-file
+       (telega--tl-get imc :sticker :sticker) "Sticker"))
      (inputMessageAnimation
       (let* ((input-animation (plist-get imc :animation))
              (duration (or (plist-get input-animation :duration) 0))
