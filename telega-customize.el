@@ -289,8 +289,8 @@ performance might suffer."
      )
 
     (reaction
-     :left-bracket ("(" :width 0.75 :rx 0.5)
-     :right-bracket (")" :width 1.0 :rx 0.5 :margin 0.25)
+     :left-bracket ("(" :width 0.75 :height content :rx 0.5)
+     :right-bracket (")" :width 1.0 :height content :rx 0.5 :margin 0.25)
      :passive-face telega-reaction
      :outline-width 1
      :outline-color (face-background 'default))
@@ -321,6 +321,8 @@ performance might suffer."
 
     (telega-ui
      :inherit default
+     :left-bracket ("[" :width 0.5 :height content :rx 0.25)
+     :right-bracket ("]" :width 0.5 :height content :rx 0.25)
      :passive-face telega-box-button-ui-passive
      :active-face telega-box-button-ui-active
      :outline-width 0.1
@@ -333,8 +335,8 @@ performance might suffer."
 
     (iv
      :inherit telega-ui
-     :left-bracket ("[" :width 1 :rx 0)
-     :right-bracket ("]" :width 1 :rx 0)
+     :left-bracket ("[" :width 1 :height content :rx 0)
+     :right-bracket ("]" :width 1 :height content :rx 0)
      :prefix "  "
      :suffix "  ")
     (comments
@@ -343,8 +345,8 @@ performance might suffer."
 
     ;; Keyboard buttons with TL ButtonStyle
     (keyboard-default
-     :left-bracket ("[" :width 1.0 :rx 0.15 :margin 0)
-     :right-bracket ("]" :width 1.0 :rx 0.15 :margin 0)
+     :left-bracket ("[" :width 1.0 :height content :rx 0.15 :margin 0)
+     :right-bracket ("]" :width 1.0 :height content :rx 0.15 :margin 0)
      :passive-face telega-box-button-default-passive
      :active-face telega-box-button-default-active
      :col-delimiter " "
