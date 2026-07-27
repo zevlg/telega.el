@@ -445,7 +445,7 @@ If CALLBACK is non-nil, invoke it asynchronously with the candidate list."
     (if (telega-chatbuf-match-p '(type bot))
         (telega-completions--bot-commands-list
          (telega--tl-get full-info :bot_info :commands))
-      (mapcar (lambda (bot-commands)
+      (mapcan (lambda (bot-commands)
                 (telega-completions--bot-commands-list
                  (plist-get bot-commands :commands)
                  (telega-msg-sender-username
