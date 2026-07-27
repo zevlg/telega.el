@@ -710,6 +710,9 @@ stickers for the EMOJI."
                     ((memq 'ivy--queue-exhibit post-command-hook)
                      ;; ivy used
                      (nth ivy--index ivy--old-cands))
+                    ((memq 'vertico--exhibit post-command-hook)
+                     ;; vertico used
+                     (vertico--candidate))
                     (t
                      (car (completion-all-sorted-completions start end)))))
          (comp (when str (car (all-completions str telega-minibuffer--choices))))
