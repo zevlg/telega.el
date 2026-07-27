@@ -200,6 +200,88 @@ Have Stoploss 690 Satoshi." :entities []))))
                  "test.domain.ru##[title~=\\[NSP\\]]:nth-ancestor(6)"))
   )
 
+(ert-deftest telega-webpage-tdlib-1.8.66-block-fields ()
+  (with-temp-buffer
+    (let ((telega-webpage-strip-nl t))
+      (telega-webpage--ins-pb
+       '(:@type "pageBlockListItem" :label "*"
+         :blocks [(:@type "pageBlockParagraph"
+                   :text (:@type "richTextPlain" :text "LIST"))]))
+      (telega-webpage--ins-pb
+       '(:@type "pageBlockCollage"
+         :blocks [(:@type "pageBlockParagraph"
+                   :text (:@type "richTextPlain" :text "COLLAGE"))]))
+      (telega-webpage--ins-pb
+       '(:@type "pageBlockSlideshow"
+         :blocks [(:@type "pageBlockParagraph"
+                   :text (:@type "richTextPlain" :text "SLIDE"))]))
+      (let ((rendered (buffer-substring-no-properties
+                       (point-min) (point-max))))
+        (dolist (expected '("LIST" "COLLAGE" "SLIDE"))
+          (should (string-match-p expected rendered)))))))
+
+(ert-deftest telega-webpage-tdlib-1.8.66-top-level-blocks ()
+  (let ((telega-webpage-history nil)
+        (telega-webpage-history--index 0))
+    (cl-letf (((symbol-function 'cursor-face-highlight-mode) #'ignore))
+      (save-window-excursion
+        (unwind-protect
+            (progn
+              (telega-webpage--instant-view
+               "https://example.com" "Example"
+               '(:@type "webPageInstantView"
+                 :blocks [(:@type "pageBlockParagraph"
+                           :text (:@type "richTextPlain"
+                                  :text "TOP-LEVEL-CONTENT"))]
+                 :view_count 0 :is_full t))
+              (with-current-buffer "*Telega Instant View*"
+                (should (string-match-p
+                         "TOP-LEVEL-CONTENT"
+                         (buffer-substring-no-properties
+                          (point-min) (point-max))))))
+          (when-let* ((iv-buffer (get-buffer "*Telega Instant View*")))
+            (kill-buffer iv-buffer)))))))
+
+(ert-deftest telega-webpage-details-toggle ()
+  (with-temp-buffer
+    (telega-webpage--ins-pb
+     '(:@type "pageBlockDetails" :is_open t
+       :header (:@type "richTextPlain" :text "DETAILS")
+       :blocks [(:@type "pageBlockParagraph"
+                 :text (:@type "richTextPlain" :text "OPEN"))]))
+    (let ((button (button-at (point-min))))
+      (should (plist-get (button-get button :value) :is_open))
+      (should (string-match-p "OPEN" (buffer-string)))
+
+      (button-activate button)
+      (setq button (button-at (point-min)))
+      (should-not (plist-get (button-get button :value) :is_open))
+      (should-not (string-match-p "OPEN" (buffer-string)))
+
+      (button-activate button)
+      (should (plist-get (button-get (button-at (point-min)) :value)
+                         :is_open))
+      (should (string-match-p "OPEN" (buffer-string))))))
+
+(ert-deftest telega-webpage-reference-link ()
+  (with-temp-buffer
+    (let ((telega-webpage--anchors nil))
+      (telega-webpage--ins-rt
+       '(:@type "richTexts"
+         :texts [(:@type "richTextReferenceLink"
+                  :text (:@type "richTextPlain" :text "JUMP")
+                  :reference_name "note"
+                  :url "https://example.com/#note")
+                 (:@type "richTextPlain" :text " ")
+                 (:@type "richTextReference" :name "note"
+                  :text (:@type "richTextPlain" :text "TARGET"))]))
+      (let ((button (button-at (point-min)))
+            (target (cdr (assoc "note" telega-webpage--anchors))))
+        (should button)
+        (should target)
+        (button-activate button)
+        (should (= (point) target))))))
+
 (ert-deftest telega-org-formatting ()
   "Test org mode text formatting."
   (should (equal (telega-markup-org-fmt "*bold*")

@@ -148,7 +148,7 @@ Keymap:
 
 (defun telega-webpage--ins-pb-details (pb)
   "Inserter for `pageBlockDetails' page block PB."
-  (let ((open-p (not (plist-get pb :is_closed))))
+  (let ((open-p (plist-get pb :is_open)))
     (telega-ins--with-face 'telega-shadow
       (telega-ins (telega-symbol (if open-p 'outline-open 'outline-close))
                   " "))
@@ -159,7 +159,7 @@ Keymap:
     (telega-ins "\n")
 
     (when open-p
-      (mapc 'telega-webpage--ins-pb (plist-get pb :page_blocks)))
+      (mapc 'telega-webpage--ins-pb (plist-get pb :blocks)))
     ))
 
 (defun telega-webpage-rticon--image (rt)
@@ -202,13 +202,17 @@ Keymap:
       (richTextAnchor
        (telega-webpage--add-anchor (telega-tl-str rt :name)))
       (richTextReference
-       ;; TDLib 1.6.2
-       (let ((ref-url (telega-tl-str rt :url)))
+       ;; TDLib 1.8.66
+       (telega-webpage--add-anchor (telega-tl-str rt :name))
+       (telega-webpage--ins-rt (plist-get rt :text)))
+      (richTextReferenceLink
+       ;; TDLib 1.8.66
+       (let ((ref-name (telega-tl-str rt :reference_name)))
          (telega-ins--raw-button
              (list 'action #'telega-button--action
-                   :help-echo (concat "Reference: " ref-url)
-                   :value ref-url
-                   :action #'telega-browse-url)
+                   :help-echo (concat "Reference: #" ref-name)
+                   :value ref-name
+                   :action #'telega-webpage-goto-anchor)
            (telega-ins--with-face 'telega-link
              (telega-webpage--ins-rt (plist-get rt :text))))))
       (richTextAnchorLink
@@ -420,7 +424,7 @@ Keymap:
             (telega-ins (telega-strip-newlines
                          (telega-ins--as-string
                           (mapc #'telega-webpage--ins-pb
-                                (plist-get pb :page_blocks)))))))))
+                                (plist-get pb :blocks)))))))))
       (pageBlockList
        (let ((telega-webpage-strip-nl t))
          (mapc 'telega-webpage--ins-pb (plist-get pb :items))))
@@ -490,14 +494,14 @@ Keymap:
       (pageBlockEmbeddedPost
        (telega-ins "<TODO: pageBlockEmbeddedPost>\n"))
       (pageBlockCollage
-       (mapc #'telega-webpage--ins-pb (plist-get pb :page_blocks))
+       (mapc #'telega-webpage--ins-pb (plist-get pb :blocks))
        (telega-webpage--ins-pb (plist-get pb :caption)))
       (pageBlockSlideshow
-       (let ((page-blocks (plist-get pb :page_blocks)))
-         (dotimes (n (length page-blocks))
+       (let ((blocks (plist-get pb :blocks)))
+         (dotimes (n (length blocks))
            (telega-ins-from-newline
-            (telega-webpage--ins-pb (aref page-blocks n))
-            (telega-ins-fmt "%d/%d\n" (1+ n) (length page-blocks)))))
+            (telega-webpage--ins-pb (aref blocks n))
+            (telega-ins-fmt "%d/%d\n" (1+ n) (length blocks)))))
        (telega-webpage--ins-pb (plist-get pb :caption)))
       (pageBlockChatLink
        (telega-ins--with-face 'telega-webpage-chat-link
@@ -516,8 +520,8 @@ Keymap:
        (telega-button--insert 'telega pb
          'action (lambda (button)
                    (let* ((val (button-get button :value))
-                          (new-val (plist-put val :is_closed
-                                              (not (plist-get val :is_closed)))))
+                          (new-val (plist-put val :is_open
+                                              (not (plist-get val :is_open)))))
                      (save-excursion
                        (telega-button--update-value button new-val))))
          :inserter #'telega-webpage--ins-pb-details
@@ -583,7 +587,7 @@ instant view for the URL."
 
   (with-telega-buffer-modify
     (erase-buffer)
-    (seq-doseq (iv-pb (plist-get telega-webpage--iv :page_blocks))
+    (seq-doseq (iv-pb (plist-get telega-webpage--iv :blocks))
       (telega-ins-from-newline
        (telega-webpage--ins-pb iv-pb)))
 
