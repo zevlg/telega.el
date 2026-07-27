@@ -1618,6 +1618,8 @@ Properties specified in PROPS are retained on
           (apply #'make-text-button beg end
                  :type button-type
                  :value value
+                 :telega-retain-props
+                 (telega-plist-map (lambda (prop _ignored) prop) props)
                  props)))
     (when-let ((add-sensor (plist-get props :telega-add-sensor-func)))
       (telega--change-text-property
