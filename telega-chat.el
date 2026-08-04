@@ -3541,7 +3541,7 @@ otherwise set draft only if chatbuf input is also draft."
          (goto-char telega-chatbuf--input-marker)
          (telega-ins--with-props '(:draft-input-p t)
            (telega-ins--fmt-text
-            (telega--tl-get draft-msg :input_message_text :text))))))))
+            (telega--tl-get draft-msg :content :text))))))))
 
 (defun telega-chatbuf--load-initial-history ()
   "Load initial history in the chatbuf."
@@ -6418,10 +6418,9 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
        telega-chatbuf--chat
        (list :@type "draftMessage"
              :reply_to (telega-chatbuf-replying-imr)
-             :input_message_text
-             (list :@type "inputMessageText"
-                   :text (telega-string-fmt-text
-                          (telega-chatbuf-input-string)))))))
+             :content (list :@type "draftMessageContentText"
+                            :text (telega-string-fmt-text
+                                   (telega-chatbuf-input-string)))))))
 
   (telega-chatbuf--history-state-set
    :newer-freezed

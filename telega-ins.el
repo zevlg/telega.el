@@ -2411,7 +2411,7 @@ Return number of done tasks."
              (telega-ins-from-newline
               (telega-ins--with-face 'telega-shadow
                 (telega-ins-i18n "telega_loading"))))
-            ((not full-p)
+            ((and msg (not full-p))
              (telega-ins-from-newline
               (telega-ins--text-button (telega-i18n "lng_stories_show_more")
                 'face 'telega-link
@@ -4148,9 +4148,11 @@ If SHORT-P is non-nil then use short version."
                   (plist-get tl-ttl :self_destruct_time))))))
 
 (defun telega-ins--input-content-one-line (imc)
-  "Insert input message's MSG content for one line usage."
+  "Insert input message content IMC for one line usage."
   (telega-ins--one-lined
    (cl-case (telega--tl-type imc)
+     (inputMessageText
+      (telega-ins--fmt-text (plist-get imc :text)))
      (inputMessageLocation
       (telega-ins--location (plist-get imc :location))
       (when (> (or (plist-get imc :live_period) 0) 0)
@@ -4345,6 +4347,24 @@ If SHORT-P is non-nil then use short version."
      (t
       (telega-ins-fmt "<TODO: %S>" (telega--tl-type imc)))
      ))
+  t)
+
+(defun telega-ins--draft-content-one-line (draft-content)
+  "Insert DRAFT-CONTENT for one line usage."
+  (let* ((content-type (telega--tl-type draft-content))
+         (imc-type (cl-case content-type
+                     (draftMessageContentText "inputMessageText")
+                     (draftMessageContentVoiceNote "inputMessageVoiceNote")
+                     (draftMessageContentVideoNote "inputMessageVideoNote"))))
+    (cond (imc-type
+           (let ((fake-imc (copy-sequence draft-content)))
+             (plist-put fake-imc :@type imc-type)
+             (telega-ins--input-content-one-line fake-imc)))
+          ((eq content-type 'draftMessageContentRichMessage)
+           (telega-ins--one-lined
+            (telega-ins--rich-message (plist-get draft-content :message))))
+          (t
+           (telega-ins-fmt "<TODO: %S>" content-type))))
   t)
 
 (defun telega-ins--content-media-thumbnail-one-line (msg &optional content)
@@ -4870,19 +4890,13 @@ If TOPIC is given, insert chat status for the TOPIC."
              (telega-ins--actions actions)))
 
           (draft-msg
-           (let ((draft-content (plist-get draft-msg :content)))
-           ;; (let ((inmsg (plist-get draft-msg :input_message_text)))
-           ;;   (cl-assert (eq (telega--tl-type inmsg) 'inputMessageText) nil
-           ;;              "tdlib states that draft must be `inputMessageText'")
-             (telega-ins--with-attrs (list :align 'left
-                                           :max max-width
-                                           :elide t)
-               (telega-ins--with-face 'error
-                 (telega-ins (telega-i18n "lng_from_draft") ": "))
-               (telega-ins "TODO draft msg")
-               ;; (telega-ins--one-lined
-               ;;  (telega-ins--fmt-text (plist-get inmsg :text)))
-               )))
+           (telega-ins--with-attrs (list :align 'left
+                                         :max max-width
+                                         :elide t)
+             (telega-ins--with-face 'error
+               (telega-ins (telega-i18n "lng_from_draft") ": "))
+             (telega-ins--draft-content-one-line
+              (plist-get draft-msg :content))))
 
           (last-msg
            (if (telega-msg-match-p last-msg 'ignored)
