@@ -6564,30 +6564,37 @@ Return non-nil if message MSG has been redisplayed."
 
 (defun telega-chatbuf--input-text-quote ()
   "Return TL inputTextQuote from currently selected region."
-  (when (and (region-active-p)
-             (when-let ((msg (telega-msg-at)))
-               ;; 1. Check message has some text to work with
-               ;; 2. Check region spans on the same message
-               (and (telega-msg-content-text msg)
-                    (eq msg (telega-msg-at (region-beginning)))
-                    (eq msg (telega-msg-at (region-end))))))
+  (when-let* (((region-active-p))
+              (msg (telega-msg-at))
+              (raw-msg-content-text
+               (or (telega--tl-get msg :content :text)
+                   (telega--tl-get msg :content :caption)))
+              ((eq msg (telega-msg-at (region-beginning))))
+              ((eq msg (telega-msg-at (region-end))))
+              (content-begin
+               (save-excursion
+                 (telega-chatbuf--goto-msg-content 0)))
+              (quote-position
+               (telega-string-fmt-text-length
+                (buffer-substring content-begin (region-beginning))))
+              (quote-length
+               (telega-string-fmt-text-length
+                (buffer-substring (region-beginning) (region-end)))))
     ;; NOTE: Check reply quote limits first, to avoid "400: Message is
     ;; too long" errors
     (when-let ((quote-limit
                 (plist-get telega--options :message_reply_quote_length_max)))
-      (when (> (- (region-end) (region-beginning)) quote-limit)
+      (when (> quote-length quote-limit)
         (user-error "telega: %s (limit=%d)"
                     (telega-i18n "lng_reply_quote_long_text")
                     quote-limit)))
     (prog1
         (list :@type "inputTextQuote"
-              :text (telega-string-fmt-text
-                     (buffer-substring (region-beginning) (region-end)))
-              :position (if-let ((content-begin
-                                  (save-excursion
-                                    (telega-chatbuf--goto-msg-content 0))))
-                            (- (region-beginning) content-begin)
-                          0))
+              :text (telega-fmt-text-desurrogate
+                     (telega-fmt-text-substring
+                      raw-msg-content-text quote-position
+                      (+ quote-position quote-length)))
+              :position quote-position)
       (deactivate-mark))))
 
 (defun telega-msg-reply (msg &optional other-chat-p input-quote)
