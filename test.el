@@ -86,7 +86,7 @@ Have Stoploss 690 Satoshi." :entities []))))
          :name (:@type "chatFolderName" :text (:@type "formattedText" :text "Emacs" :entities []))
          :icon (list :@type "chatFolderIcon" :name ""))
         ("ðŸ˜¹ðŸ˜¹ðŸ˜¹" :@type "chatFolderInfo" :id 3
-         :name (:@type "chatFolderName" :text (:@type "formattedText" :text #("í ½í¸¹í ½í¸¹í ½í¸¹" 0 2 (telega-emoji-p t telega-display "ðŸ˜¹") 2 4 (telega-emoji-p t telega-display "ðŸ˜¹") 4 6 (telega-emoji-p t telega-display "ðŸ˜¹")) :entities []) :animate_custom_emoji t)
+         :name (:@type "chatFolderName" :text (:@type "formattedText" :text #("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" 0 2 (telega-emoji-p t telega-display "ðŸ˜¹") 2 4 (telega-emoji-p t telega-display "ðŸ˜¹") 4 6 (telega-emoji-p t telega-display "ðŸ˜¹")) :entities []) :animate_custom_emoji t)
          :icon (list :@type "chatFolderIcon" :name ""))))
 
 
@@ -281,6 +281,58 @@ Have Stoploss 690 Satoshi." :entities []))))
         (should target)
         (button-activate button)
         (should (= (point) target))))))
+
+(ert-deftest telega-vvnote-tdlib-1.8.66-input-file ()
+  "Voice and video note attachments keep their file inside a wrapper."
+  (let ((ifile '(:@type "inputFileLocal" :path "/tmp/note.mp4")))
+    (should (equal ifile
+                   (telega-chatbuf--input-imc-file
+                    `(:@type "inputMessageVoiceNote"
+                             :voice_note (:@type "inputVoiceNote"
+                                                 :voice_note ,ifile
+                                                 :duration 3
+                                                 :waveform "AAAA")))))
+    (should (equal ifile
+                   (telega-chatbuf--input-imc-file
+                    `(:@type "inputMessageVideoNote"
+                             :video_note (:@type "inputVideoNote"
+                                                 :video_note ,ifile
+                                                 :duration 3
+                                                 :length 240)))))))
+
+(ert-deftest telega-vvnote-tdlib-1.8.66-one-line ()
+  "Input line reads a wrapped attachment, and a draft, which has no wrapper."
+  (let ((telega-use-images nil))
+    (cl-flet ((one-line (imc)
+                (with-temp-buffer
+                  (telega-ins--input-content-one-line imc)
+                  (buffer-substring-no-properties (point-min) (point-max)))))
+      (should (string-match-p
+               "VoiceNote.*(3s)"
+               (one-line '(:@type "inputMessageVoiceNote"
+                                  :voice_note (:@type "inputVoiceNote"
+                                                      :voice_note (:@type "inputFileLocal"
+                                                                          :path "/tmp/note.mp4")
+                                                      :duration 3
+                                                      :waveform "AAAA")))))
+      (should (string-match-p
+               "VideoNote.*(9s)"
+               (one-line '(:@type "inputMessageVideoNote"
+                                  :video_note (:@type "inputVideoNote"
+                                                      :video_note (:@type "inputFileLocal"
+                                                                          :path "/tmp/note.mp4")
+                                                      :duration 9
+                                                      :length 240)))))
+      ;; `draftMessageContentVoiceNote' and `draftMessageContentVideoNote' have
+      ;; no wrapper, and reach this same function as a fake imc.
+      (should (string-match-p
+               "VoiceNote.*(7s)"
+               (one-line '(:@type "inputMessageVoiceNote"
+                                  :duration 7 :waveform "AAAA"))))
+      (should (string-match-p
+               "VideoNote.*(11s)"
+               (one-line '(:@type "inputMessageVideoNote"
+                                  :duration 11 :length 240)))))))
 
 (ert-deftest telega-org-formatting ()
   "Test org mode text formatting."

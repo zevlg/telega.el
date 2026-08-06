@@ -4211,8 +4211,13 @@ If SHORT-P is non-nil then use short version."
                     (telega-ins--self-destruct-type tl-ttl 'short)))
                  ))))
      (inputMessageVoiceNote
-      (let ((duration (or (plist-get imc :duration) 0))
-            (waveform (plist-get imc :waveform)))
+      ;; The duration and waveform sit inside the `inputVoiceNote' this is
+      ;; built with, but a draft keeps them flat -- `draftMessageContentVoiceNote'
+      ;; has no wrapper -- and drafts reach this same renderer as a fake imc.
+      ;; Falling back to IMC itself is what serves that caller.
+      (let* ((note (or (plist-get imc :voice_note) imc))
+             (duration (or (plist-get note :duration) 0))
+             (waveform (plist-get note :waveform)))
         (telega-ins "VoiceNote ")
         (when (and telega-use-images waveform)
           (telega-ins--image
@@ -4222,8 +4227,10 @@ If SHORT-P is non-nil then use short version."
         (telega-ins " (" (telega-duration-human-readable duration) ")")))
      (inputMessageVideoNote
       (telega-ins "VideoNote")
-      (let ((duration (or (plist-get imc :duration) 0))
-            (thumb-filename (telega--tl-get imc :thumbnail :thumbnail :path)))
+      ;; Flat for a draft, wrapped for an attachment; see the voice note above.
+      (let* ((note (or (plist-get imc :video_note) imc))
+             (duration (or (plist-get note :duration) 0))
+             (thumb-filename (telega--tl-get note :thumbnail :thumbnail :path)))
         (when (and telega-use-images thumb-filename)
           (telega-ins " ")
           (telega-ins--image
