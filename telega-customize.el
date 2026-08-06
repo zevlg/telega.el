@@ -1766,21 +1766,21 @@ timespan, then do not group messages."
   '(chatbuf-visibility chatbuf-recency order id)
   "Criteria to sort chats in `telega-completing-read-chat'."
   :package-version '(telega . "0.8.530")
-  :type '(choice symbol (list symbol))
+  :type '(choice symbol (repeat symbol))
   :group 'telega-chat)
 
 (defcustom telega-chat-switch-buffer-sort-criteria
   '(important chatbuf-recency)
   "Criteria to sort open chats when switching with `telega-switch-buffer'."
   :package-version '(telega . "0.8.555")
-  :type '(choice symbol (list symbol))
+  :type '(choice symbol (repeat symbol))
   :group 'telega-chat)
 
 (defcustom telega-chat-switch-important-sort-criteria
   '(unread-mention chatbuf-recency)
   "Criteria to sort chats in when switching with `telega-switch-important-chat'."
   :package-version '(telega . "0.8.560")
-  :type '(choice symbol (list symbol))
+  :type '(choice symbol (repeat symbol))
   :group 'telega-chat)
 
 (defcustom telega-chat-input-complete-functions
