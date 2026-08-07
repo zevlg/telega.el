@@ -188,8 +188,8 @@ Raise error if not found."
 
 (defun telega-server-version ()
   "Return telega-server version."
-  (let ((ts-usage (shell-command-to-string
-                   (telega-server--process-command "-h"))))
+  (let ((ts-usage (car (process-lines
+                        (telega-server--process-command) "-h"))))
     (when (string-match "^Version \\([0-9.]+\\)" ts-usage)
       (match-string 1 ts-usage))))
 
@@ -330,7 +330,7 @@ Return parsed command."
   ;; used in the `(telega-time-seconds)' calls to adjust time to
   ;; match time on Telegram server side.  Also take into account
   ;; time used to accomplish request.
-  ;; 
+  ;;
   ;; We do sync while idle to prevent local clock drift, see
   ;; https://github.com/tdlib/td/issues/1681
   (when (plist-get telega-tdlib--unix-time :need-update)
