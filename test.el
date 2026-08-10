@@ -387,6 +387,24 @@ Have Stoploss 690 Satoshi." :entities []))))
           (should (equal (nth 2 capf)
                          '(":rocket:"))))))))
 
+(ert-deftest telega-capf-ignores-history-before-input ()
+  "CAPFs should return nil when point precedes the chat input."
+  (with-temp-buffer
+    (insert " :rocket")
+    (let ((history-end (point)))
+      (insert "\n> ")
+      (setq-local telega-chatbuf--input-marker (point-marker))
+      (goto-char history-end)
+      (cl-letf (((symbol-function 'telega-emoji-init) #'ignore))
+        (should-not (telega-capf-emoji)))))
+  (with-temp-buffer
+    (insert "/help")
+    (let ((history-end (point)))
+      (insert "\n")
+      (setq-local telega-chatbuf--input-marker (point-marker))
+      (goto-char history-end)
+      (should-not (telega-capf-botcmd)))))
+
 (ert-deftest telega-bot-chat-with-topics-is-forum ()
   "Bot chats with topics enabled should reuse forum topic support."
   (let* ((bot-id 90901)
