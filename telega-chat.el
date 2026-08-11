@@ -4964,9 +4964,9 @@ Return valid \"messageSendOptions\"."
     (inputMessageSticker
      (telega--tl-get imc :sticker :sticker))
     (inputMessageVideoNote
-     (plist-get imc :video_note))
+     (telega--tl-get imc :video_note :video_note))
     (inputMessageVoiceNote
-     (plist-get imc :voice_note))))
+     (telega--tl-get imc :voice_note :voice_note))))
 
 (defun telega-chatbuf-input-send (arg &optional preview-p)
   "Send chatbuf input to the chat.
@@ -5920,17 +5920,19 @@ record video notes."
          (i-filename (plist-get ifile :path))
          (frame1 (plist-get telega-vvnote-video--preview :first-frame)))
     (telega-chatbuf-input-insert
-     (nconc
-      (list :@type "inputMessageVideoNote"
-            :duration (round (telega-ffplay-get-duration i-filename))
-            :length 240
-            :video_note ifile)
-      (when frame1
-        `(:thumbnail
-          (:@type "inputThumbnail"
-                  :thumbnail (:@type "inputFileLocal" :path ,frame1)
-                  :width 240
-                  :height 240)))))))
+     (list :@type "inputMessageVideoNote"
+           :video_note
+           (nconc
+            (list :@type "inputVideoNote"
+                  :video_note ifile
+                  :duration (round (telega-ffplay-get-duration i-filename))
+                  :length 240)
+            (when frame1
+              `(:thumbnail
+                (:@type "inputThumbnail"
+                        :thumbnail (:@type "inputFileLocal" :path ,frame1)
+                        :width 240
+                        :height 240))))))))
 
 (defun telega-chatbuf-attach-voice-note (as-file-p)
   "Attach a voice note to the chatbuf input.
@@ -5951,9 +5953,11 @@ voice-note.  Otherwise record voice note inplace.
          (i-filename (plist-get ifile :path)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageVoiceNote"
-           :waveform (telega-vvnote--waveform-for-file i-filename)
-           :duration (round (telega-ffplay-get-duration i-filename))
-           :voice_note ifile))))
+           :voice_note
+           (list :@type "inputVoiceNote"
+                 :voice_note ifile
+                 :duration (round (telega-ffplay-get-duration i-filename))
+                 :waveform (telega-vvnote--waveform-for-file i-filename))))))
 
 (defun telega-chatbuf--yank-media (mime-type data &optional doc-p)
   "Handler for the `yank-media' command."
