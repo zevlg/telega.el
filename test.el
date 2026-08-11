@@ -301,11 +301,15 @@ Have Stoploss 690 Satoshi." :entities []))))
                                                  :length 240)))))))
 
 (ert-deftest telega-vvnote-tdlib-1.8.66-one-line ()
-  "Input line reads a wrapped attachment, and a draft, which has no wrapper."
+  "Input line reads a wrapped attachment, and a draft converted into one."
   (let ((telega-use-images nil))
     (cl-flet ((one-line (imc)
                 (with-temp-buffer
                   (telega-ins--input-content-one-line imc)
+                  (buffer-substring-no-properties (point-min) (point-max))))
+              (draft-line (draft-content)
+                (with-temp-buffer
+                  (telega-ins--draft-content-one-line draft-content)
                   (buffer-substring-no-properties (point-min) (point-max)))))
       (should (string-match-p
                "VoiceNote.*(3s)"
@@ -323,16 +327,18 @@ Have Stoploss 690 Satoshi." :entities []))))
                                                                           :path "/tmp/note.mp4")
                                                       :duration 9
                                                       :length 240)))))
-      ;; `draftMessageContentVoiceNote' and `draftMessageContentVideoNote' have
-      ;; no wrapper, and reach this same function as a fake imc.
+      ;; A draft keeps these fields flat, and is rendered by the same function
+      ;; after `telega-ins--draft-content-one-line' has nested them.
       (should (string-match-p
                "VoiceNote.*(7s)"
-               (one-line '(:@type "inputMessageVoiceNote"
-                                  :duration 7 :waveform "AAAA"))))
+               (draft-line '(:@type "draftMessageContentVoiceNote"
+                                    :file_path "/tmp/note.mp4"
+                                    :duration 7 :waveform "AAAA"))))
       (should (string-match-p
                "VideoNote.*(11s)"
-               (one-line '(:@type "inputMessageVideoNote"
-                                  :duration 11 :length 240)))))))
+               (draft-line '(:@type "draftMessageContentVideoNote"
+                                    :file_path "/tmp/note.mp4"
+                                    :duration 11 :length 240)))))))
 
 (ert-deftest telega-org-formatting ()
   "Test org mode text formatting."
