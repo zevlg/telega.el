@@ -4211,11 +4211,7 @@ If SHORT-P is non-nil then use short version."
                     (telega-ins--self-destruct-type tl-ttl 'short)))
                  ))))
      (inputMessageVoiceNote
-      ;; The duration and waveform sit inside the `inputVoiceNote' this is
-      ;; built with, but a draft keeps them flat -- `draftMessageContentVoiceNote'
-      ;; has no wrapper -- and drafts reach this same renderer as a fake imc.
-      ;; Falling back to IMC itself is what serves that caller.
-      (let* ((note (or (plist-get imc :voice_note) imc))
+      (let* ((note (plist-get imc :voice_note))
              (duration (or (plist-get note :duration) 0))
              (waveform (plist-get note :waveform)))
         (telega-ins "VoiceNote ")
@@ -4227,8 +4223,7 @@ If SHORT-P is non-nil then use short version."
         (telega-ins " (" (telega-duration-human-readable duration) ")")))
      (inputMessageVideoNote
       (telega-ins "VideoNote")
-      ;; Flat for a draft, wrapped for an attachment; see the voice note above.
-      (let* ((note (or (plist-get imc :video_note) imc))
+      (let* ((note (plist-get imc :video_note))
              (duration (or (plist-get note :duration) 0))
              (thumb-filename (telega--tl-get note :thumbnail :thumbnail :path)))
         (when (and telega-use-images thumb-filename)
@@ -4359,14 +4354,32 @@ If SHORT-P is non-nil then use short version."
 (defun telega-ins--draft-content-one-line (draft-content)
   "Insert DRAFT-CONTENT for one line usage."
   (let* ((content-type (telega--tl-type draft-content))
-         (imc-type (cl-case content-type
-                     (draftMessageContentText "inputMessageText")
-                     (draftMessageContentVoiceNote "inputMessageVoiceNote")
-                     (draftMessageContentVideoNote "inputMessageVideoNote"))))
-    (cond (imc-type
-           (let ((fake-imc (copy-sequence draft-content)))
-             (plist-put fake-imc :@type imc-type)
-             (telega-ins--input-content-one-line fake-imc)))
+         (fake-imc
+          (cl-case content-type
+            (draftMessageContentText
+             (let ((imc (copy-sequence draft-content)))
+               (plist-put imc :@type "inputMessageText")))
+            ;; A note's file, duration, waveform and length are flat in the
+            ;; draft and nested in the input message content it stands for, so
+            ;; these are moved into the wrapper rather than relabelled.
+            (draftMessageContentVoiceNote
+             (list :@type "inputMessageVoiceNote"
+                   :voice_note
+                   (list :@type "inputVoiceNote"
+                         :voice_note (list :@type "inputFileLocal"
+                                           :path (plist-get draft-content :file_path))
+                         :duration (plist-get draft-content :duration)
+                         :waveform (plist-get draft-content :waveform))))
+            (draftMessageContentVideoNote
+             (list :@type "inputMessageVideoNote"
+                   :video_note
+                   (list :@type "inputVideoNote"
+                         :video_note (list :@type "inputFileLocal"
+                                           :path (plist-get draft-content :file_path))
+                         :duration (plist-get draft-content :duration)
+                         :length (plist-get draft-content :length)))))))
+    (cond (fake-imc
+           (telega-ins--input-content-one-line fake-imc))
           ((eq content-type 'draftMessageContentRichMessage)
            (telega-ins--one-lined
             (telega-ins--rich-message (plist-get draft-content :message))))
