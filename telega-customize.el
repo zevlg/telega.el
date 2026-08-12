@@ -3482,7 +3482,7 @@ non-nil if symbol gets emojification."
 
 ;; Rich text faces
 (defface telega-rich-text-face
-  '((t :inherit default))
+  '((t :height 1.0))
   "Face for all rich text."
   :group 'telega-faces)
 

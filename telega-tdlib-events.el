@@ -49,18 +49,20 @@ DIRTINESS specifies additional CHAT dirtiness."
     (when dirtiness
       (plist-put chat :telega-dirtiness chat-dirtiness)))
 
-  ;; Update root ewocs, filters and chatbuf
-  (telega-root-view--update :on-chat-update chat)
-  (telega-filters--chat-update chat)
-  (with-telega-chatbuf chat
-    (telega-chatbuf--chat-update))
+  (unwind-protect
+      (progn
+        ;; Update root ewocs, filters and chatbuf
+        (telega-root-view--update :on-chat-update chat)
+        (telega-filters--chat-update chat)
+        (with-telega-chatbuf chat
+          (telega-chatbuf--chat-update))
 
-  (telega-describe-chat--maybe-redisplay chat)
+        (telega-describe-chat--maybe-redisplay chat)
 
-  (run-hook-with-args 'telega-chat-update-hook chat)
+        (run-hook-with-args 'telega-chat-update-hook chat))
 
-  ;; Finally chat has been updated
-  (plist-put chat :telega-dirtiness nil))
+    ;; Finally chat has been updated
+    (plist-put chat :telega-dirtiness nil)))
 
 (defun telega-chat--mark-dirty (chat &optional event)
   "Mark CHAT as dirty by EVENT."

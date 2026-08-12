@@ -5765,7 +5765,9 @@ ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
                :update-callback upload-ahead-callback))))
       (list :@type (propertize "inputFileLocal"
                                'telega-preview preview
-                               'telega-upload-ahead-file ufile)
+                               'telega-upload-ahead-file
+                               (unless (telega--tl-error-p ufile)
+                                 ufile))
             :path filename))))
 
 (defun telega-chatbuf-attach-file (filename &optional preview-p

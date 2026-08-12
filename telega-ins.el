@@ -37,6 +37,7 @@
 (require 'telega-inline)
 (require 'telega-folders)
 (require 'telega-topic)
+(require 'telega-community)
 (require 'telega-customize)
 
 ;; telega-chat.el depends on telega-ins.el
@@ -1846,21 +1847,33 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
 (defun telega-ins--poll-media-one-line (media &optional chat)
   "Insert poll's MEDIA content for the message MSG in one line manner."
   (cl-ecase (telega--tl-type media)
-    (messageAnimation
+    (pollMediaAnimation
+     (telega-ins "<TODO: pollMediaAnimation")
      )
-    (messageLocation
+    (pollMediaAudio
+     (telega-ins "<TODO: pollMediaAudio")
      )
-    (messagePhoto
+    (pollMediaDocument
+     (telega-ins "<TODO: pollMediaDocument")
+     )
+    (pollMediaLink
+     (telega-ins "<TODO: pollMediaLink")
+     )
+    (pollMediaLocation
+     (telega-ins "<TODO: pollMediaLocation>")
+     )
+    (pollMediaPhoto
      (when-let ((img (telega-photo-preview--create-image-one-line
                       (plist-get media :photo) chat)))
        (telega-ins--image img)))
-    (messageSticker
+    (pollMediaSticker
      (telega-ins--image
       (telega-sticker--create-image-one-line
        (plist-get media :sticker))))
-    (messageVenue
+    (pollMediaVenue
+     (telega-ins "<TODO: pollMediaVenue")
      )
-    (messageVideo
+    (pollMediaVideo
      (when-let ((img (telega-video-preview--create-image-one-line
                       (plist-get media :video) chat)))
        (telega-ins--image img)))
@@ -2423,7 +2436,8 @@ Return number of done tasks."
     (save-excursion
       (goto-char pos)
       (when-let* ((pos-eol (pos-eol))
-                  (lh (get-text-property pos-eol 'line-height)))
+                  (lh (get-text-property pos-eol 'line-height))
+                  ((consp lh)))         ; See https://t.me/emacs_telega/51458
         (put-text-property pos-eol (1+ pos-eol)
                            'line-height (list 1 (nth 1 lh)))))
     t))
@@ -2507,6 +2521,7 @@ Return number of done tasks."
           messagePollOptionDeleted
           messageChatAddedToCommunity
           messageChatRemovedFromCommunity
+          messageManagedBotCreated
           telegaInternal)))
 
 (defun telega-ins--special-replied-msg (msg &optional _attrs)
@@ -2928,9 +2943,17 @@ Special messages are determined with `telega-msg-special-p'."
          :from sender-name
          :option (telega-tl-str content :text)))
       (messageChatAddedToCommunity
-       )
+       (telega-ins-i18n "lng_action_community_added"
+         :from sender-name
+         :community (telega-community-title--special
+                     (telega-community-get
+                      (plist-get content :community_id)))))
       (messageChatRemovedFromCommunity
        )
+      (messageManagedBotCreated
+       (telega-ins-i18n "lng_managed_bot_created_title"
+         :name (telega-msg-sender-title--special
+                   (telega-user-get (plist-get content :bot_user_id)))))
 
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))
@@ -4353,39 +4376,24 @@ If SHORT-P is non-nil then use short version."
 
 (defun telega-ins--draft-content-one-line (draft-content)
   "Insert DRAFT-CONTENT for one line usage."
-  (let* ((content-type (telega--tl-type draft-content))
-         (fake-imc
-          (cl-case content-type
-            (draftMessageContentText
-             (let ((imc (copy-sequence draft-content)))
-               (plist-put imc :@type "inputMessageText")))
-            ;; A note's file, duration, waveform and length are flat in the
-            ;; draft and nested in the input message content it stands for, so
-            ;; these are moved into the wrapper rather than relabelled.
-            (draftMessageContentVoiceNote
-             (list :@type "inputMessageVoiceNote"
-                   :voice_note
-                   (list :@type "inputVoiceNote"
-                         :voice_note (list :@type "inputFileLocal"
-                                           :path (plist-get draft-content :file_path))
-                         :duration (plist-get draft-content :duration)
-                         :waveform (plist-get draft-content :waveform))))
-            (draftMessageContentVideoNote
-             (list :@type "inputMessageVideoNote"
-                   :video_note
-                   (list :@type "inputVideoNote"
-                         :video_note (list :@type "inputFileLocal"
-                                           :path (plist-get draft-content :file_path))
-                         :duration (plist-get draft-content :duration)
-                         :length (plist-get draft-content :length)))))))
-    (cond (fake-imc
-           (telega-ins--input-content-one-line fake-imc))
-          ((eq content-type 'draftMessageContentRichMessage)
-           (telega-ins--one-lined
-            (telega-ins--rich-message (plist-get draft-content :message))))
-          (t
-           (telega-ins-fmt "<TODO: %S>" content-type))))
-  t)
+  (cl-ecase (telega--tl-type draft-content)
+    (draftMessageContentText
+     (telega-ins--one-lined
+      (telega-ins--fmt-text (plist-get draft-content :text))))
+    (draftMessageContentRichMessage
+     (telega-ins--one-lined
+      (telega-ins--rich-message (plist-get draft-content :message))))
+    (draftMessageContentVideoNote
+     (telega-ins "VideoNote ("
+                 (telega-duration-human-readable
+                  (plist-get draft-content :duration))
+                 ")"))
+    (draftMessageContentVoiceNote
+     (telega-ins "VoiceNote ("
+                 (telega-duration-human-readable
+                  (plist-get draft-content :duration))
+                 ")"))
+    ))
 
 (defun telega-ins--content-media-thumbnail-one-line (msg &optional content)
   "Insert one line thumbnail for the media message MSG."

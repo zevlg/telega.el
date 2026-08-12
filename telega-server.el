@@ -293,7 +293,9 @@ Return parsed command."
                    (telega-tl-error-equal value 404)
 
                    ;; Proxy errors
-                   (telega-tl-error-equal value 400)
+                   (telega-tl-error-equal value 400 "Network is unreachable")
+                   (telega-tl-error-equal value 400 "Connection timeout expired")
+                   (telega-tl-error-equal value 400 "Pong timeout expired")
 
                    ;; 400 - Special case for `downloadFile' to alsways
                    ;; call it's callback in order to delete update
