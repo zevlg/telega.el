@@ -2039,8 +2039,8 @@ View only if message matches TEMEX or not yet viewed."
                (lambda-with-current-buffer (_ignored)
                  (telega--getForumTopic telega-chatbuf--chat topic-id
                    (lambda-with-current-buffer (topic)
-                     (telega-topic--ensure topic telega-chatbuf--chat)
-                     (setq telega-chatbuf--topic topic)
+                     (setq telega-chatbuf--topic
+                           (telega-topic--ensure topic telega-chatbuf--chat))
                      (telega-chatbuf--chat-update "topic-update"))))))
 
             ;; NOTE: updated thread info does not change its
