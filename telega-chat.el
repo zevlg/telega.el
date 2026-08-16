@@ -213,12 +213,17 @@ If OFFLINE-P is non-nil then do not request the telega-server."
                  (throw 'found chat)))
              telega--chats)))
 
+(defun telega-chat--id-by-supergroup-id (supergroup-id)
+  "Return chat id for the supergroup with SUPERGROUP-ID.
+Chat id is TDLib's ZERO_CHANNEL_ID minus SUPERGROUP-ID, see DialogId.h."
+  (- -1000000000000 supergroup-id))
+
 (defun telega-chat-by-supergroup (supergroup)
   "Return chat by SUPERGROUP."
   (or
    ;; Try very fast heuristic first
-   (telega-chat-get (string-to-number
-                     (format "-100%S" (plist-get supergroup :id)))
+   (telega-chat-get (telega-chat--id-by-supergroup-id
+                     (plist-get supergroup :id))
                     'offline)
    ;; Fallback to full scan
    (telega-chat-by (lambda (chat)

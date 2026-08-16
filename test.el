@@ -463,6 +463,16 @@ Have Stoploss 690 Satoshi." :entities []))))
       (goto-char history-end)
       (should-not (telega-capf-botcmd)))))
 
+(ert-deftest telega-supergroup-chat-id ()
+  "Chat id is TDLib's ZERO_CHANNEL_ID minus the supergroup id."
+  ;; Ten digit ids, where appending to \"-100\" happens to give the same answer.
+  (should (= -1001234567890 (telega-chat--id-by-supergroup-id 1234567890)))
+  (should (= -1009876543210 (telega-chat--id-by-supergroup-id 9876543210)))
+  ;; Ids of any other length, where it does not.  Telegram issues supergroup
+  ;; ids past ZERO_CHANNEL_ID's magnitude nowadays.
+  (should (= -2000000000000 (telega-chat--id-by-supergroup-id 1000000000000)))
+  (should (= -1000001234567 (telega-chat--id-by-supergroup-id 1234567))))
+
 (ert-deftest telega-bot-chat-with-topics-is-forum ()
   "Bot chats with topics enabled should reuse forum topic support."
   (let* ((bot-id 90901)
