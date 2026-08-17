@@ -1192,7 +1192,7 @@ messages."
     ;; Check number of the admins has been changed, it might be not up
     ;; to date, see https://github.com/tdlib/td/issues/1040
     (when-let ((chat (telega-chat-get
-                      (string-to-number (format "-100%d" supergroup-id))
+                      (telega-chat--id-by-supergroup-id supergroup-id)
                       'offline)))
       ;; TODO: Might affect root's buffer view
       ;; NOTE: chatbuf might need to be updated, since for example
