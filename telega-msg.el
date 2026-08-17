@@ -50,6 +50,7 @@
 (declare-function telega-chat-title "telega-chat" (chat &optional fmt-type no-badges))
 (declare-function telega-chatbuf--node-by-msg-id "telega-chat" (msg-id))
 (declare-function telega-chatbuf--chat-update "telega-chat" (&rest dirtiness))
+(declare-function telega-chatbuf--delete-internal-message "telega-chat" (msg))
 (declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chatevent-log-filter "telega-chat" (&rest filters))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
@@ -1683,6 +1684,55 @@ favorite message."
                           :count 1)))
               required-stars))))
     (telega--resendMessages (list msg) nil pay-stars)))
+
+(defun telega-msg-photo-limit-error-p (error)
+  "Return non-nil if ERROR denotes a photo limit error."
+  (when (equal (plist-get error :@type) "error")
+    (let ((error-message (telega-tl-str error :message)))
+      (or (equal error-message "PHOTO_INVALID_DIMENSIONS")
+          (and error-message
+               (string-match-p "too big for a photo" error-message))))))
+
+(defun telega-msg--input-document (input-file &optional caption)
+  "Return an input message document for INPUT-FILE and optional CAPTION."
+  `(:@type "inputMessageDocument"
+           :document (:@type "inputDocument"
+                             :document ,input-file
+                             :disable_content_type_detection t)
+           ,@(when caption
+               (list :caption caption))))
+
+(defun telega-msg-resend-as-file (msg)
+  "Resend failed photo message MSG as a file."
+  (let* ((resend-info (plist-get msg :telega-resend-as-file))
+         (imc
+          (or (plist-get resend-info :content)
+              (when-let* ((photofile
+                           (plist-get (cl-find
+                                       "i" (telega--tl-get
+                                            msg :content :photo :sizes)
+                                       :test #'equal
+                                       :key (telega--tl-prop :type))
+                                      :photo))
+                          (filename
+                           (telega-tl-str (plist-get photofile :local) :path)))
+                (telega-msg--input-document
+                 (list :@type "inputFileLocal" :path filename)
+                 (when-let* ((caption
+                              (telega--tl-get msg :content :caption)))
+                   (telega-fmt-text-desurrogate
+                    (copy-sequence caption))))))))
+    (when imc
+      (telega--sendMessage
+       (telega-msg-chat msg)
+       imc
+       (plist-get resend-info :reply-to)
+       (plist-get resend-info :options)
+       :callback (lambda (new-msg)
+                   (unless (telega--tl-error-p new-msg)
+                     (if resend-info
+                         (telega-chatbuf--delete-internal-message msg)
+                       (telega--deleteMessages (list msg)))))))))
 
 (defun telega-msg-save (msg &optional to-saved-messages-p)
   "Save messages's MSG media content to a file.

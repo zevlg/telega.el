@@ -3047,7 +3047,10 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
 
 (defun telega-chatbuf-msg--pp-inserter (msg)
   "Return message inserter for the pretty printer."
-  (cond ((telega-msg-match-p msg
+  (cond ((plist-get msg :telega-resend-as-file)
+         #'telega-ins--msg-sending-state-failed)
+
+        ((telega-msg-match-p msg
            `(and is-deleted
                  (chat ,telega-chat-show-deleted-messages-for)))
          #'telega-ins--message-deleted)
@@ -4444,6 +4447,13 @@ Return last inserted ewoc node."
 
        node))))
 
+(defun telega-chatbuf--delete-internal-message (msg)
+  "Delete internal telega message MSG from its chat buffer."
+  (cl-assert (telega-msg-internal-p msg))
+  (with-telega-chatbuf (telega-msg-chat msg)
+    (when-let* ((node (telega-ewoc--find-by-data telega-chatbuf--ewoc msg)))
+      (ewoc-delete telega-chatbuf--ewoc node))))
+
 (defun telega-chatbuf--prepend-messages (messages)
   "Insert MESSAGES at the beginning of the chat buffer.
 First message in MESSAGE will be first message at the beginning."
@@ -4973,6 +4983,25 @@ Return valid \"messageSendOptions\"."
     (inputMessageVoiceNote
      (telega--tl-get imc :voice_note :voice_note))))
 
+(defun telega-chatbuf--handle-photo-send-result (chat imc input-reply-to
+                                                      options result)
+  "Handle RESULT of sending photo IMC to CHAT."
+  (when (telega-msg-photo-limit-error-p result)
+    (with-telega-chatbuf chat
+      (telega-chatbuf--insert-messages
+       (list
+        (telega-msg-create-internal
+            chat (telega-fmt-text "")
+          :sending_state (list :@type "messageSendingStateFailed"
+                               :error result)
+          :telega-resend-as-file
+          (list :content (telega-msg--input-document
+                          (telega--tl-get imc :photo :photo)
+                          (plist-get imc :caption))
+                :reply-to input-reply-to
+                :options options)))
+       'append-new))))
+
 (defun telega-chatbuf-input-send (arg &optional preview-p)
   "Send chatbuf input to the chat.
 If called interactively, number of `\\[universal-argument]' before
@@ -5174,10 +5203,22 @@ use.  For example `C-u RET' will use
            ;; No-op, just delimits messages
            )
 
-          (t (telega--sendMessage
-              telega-chatbuf--chat imc replying-imr options
-              :callback (when preview-p #'telega-msg-preview--add)
-              :sync-p (not telega-chat-send-messages-async)))))))
+          (t
+           (let* ((photo-p (eq (telega--tl-type imc) 'inputMessagePhoto))
+                  (callback
+                   (cond (preview-p #'telega-msg-preview--add)
+                         ((and photo-p telega-chat-send-messages-async)
+                          (apply-partially
+                           #'telega-chatbuf--handle-photo-send-result
+                           telega-chatbuf--chat imc replying-imr options))))
+                  (result
+                   (telega--sendMessage
+                    telega-chatbuf--chat imc replying-imr options
+                    :callback callback
+                    :sync-p (not telega-chat-send-messages-async))))
+             (when (and photo-p (not callback))
+               (telega-chatbuf--handle-photo-send-result
+                telega-chatbuf--chat imc replying-imr options result))))))))
 
       ;; NOTE: Cancell all file upload ahead, initiated by
       ;; attachements in `send-imcs' See

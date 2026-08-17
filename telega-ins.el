@@ -3929,22 +3929,14 @@ If SENDER is specified, use it instead of messageOrigin from FWD-INFO."
       (telega-ins--with-face 'error
         (telega-ins "Failed to send: "
                     (telega-tl-str (plist-get send-state :error) :message)))
-      (cond ((and (telega-msg-match-p msg '(type Photo))
-                  (equal (telega-tl-str (plist-get send-state :error) :message)
-                         "PHOTO_INVALID_DIMENSIONS"))
-             ;; NOTE: Resending as file will accomplish without errors
-             (when-let ((photofile
-                         (plist-get (cl-find "i" (telega--tl-get
-                                                  msg :content :photo :sizes)
-                                             :test #'equal
-                                             :key (telega--tl-prop :type))
-                                    :photo))
-                        (caption (telega--tl-get msg :content :caption)))
-               (telega-ins " ")
-               (telega-ins--ui-button "RESEND as file"
-                 'action (lambda (_button)
-                           (message "TODO: resend as file")))))
-            )
+      (when (and (or (plist-get msg :telega-resend-as-file)
+                     (telega-msg-match-p msg '(type Photo)))
+                 (telega-msg-photo-limit-error-p
+                  (plist-get send-state :error)))
+        ;; NOTE: Resending as file will accomplish without errors
+        (telega-ins " ")
+        (telega-ins--ui-button "RESEND as file"
+          :action #'telega-msg-resend-as-file))
       t)))
 
 (cl-defun telega-ins--message0 (msg &key no-header sender addon-header-inserter)
