@@ -483,6 +483,31 @@ Have Stoploss 690 Satoshi." :entities []))))
       (remhash bot-id users-ht)
       (remhash chat-id telega--chats))))
 
+(ert-deftest telega-topic-ensure-returns-cached-topic ()
+  "Ensuring a known topic returns the cached object, not the fresh one.
+Callers keep the result and compare topics with `eq', so handing back the
+argument would leave them holding an object the cache does not use."
+  (let* ((chat-id -1001)
+         (topic-id 7)
+         (chat `(:@type "chat" :id ,chat-id))
+         (make-topic
+          (lambda (unread)
+            `(:@type "forumTopic"
+                     :info (:@type "forumTopicInfo"
+                                   :chat_id ,chat-id
+                                   :forum_topic_id ,topic-id)
+                     :unread_count ,unread))))
+    (unwind-protect
+        (cl-letf (((symbol-function 'telega-chat--forum-topics-icons-fetch)
+                   #'ignore))
+          (let* ((cached (telega-topic--ensure (funcall make-topic 1) chat))
+                 (again (telega-topic--ensure (funcall make-topic 9) chat)))
+            (should (eq cached (telega-topic-get chat topic-id)))
+            (should (eq again cached))
+            ;; The fresh data still lands in the cached object.
+            (should (= 9 (plist-get cached :unread_count)))))
+      (remhash chat-id telega--chat-topics))))
+
 (ert-deftest telega-msg-open-thread-or-topic-fetches-forum-topic ()
   "Opening a forum topic message should fetch missing topic info."
   (let* ((bot-id 90911)
