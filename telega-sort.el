@@ -83,7 +83,7 @@
 
 (defun telega-chats-compare (criteria chat1 chat2)
   "Return non-nil if CHAT1 is greater than CHAT2 according to CRITERIA.
-CRITERIA could be a lit of sort criterias."
+CRITERIA could be a lit of sort criteria."
   (unless (listp criteria)
     (setq criteria (list criteria)))
 

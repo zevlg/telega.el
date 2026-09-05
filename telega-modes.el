@@ -1522,7 +1522,7 @@ EVENT must be \"updateDeleteMessages\"."
 
 (defun telega-active-locations--check (&optional messages)
   "Check messages being new or updated live location MESSAGES.
-If MESSAGES is ommited, then check/update currently active location
+If MESSAGES is omitted, then check/update currently active location
 messages."
   (let (live-locs-updated-p)
     (seq-doseq (loc-msg (or messages
@@ -2476,7 +2476,7 @@ FMT-STRING is format string to be used instead of
     ))
 
 
-;;; Minor mode to 
+;;; Minor mode to
 (defconst telega-chat-phone-regexp
   "+＋" "0-9０-９٠-٩۰-۹")
 
@@ -2503,7 +2503,7 @@ FMT-STRING is format string to be used instead of
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-before-auth-hook 'telega-proxy-status-mode)
 ;; #+end_src
-;; 
+;;
 ;; Customizable options:
 ;; - {{{user-option(telega-proxy-status-auto, 2)}}}
 (defcustom telega-proxy-status-auto t

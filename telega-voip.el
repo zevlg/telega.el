@@ -170,7 +170,7 @@ Discard active call if any."
 
 ;; Sounds for `telega-voip-sounds-mode'
 (defun telega-voip-sounds--play-incoming (_call)
-  "Incomming CALL pending."
+  "Incoming CALL pending."
   (unless telega-voip--active-call
     (telega-ffplay-run (telega-etc-file "sounds/call_incoming.mp3")
                        "-nodisp -loop 0")))

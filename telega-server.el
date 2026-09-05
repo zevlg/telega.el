@@ -127,7 +127,7 @@ Otherwise query user about building flags."
     (unless (file-exists-p (expand-file-name "include/td/telegram/td_json_client.h"
                                              telega-server-libs-prefix))
       (user-error "TDLib is not installed into \"%s\". \
-Set `telega-server-libs-prefix' to the TDLib installion path"
+Set `telega-server-libs-prefix' to the TDLib installation path"
                   telega-server-libs-prefix))
     (message "Telega: building telega-server...")
     (let ((default-directory telega--lib-directory))
@@ -332,7 +332,7 @@ Return parsed command."
   ;; used in the `(telega-time-seconds)' calls to adjust time to
   ;; match time on Telegram server side.  Also take into account
   ;; time used to accomplish request.
-  ;; 
+  ;;
   ;; We do sync while idle to prevent local clock drift, see
   ;; https://github.com/tdlib/td/issues/1681
   (when (plist-get telega-tdlib--unix-time :need-update)

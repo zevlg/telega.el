@@ -610,7 +610,7 @@ Do not add FSPEC if it is already in the list."
   "Match chats in CHAT-LIST against CHAT-TEMEX.
 Return list of chats matching CHAT-TEMEX.
 Return only chats with non-0 order.
-If CHAT-TEMEX is ommited, then active chat filter from
+If CHAT-TEMEX is omitted, then active chat filter from
 `telega--filters' is used as CHAT-TEMEX."
   (declare (indent 1))
   (unless chat-temex

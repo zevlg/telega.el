@@ -220,7 +220,7 @@ CHEIGHT is height for the svg in characters, default=1."
     sticker))
 
 (defun telega-custom-emoji-from-sticker (sticker)
-  "Conver STICKER to a custom emoji sticker."
+  "Convert STICKER to a custom emoji sticker."
   (or (telega-custom-emoji-get (telega-custom-emoji-id sticker))
       (telega-custom-emoji--ensure sticker)))
 
@@ -305,7 +305,7 @@ Actually return STICKER's full type info."
                                           alt-text)
   "Return image for object with custom emoji.
 Custom emoji is addressed with PROP-NAME or `:custom_emoji_id' if
-ommited.
+omitted.
 CHEIGHT by default is 1.
 ALT-TEXT is alternative text to use while custom emoji is downloading."
   (declare (indent 1))
@@ -599,7 +599,7 @@ Do not fetch custom emojis for ignored messages."
 
 
 (defun telega-ins--custom-emoji-stickersets (custom-action)
-  "Insert custom emoji stickersets to execute CUSTOM-ACTION when choosen."
+  "Insert custom emoji stickersets to execute CUSTOM-ACTION when chosen."
   (dolist (sset-info telega--stickersets-custom-emojis)
     (cl-assert (eq (telega--tl-type (plist-get sset-info :sticker_type))
                    'stickerTypeCustomEmoji))
@@ -629,7 +629,7 @@ If EMOJI is omitted, then use STICKER's emoji instead."
 
 (defun telega-custom-emoji-choose (&optional custom-action)
   "Choose custom emoji and execute CUSTOM-ACTION on it.
-If CUSTOM-ACTION is not given, then insert choosen custom emoji into
+If CUSTOM-ACTION is not given, then insert chosen custom emoji into
 current buffer."
   (interactive)
   (let ((help-window-select t))

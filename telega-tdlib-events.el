@@ -1810,7 +1810,7 @@ For Saved Messages and channel direct messages chat topics only."
   (telega-describe-quick-replies--maybe-redisplay))
 
 (defun telega--on-updateQuickReplyShortcutDeleted (event)
-  "Qick reply has been deleted."
+  "Quick reply has been deleted."
   (setq telega--quick-replies
         (cl-remove (plist-get event :shortcut_id) telega--quick-replies
                    :key (telega--tl-prop :id)))

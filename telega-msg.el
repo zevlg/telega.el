@@ -330,7 +330,7 @@ Return nil if there is no `down-mouse-3' keys in `this-command-keys'."
 
 (defun telega-msg-at (&optional pos msg-predicate)
   "Return current message at POS point.
-If POS is ommited, then return massage at current point.
+If POS is omitted, then return massage at current point.
 For interactive commands acting on message at point/mouse-event
 use `telega-msg-for-interactive' instead.
 If MSG-PREDICATE is specified, return non-nil only if resulting
@@ -543,7 +543,7 @@ Return nil for deleted messages."
                          (left-dtime (/ (- duration ddur) dspeed)))
                     (< left-dtime (- duration 1.5))))
              ;; Check for 2)
-             ;; 
+             ;;
              ;; NOTE: protect video from playing multiple times
              ;; *before* calling `telega-ffplay-get-resolution', which
              ;; might result in telega-server events processing,
@@ -2739,7 +2739,7 @@ Return nil if there is no `down-mouse-3' keys in `this-command-keys'."
 
 (defun telega-sponsored-msg-at (&optional pos)
   "Return current sponsored message at POS point.
-If POS is ommited, then return massage at current point.
+If POS is omitted, then return massage at current point.
 For interactive commands acting on message at point/mouse-event
 use `telega-sponsored-msg-for-interactive' instead."
   (when-let* ((button (button-at (or pos (point))))

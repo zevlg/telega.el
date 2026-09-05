@@ -149,7 +149,7 @@ If SLICE-NUM is specified, then insert single slice.
 SLICE-NUM can be a list in form (SLICE-NUM SLICE-Y SLICE-H).
 
 Special property `:no-display-if' is supported in PROPS to
-ommit image display if value is for this property is non-nil.
+omit image display if value is for this property is non-nil.
 If `:right-margin' property is specified, then display image at right
 margin.  In this case SLICE-NUM is ignored."
   ;; NOTE: IMG might be nil if `telega-use-images' is nil
@@ -851,7 +851,7 @@ SHOW-DETAILS - non-nil to show photo details."
 
 (defun telega-ins--audio (msg &optional audio how music-symbol)
   "Insert audio message MSG.
-HOW is one of `header' or `thumbnail'.  If ommited, then both metainfo
+HOW is one of `header' or `thumbnail'.  If omitted, then both metainfo
 and thumbnail are shown.
 If MUSIC-SYMBOL is specified, use it instead of play/pause."
   (unless audio
@@ -929,7 +929,7 @@ If MUSIC-SYMBOL is specified, use it instead of play/pause."
 
 (defun telega-ins--video (msg &optional video how)
   "Insert video message MSG.
-HOW is one of `header' or `thumbnail'.  If ommited, then both metainfo
+HOW is one of `header' or `thumbnail'.  If omitted, then both metainfo
 and thumbnail are shown."
   (let* ((content (plist-get msg :content))
          (video (or video (plist-get content :video)))
@@ -1230,11 +1230,11 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachment symbol."
 
 (defun telega-ins--document (msg &optional doc how)
   "Insert document DOC.
-HOW is one of `header' or `thumbnail'.  If ommited, then both metainfo
+HOW is one of `header' or `thumbnail'.  If omitted, then both metainfo
 and thumbnail are shown."
   (unless doc
     (setq doc (telega--tl-get msg :content :document)))
-  
+
   (let (ret)
     (unless (eq how 'thumbnail)
       (telega-ins--document-header doc)
@@ -3191,7 +3191,7 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
                 (message "receipt: %S" receipt)))))
 
 (defun telega-reply-markup--keyboard-layout (reply-markup &optional fit-width)
-  "Calculate keyboard layout for the REPLY-MARKUP." 
+  "Calculate keyboard layout for the REPLY-MARKUP."
  ;; Layout: list of (width . spacing) conses for each button
   (when (eq (telega--tl-type reply-markup)
             'replyMarkupShowKeyboard)
@@ -5062,7 +5062,7 @@ requests title as part of the button."
                          ;; Direct messages group can't be joined
                          (telega-chat-match-p chat 'is-direct-messages-group)
 
-                         ;; Discussion group 
+                         ;; Discussion group
                          ;; of a channel, where no need to join
                          ;; NOTE: if no thread filtering is applied
                          ;; (telega-chat-match-p chat

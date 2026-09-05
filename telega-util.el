@@ -112,7 +112,7 @@ Can be used as value for `telega-online-status-function'."
 
 (defun telega-buffer-p (&optional buffer)
   "Return non-nil if BUFFER is some telega buffer.
-If BUFFER is ommited, current buffer is used.
+If BUFFER is omitted, current buffer is used.
 Could be used as value for `telega-online-status-function'."
   (with-current-buffer (or buffer (current-buffer))
     (when (or (derived-mode-p 'telega-root-mode)
@@ -2047,7 +2047,7 @@ Return a chat."
 (defvar telega-permission-read-history nil)
 (defun telega-completing-read-permission (prompt &optional permissions)
   "Read a permission from PERMISSIONS list completing user input.
-If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
+If PERMISSIONS is omitted, then `telega-chat--chat-permissions' is used."
   (let* ((raw-perms (or permissions telega-chat--chat-permissions))
          (i18n-choices (cl-remove
                         nil (mapcar (lambda (perm-spec)
@@ -2153,7 +2153,7 @@ Do not trap errors if `debug-on-error' is enabled."
   (ewoc-location (ewoc--header ewoc)))
 
 (defun telega-ewoc--find (ewoc item test &optional key start-node iter-func)
-  "Find EWOC's node by item and TEST funcion.
+  "Find EWOC's node by item and TEST function.
 TEST function is run with two arguments - ITEM and NODE-VALUE.
 Optionally KEY can be specified to get KEY from node value.
 START-NODE is node to start from, default is first node if
@@ -2826,7 +2826,7 @@ RET\" string."
   "Workaround Emacs bug.
 Emacs does not respect buffer local nil value for
 `switch-to-buffer-preserve-window-point', so we hack window point
-in `(window-prev-buffers)' to achive behaviour for nil-valued
+in `(window-prev-buffers)' to achieve behaviour for nil-valued
 `switch-to-buffer-preserve-window-point'."
   (unless switch-to-buffer-preserve-window-point
 ;    (when (version< emacs-version "28.1.0")
@@ -3363,7 +3363,7 @@ Return nil if no reaction is available for the MSG."
 (defun telega-completing-read-saved-messages-tag (prompt &optional sm-topic-id
                                                          new-tag-label)
   "Read a Saved Messages tag.
-Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
+Return nil if there is no tags for the SM-TOPIC-ID or new tag is chosen."
   (when-let* ((tags (telega-saved-messages-tags sm-topic-id))
               (tag-choices
                (mapcar (lambda (tag)

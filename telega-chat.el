@@ -103,7 +103,7 @@
 (make-variable-buffer-local 'telega-chatbuf--input-idx)
 
 (defvar telega-chatbuf--input-pending nil
-  "Non-nil if last input is not yet commited.
+  "Non-nil if last input is not yet committed.
 Real value is the pending input string.")
 (make-variable-buffer-local 'telega-chatbuf--input-pending)
 
@@ -2093,7 +2093,7 @@ Add DIRTINESS into the variable denoted by `telega-chatbuf--dirtiness-symbol'."
 (defun telega-chatbuf-header-concat (&rest header-format)
   "If all strings in a HEADER-FORMAT is non-empty return HEADER-FORMAT.
 If HEADER-FORMAT contains at least one empty string, return nil.
-Use this to surrond header with some prefix and suffix."
+Use this to surround header with some prefix and suffix."
   (when (seq-every-p (lambda (elem)
                        (and elem (not (string-empty-p elem))))
                      header-format)
@@ -5413,7 +5413,7 @@ Recenter to the bottom if point is at prompt, otherwise call
   (interactive)
   ;; NOTE: if next unread message is shown in the chat, then just jump
   ;; to it, otherwise load fresh history and jump to it.
-  ;; 
+  ;;
   ;; Examine last-read-inbox-msg only if chat has unread messages,
   ;; otherwise we assume that all messages are read
   (let* ((unread-count (telega-chatbuf--unread-message-count))
@@ -5824,7 +5824,7 @@ This attachment can be used only in private chats."
   (interactive (list (telega-read-file-name
                       (concat (telega-symbol 'flames)
                               (telega-i18n "lng_attach_photo") ": "))
-                     (telega-read-self-destruct-timer "Self desctruct in")))
+                     (telega-read-self-destruct-timer "Self destruct in")))
   (telega-chatbuf-attach-photo filename tl-ttl))
 
 (defun telega-chatbuf-attach-video (filename &optional tl-ttl spoiler-p)
@@ -5863,7 +5863,7 @@ This attachment can be used only in private chats."
   (interactive (list (telega-read-file-name
                       (concat (telega-symbol 'flames)
                               "Video: "))
-                     (telega-read-self-destruct-timer "Self desctruct in")))
+                     (telega-read-self-destruct-timer "Self destruct in")))
   (telega-chatbuf-attach-video filename tl-ttl))
 
 (defun telega-chatbuf-attach-audio (filename)
@@ -6727,7 +6727,7 @@ use for editing.  For example `C-u RET' will use
     (telega-help-message--cancel-aux 'edit)))
 
 (defun telega-chatbuf-attach-fwd-msg (msg &optional send-copy-p rm-cap-p)
-  "Attach MSG as foward message into chatbuf's input."
+  "Attach MSG as forward message into chatbuf's input."
   (telega-chatbuf-input-insert
    (list :@type "telegaForwardMessage"
          :message msg
@@ -6942,7 +6942,7 @@ To be used in the `telega-chat-input-complete-functions'."
                            'bot-user))
           (setq telega-chatbuf--inline-bot-plist
                 (list :bot-user bot-user)))
-        
+
         (when-let ((bot-type (plist-get bot-user :type))
                    ((plist-get bot-type :is_inline)))
           ;; Start querying the bot
@@ -7552,7 +7552,7 @@ sent by some chat member, member name is queried."
 
 (defun telega-chatbuf-filter-cancel (&optional topic-cancel-p)
   "Cancel current messages filtering.
-If point is at some message, then keep point on this message after reseting.
+If point is at some message, then keep point on this message after resetting.
 If `\\[universal-argument]' is given, then cancel topic filtering as well."
   (interactive "P")
   (when (or telega-chatbuf--msg-filter
@@ -7676,7 +7676,7 @@ non-interactive use cases only."
       (cond ((or (plist-get telega-chatbuf--msg-filter :saved-messages-tag)
                  (telega-topic-match-p telega-chatbuf--topic '(type sm)))
              (when tl-msg-filter
-               (user-error "telega: Can't seach for %s in Saved Messages tags"
+               (user-error "telega: Can't search for %s in Saved Messages tags"
                            (plist-get isearch-filter :title)))
              (when by-sender
                (user-error

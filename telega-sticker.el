@@ -69,7 +69,7 @@ Thumbnail is a smaller (and faster) version of sticker image.")
   'keymap telega-sticker-button-map)
 
 (defun telega-sticker-at (&optional pos)
-  "Retur sticker at POS."
+  "Return sticker at POS."
   (let ((button (button-at (or pos (point)))))
     (when (and button (eq (button-type button) 'telega-sticker))
       (button-get button :value))))
@@ -968,7 +968,7 @@ Install from https://github.com/zevlg/tgs2png"))
   :inserter 'telega-ins--animation-image)
 
 (defun telega-animation-at (&optional pos)
-  "Retur sticker at POS."
+  "Return sticker at POS."
   (let ((button (button-at (or pos (point)))))
     (when (and button (eq (button-type button) 'telega-animation))
       (button-get button :value))))

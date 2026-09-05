@@ -249,7 +249,7 @@ Updated on `updateDefaultPaidReactionType' event.")
 
 ;;; Runtime variables
 (defvar telega-msg--current nil
-  "Bound to currenty inserting message.")
+  "Bound to currently inserting message.")
 
 (defvar telega--chat nil
   "Telega chat for the current buffer.
@@ -585,7 +585,7 @@ Available contexts are: `title', `msg-header', `link-preview', `quote',
 
 (defun telega-palette-by-color-id (color-id &optional background-mode)
   "Return palette with accent colors by COLOR-ID.
-Pallete is a plist with the following keys: `:outline', `:foreground',
+Palette is a plist with the following keys: `:outline', `:foreground',
 `:background' and `:colors'"
   (unless background-mode
     (setq background-mode (frame-parameter nil 'background-mode)))
@@ -726,7 +726,7 @@ Could contain `:loading', `:older-loaded', `:newer-freezed' or
 (make-variable-buffer-local 'telega-chatbuf--topic)
 
 (defun telega-chatbuf--topic-thread-msg ()
-  "If message thread topic is curretly active, return its starting message."
+  "If message thread topic is currently active, return its starting message."
   (when-let ((messages (plist-get telega-chatbuf--topic :messages)))
     (seq-elt messages (1- (length messages)))))
 
@@ -742,7 +742,7 @@ To be used in various TDLib methods as `:topic_id` argument."
     (telega--MessageTopic telega-chatbuf--topic)))
 
 (defvar telega-chatbuf--aux-plist nil
-  "Supplimentary plist for aux prompt.")
+  "Supplementary plist for aux prompt.")
 (make-variable-buffer-local 'telega-chatbuf--aux-plist)
 
 (defvar telega-chatbuf--msg-send-options nil
@@ -754,7 +754,7 @@ To be used in various TDLib methods as `:topic_id` argument."
 Such as marking media as spoiler/self-destructuring, link preview
 settings, etc.")
 (make-variable-buffer-local 'telega-chatbuf--input-options-plist)
-  
+
 
 (defun telega--init-vars ()
   "Initialize runtime variables.
@@ -916,7 +916,7 @@ Return non-nil if all tests are passed."
 
 (defmacro telega-save-window-start (start end &rest body)
   "Execute BODY saving window start and point.
-Window start is saved only if window start is inbetween START and
+Window start is saved only if window start is in between START and
 END."
   (declare (indent 2))
   (let ((buf-win-sym (gensym))
@@ -1224,7 +1224,7 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
 (defvar telega-inhibit-telega-display-by nil
   "Bind it to non-nil to inhibit `telega-display' property for non-emoji parts.
 Can be a list of symbols if you need to inhibit particular transforms.
-Use it to get/copy text ommiting text modifications from plugins, such
+Use it to get/copy text omitting text modifications from plugins, such
 at `telega-url-shorten'.")
 
 (defun telega--inhibit-telega-display-p (display-by)
@@ -1294,7 +1294,7 @@ If NO-PROPERTIES is specified, then do not keep text properties."
 
 (defun telega-tl-str (obj &optional prop no-properties)
   "Get property PROP from OBJ, desurrogating resulting string.
-If PROP is ommited, use OBJ.
+If PROP is omitted, use OBJ.
 NO-PROPERTIES is passed directly to `telega--desurrogate-apply'.
 Return nil for empty strings.
 Also supports \"formattedText\" a value of the OBJ's PROP."
@@ -2077,7 +2077,7 @@ If help message has been inserted, insert newline at the end."
 (defun telega-box-button-style (style-sym &rest style-sym-mixins)
   "Create a box button style from STYLE-SYM and STYLE-SYM-MIXINS."
   (declare (indent 1))
-  (apply #'append 
+  (apply #'append
          (alist-get style-sym telega-box-button-styles)
          (mapcar (lambda (ssym)
                     (alist-get ssym telega-box-button-styles))
@@ -2153,7 +2153,7 @@ Return what BODY returns."
            (telega-box-button--style-get ,style-sym :passive-face)
 
          ;; Left bracket
-         (when-let ((,left-bracket-sym 
+         (when-let ((,left-bracket-sym
                      (telega-box-button--style-get ,style-sym :left-bracket)))
            (if (stringp ,left-bracket-sym)
                (telega-ins ,left-bracket-sym)
@@ -2303,7 +2303,7 @@ Use `telega-box-button-style' to make a STYLE."
 
 (defmacro telega-ins--line-wrap-prefix (prefix &rest body)
   "Execute BODY adding `line-prefix' and `wrap-prefix' properties.
-`line-prefix' and `wrap-prefix' are contatenated on subsequent calls to
+`line-prefix' and `wrap-prefix' are concatenated on subsequent calls to
 `telega-ins--line-wrap-prefix'."
   (declare (indent 1))
   (let ((lwprefix-sym (gensym "lwprefix"))
