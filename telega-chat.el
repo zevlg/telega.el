@@ -5839,7 +5839,7 @@ This attachment can be used only in private chats."
          (resolution (telega-ffplay-get-resolution i-filename)))
     (telega-chatbuf-input-insert
      `(:@type "inputMessageVideo"
-              :video (:type "inputVideo"
+              :video (:@type "inputVideo"
                             :video ,ifile
                             :duration ,(round (telega-ffplay-get-duration
                                                i-filename))
