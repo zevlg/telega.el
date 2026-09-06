@@ -264,16 +264,14 @@ Return file object, obtained from `telega--preliminaryUploadFile'."
   (let ((ufile (telega--preliminaryUploadFile (expand-file-name filename)
                  :file-type file-type
                  :priority priority)))
-    (if (telega-file--uploaded-p ufile)
-        (when update-callback
-          (funcall update-callback ufile))
-
-      (when update-callback
+    (when update-callback
+      (if (telega-file--uploaded-p ufile)
+          (funcall update-callback ufile)
         (telega-file--add-update-callback (plist-get ufile :id)
           (lambda (file)
             (funcall update-callback file)
-            (telega-file--uploading-p file))))
-      ufile)))
+            (telega-file--uploading-p file)))))
+    ufile))
 
 
 ;;; Photos
