@@ -25,6 +25,7 @@
 
 ;;; Code:
 (require 'transient)
+(require 'ewoc)
 
 (require 'telega-core)
 (require 'telega-ins)

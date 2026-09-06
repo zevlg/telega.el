@@ -51,6 +51,7 @@
 ;; Matching is done using ~telega-chat-match-p~ function.
 
 ;;; Code:
+(require 'ewoc)
 (require 'telega-core)
 (require 'telega-ins)
 (require 'telega-customize)
