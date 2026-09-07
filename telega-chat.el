@@ -5771,7 +5771,8 @@ ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
       (list :@type (propertize "inputFileLocal"
                                'telega-preview preview
                                'telega-upload-ahead-file
-                               (unless (telega--tl-error-p ufile)
+                               (when (and ufile
+                                          (not (telega--tl-error-p ufile)))
                                  ufile))
             :path filename))))
 
