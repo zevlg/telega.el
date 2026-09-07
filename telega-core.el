@@ -2140,13 +2140,16 @@ If help message has been inserted, insert newline at the end."
                                      style)))
                           (list :color o-color)))))))
 
-(if (version< emacs-version "28.0")
-    ;; NOTE: Emacs 27 has only one argument to `string-width'
-    (defun telega-string-width (str &optional from to)
-      (when (or from to)
-        (setq str (substring str from to)))
-      (string-width str))
-  (defalias 'telega-string-width 'string-width))
+;; NOTE: wrapped so the byte compiler sees the definition; a bare
+;; top-level `if' hides both branches from it.
+(eval-and-compile
+  (if (version< emacs-version "28.0")
+      ;; NOTE: Emacs 27 has only one argument to `string-width'
+      (defun telega-string-width (str &optional from to)
+        (when (or from to)
+          (setq str (substring str from to)))
+        (string-width str))
+    (defalias 'telega-string-width 'string-width)))
 
 (defmacro telega-ins--with-props (props &rest body)
   "Execute inserters applying PROPS after insertation.
