@@ -28,6 +28,8 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-i18n)
+(require 'telega-tdlib)
 
 (declare-function telega-chat--mark-dirty "telega-tdlib-events" (chat &optional event))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))

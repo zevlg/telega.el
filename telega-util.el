@@ -43,6 +43,8 @@
 (require 'telega-media)
 (require 'telega-topic)
 (require 'telega-folders)
+(require 'telega-i18n)
+(require 'telega-user)
 
 (declare-function telega-root--buffer "telega-root")
 (declare-function telega-chatbuf--name "telega-chat" (chat))

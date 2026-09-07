@@ -55,6 +55,8 @@
 (require 'telega-core)
 (require 'telega-ins)
 (require 'telega-customize)
+(require 'telega-i18n)
+(require 'telega-util)
 
 (defvar tracking-buffers nil)
 (defvar telega-root--view-filter)

@@ -28,6 +28,11 @@
 ;;; Code:
 (require 'telega-core)
 (require 'telega-tdlib)
+(require 'telega-i18n)
+(require 'telega-media)
+(require 'telega-sticker)
+(require 'telega-user)
+(require 'telega-util)
 
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 (declare-function telega-chatbuf-input-insert "telega-chat" (imc))

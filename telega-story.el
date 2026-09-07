@@ -41,6 +41,12 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-ffplay)
+(require 'telega-i18n)
+(require 'telega-media)
+(require 'telega-server)
+(require 'telega-tdlib)
+(require 'telega-util)
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 
