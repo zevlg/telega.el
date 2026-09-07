@@ -2575,6 +2575,35 @@ buffer."
       (message "%s" str))
     str))
 
+;; Moved here from telega-util.el: needed by telega-core itself.
+(defun telega-plist-del (plist prop)
+  "From PLIST destructively remove property PROP."
+  ;; NOTE: `cl--plist-remove' has been removed in Emacs master
+  ;; See https://t.me/emacs_telega/27687
+  ;; Code taken from `org-plist-delete'
+  (let (p)
+    (while plist
+      (if (not (eq prop (car plist)))
+          (setq p (plist-put p (car plist) (nth 1 plist))))
+      (setq plist (cddr plist)))
+    p))
+(defun telega-plist-map (func plist)
+  "Map FUNCTION on PLIST and return resulting list.
+FUNCTION must accept two arguments: KEY and VALUE."
+  (let (result)
+    (telega--tl-dolist ((prop-name value) plist)
+      (setq result (cons (funcall func prop-name value) result)))
+    (nreverse result)))
+(defun telega-focus-state (&optional frame)
+  "Return non-nil if FRAME has focus.
+Can be used as value for `telega-online-status-function'."
+  (if (fboundp 'frame-focus-state)
+      (funcall 'frame-focus-state frame)
+    ;; NOTE: For tty frame always return non-nil
+    ;; see https://t.me/emacs_telega/7419
+    (or (not (display-graphic-p frame))
+        (frame-parameter frame 'x-has-focus))))
+
 (provide 'telega-core)
 
 
