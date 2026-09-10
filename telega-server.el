@@ -188,8 +188,8 @@ Raise error if not found."
 
 (defun telega-server-version ()
   "Return telega-server version."
-  (let ((ts-usage (shell-command-to-string
-                   (telega-server--process-command "-h"))))
+  (let ((ts-usage (car (process-lines
+                        (telega-server--process-command) "-h"))))
     (when (string-match "^Version \\([0-9.]+\\)" ts-usage)
       (match-string 1 ts-usage))))
 
