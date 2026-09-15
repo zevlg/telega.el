@@ -26,10 +26,10 @@
 ;;
 ;; This mode installs new ~live-geo-location~ chat attach type, use it
 ;; with {{{kbd(C-c C-a live-geo-location RET)}}} in the chatbuf.
-;; 
+;;
 ;; This mode requires the =geo.el= library, available at
 ;; https://git.sr.ht/~oldosfan/geo-xdg.el
-;; 
+;;
 ;; Take into account that using ~geo-simulate~ backend to fake geo
 ;; location data is Telegram API ToS violation.  See 1.4 in
 ;; https://core.telegram.org/api/terms
@@ -41,7 +41,7 @@
 (require 'geo)
 
 (defun telega-live-location--geo-loc (geo-loc)
-  "Covert geo location GEO-LOC into telega location plist."
+  "Convert geo location GEO-LOC into telega location plist."
   (list :latitude (geo-location-lat geo-loc)
         :longitude (geo-location-lon geo-loc)))
 

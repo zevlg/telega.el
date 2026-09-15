@@ -2514,4 +2514,9 @@ this channel?")
 
  ("lng_community_title"
   :value "Community")
+
+ ("lng_managed_bot_created_title"
+  :value "{name} created!")
+ ("lng_action_community_added"
+  :value "{from} added this group to the {community} community.")
  )

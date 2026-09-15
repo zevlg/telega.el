@@ -975,6 +975,41 @@ By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
    msg-sender (or create-image-fun #'telega-avatar--create-image-three-lines)
    force-update (or cache-prop :telega-avatar-3)))
 
+(defun telega-chat-photo-info--create-image (obj-spec)
+  "Function to create image for chatPhotoInfo object spec OBJ-SPEC."
+  (let* ((photo-info (plist-get obj-spec :object))
+         (cheight (or (plist-get obj-spec :cheight) 2))
+         (small-file (telega-file--renew photo-info :small))
+         (big-file (telega-file--renew photo-info :big))
+         files-to-download)
+
+    (unless (telega-file--downloaded-p small-file)
+      (setq files-to-download (list small-file)))
+    (when (and (> cheight 3) (telega-file--downloaded-p big-file))
+      (setq files-to-download (cons big-file files-to-download)))
+
+    ;; Start downloading small/big files if needed
+    (seq-doseq (file files-to-download)
+      (unless (telega-file--downloading-p file)
+        (telega-file--download file
+          :priority 32
+          :update-callback
+          (lambda (dfile)
+            (when (telega-file--downloaded-p dfile)
+              (telega-media--image-updateNEW obj-spec)
+              (force-window-update))))))
+
+    (cond ((telega-file--downloaded-p big-file)
+           (telega-media--create-image small-file 640 640 cheight))
+          ((telega-file--downloaded-p small-file)
+           (telega-media--create-image small-file 160 160 cheight))
+          ((plist-get photo-info :minithumbnail)
+           (telega-minithumb--create-image
+            (plist-get photo-info :minithumbnail) cheight))
+          (t
+           ;; TODO: Fallback to svg rendering
+           ))))
+
 (defun telega-chat-photo-info--image (chat-photo-info
                                       &optional cheight force-update)
   "Create image for chatPhotoInfo TL structure."

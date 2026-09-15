@@ -81,7 +81,7 @@ Support `telega.el` by donating to:
 |:--:|
 | **BTC:** 1PeqqU1dGEqXy52yk3XEySaHXREsrtDvCc |
 
-Donating makes you telega patron forever and you get telega cat eyars
+Donating makes you telega patron forever and you get telega cat ears
 if you wish.
 
 # License
@@ -141,7 +141,7 @@ See `C-h v telega-proxies RET` for full range of proxy types.
 
 **Q**: **Stickers are not shown.**
 
-**A**: If you are using Emacs 26.3 or older, ensure you it was 
+**A**: If you are using Emacs 26.3 or older, ensure you it was
 configured with ImageMagick support. Next, install the `webp` package.
 
 **Q**: **There are no glyphs for some unicode characters.**
@@ -156,7 +156,7 @@ If using `fonts-symbola`, add this to your init.el:
 
 **Q**: **There is some formatting issues when some unicode characters are used.**
 
-**A**: Yes, partly.  If character has full width of multiple ordinary chars 
+**A**: Yes, partly.  If character has full width of multiple ordinary chars
 you can tweak `char-width-table`.  Add code like this to your init.el:
 
 ```elisp
@@ -210,5 +210,5 @@ does not show**
 
 **A**: Make sure your time is correct
 
-Eval `(telega-time-seconds)` to get UTC time in your Emacs, 
+Eval `(telega-time-seconds)` to get UTC time in your Emacs,
 it should be more or less the same as on https://www.unixtimestamp.com/

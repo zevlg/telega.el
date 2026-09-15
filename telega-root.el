@@ -64,7 +64,7 @@ First element is symbol denoting the view.
 Second arg is root view header to show.
 Rest elements are ewoc specs.")
 (defvar telega-root--view-filter nil
-  "Additional Chat Filter applied implicitely for the root view.")
+  "Additional Chat Filter applied implicitly for the root view.")
 (defvar telega-root-view--header-marker nil
   "Marker used for root view header.")
 (defvar telega-root-view--ewocs-marker nil
@@ -702,7 +702,7 @@ Keep cursor position only if CHAT is visible."
 
 ;;; Pretty Printers for root view ewocs
 (defun telega-chat-button-toggle-view (chat)
-  "Toogle view for CHAT button."
+  "Toggle view for CHAT button."
   (interactive (list (telega-chat-at (point))))
   (unless (telega-chat-p chat)
     (user-error "telega: No chat at point"))
@@ -854,7 +854,7 @@ CONTACT is some user you have exchanged contacts with."
 (defun telega-root--message-pp (msg &optional custom-inserter visible-p)
   "Pretty printer for MSG button shown in root buffer."
   (declare (indent 1))
-  (let ((visible-p (or visible-p 
+  (let ((visible-p (or visible-p
                        (telega-chat-match-active-p (telega-msg-chat msg)))))
     (when visible-p
       (telega-button--insert 'telega-msg msg

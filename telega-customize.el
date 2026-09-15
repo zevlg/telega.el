@@ -135,7 +135,7 @@ See https://core.telegram.org/tdlib/options"
   :group 'telega)
 
 (defcustom telega-use-chat-info-database t
-  "Cache chats informations among restarts.
+  "Cache chats information among restarts.
 Implies `telega-use-file-database' set to non-nil."
   :type 'boolean
   :group 'telega)
@@ -459,7 +459,7 @@ cell of endings for the button with LABEL."
 
 (defcustom telega-chat--display-buffer-action
   '((display-buffer-reuse-window display-buffer-same-window))
-  "Action value when poping to chatbuffer.
+  "Action value when popping to chatbuffer.
 See docstring for `display-buffer' for the values."
   :type (get 'display-buffer-alist 'custom-type)
   :group 'telega)
@@ -544,7 +544,7 @@ Set to \"apparmor=unconfined\" if you use `telega-appindicator-mode'."
 If nil, autogenerate the command according to all telega docker settings.
 %u - substituted with current used UID:GID
 %w - substituted with current Telegram account database directory.
-%i - substituted with infered docker image name."
+%i - substituted with inferred docker image name."
   :package-version '(telega . "0.7.40")
   :type '(choice (const :tag "Automatically generate" nil)
                  (string :tag "Custom docker command"))
@@ -803,7 +803,7 @@ Each element is in form: `(PREDICATE-OR-REGEX . FUNCTION)'."
 (defcustom telega-my-location nil
   "Set to non-nil to use this as location of me.
 Plist in form (:latitude <LAT> :longitude <LONG>)
-To publically expose this location set `:is_location_visible' to
+To publicly expose this location set `:is_location_visible' to
 non-nil in `telega-options-plist'.
 Used to calculate distances from other peers to me."
   :type 'plist
@@ -1768,28 +1768,28 @@ timespan, then do not group messages."
   '(chatbuf-visibility chatbuf-recency order id)
   "Criteria to sort chats in `telega-completing-read-chat'."
   :package-version '(telega . "0.8.530")
-  :type '(choice symbol (list symbol))
+  :type '(choice symbol (repeat symbol))
   :group 'telega-chat)
 
 (defcustom telega-chat-switch-buffer-sort-criteria
   '(important chatbuf-recency)
   "Criteria to sort open chats when switching with `telega-switch-buffer'."
   :package-version '(telega . "0.8.555")
-  :type '(choice symbol (list symbol))
+  :type '(choice symbol (repeat symbol))
   :group 'telega-chat)
 
 (defcustom telega-chat-switch-important-sort-criteria
   '(unread-mention chatbuf-recency)
   "Criteria to sort chats in when switching with `telega-switch-important-chat'."
   :package-version '(telega . "0.8.560")
-  :type '(choice symbol (list symbol))
+  :type '(choice symbol (repeat symbol))
   :group 'telega-chat)
 
 (defcustom telega-chat-input-complete-functions
   '(telega-chatbuf-complete-inline-bot-query
     telega-chatbuf-complete-sticker-by-emoji)
   "*List of complete functions to call on TAB in chatbuf's input.
-Function should return non-nil if completion occured."
+Function should return non-nil if completion occurred."
   :package-version '(telega . "0.8.631")
   :type '(repeat function)
   :group 'telega-chat)
@@ -2764,7 +2764,7 @@ If nil, then user's online status is not displayed."
   :group 'telega-symbol)
 
 (defcustom telega-symbol-download-progress '(?= . ?>)
-  "Symbols to use when drawing progress bar for dowloading files.
+  "Symbols to use when drawing progress bar for downloading files.
 By default `(?= . ?>)' is used resulting in =====> progress bar."
   :package-version '(telega . "0.7.5")
   :type '(choice char (cons char char))
@@ -3484,7 +3484,7 @@ non-nil if symbol gets emojification."
 
 ;; Rich text faces
 (defface telega-rich-text-face
-  '((t :inherit default))
+  '((t :height 1.0))
   "Face for all rich text."
   :group 'telega-faces)
 
@@ -3798,7 +3798,7 @@ Called with one argument - chat."
   :group 'telega-hooks)
 
 (defcustom telega-chat-pre-message-hook nil
-  "Hook called uppon new message arrival, before inserting into chatbuffer.
+  "Hook called upon new message arrival, before inserting into chatbuffer.
 Called with single argument - MESSAGE.
 Always called, even if corresponding chat is closed at the moment."
   :type 'hook

@@ -37,6 +37,7 @@
 (require 'telega-inline)
 (require 'telega-folders)
 (require 'telega-topic)
+(require 'telega-community)
 (require 'telega-customize)
 
 ;; telega-chat.el depends on telega-ins.el
@@ -148,7 +149,7 @@ If SLICE-NUM is specified, then insert single slice.
 SLICE-NUM can be a list in form (SLICE-NUM SLICE-Y SLICE-H).
 
 Special property `:no-display-if' is supported in PROPS to
-ommit image display if value is for this property is non-nil.
+omit image display if value is for this property is non-nil.
 If `:right-margin' property is specified, then display image at right
 margin.  In this case SLICE-NUM is ignored."
   ;; NOTE: IMG might be nil if `telega-use-images' is nil
@@ -850,7 +851,7 @@ SHOW-DETAILS - non-nil to show photo details."
 
 (defun telega-ins--audio (msg &optional audio how music-symbol)
   "Insert audio message MSG.
-HOW is one of `header' or `thumbnail'.  If ommited, then both metainfo
+HOW is one of `header' or `thumbnail'.  If omitted, then both metainfo
 and thumbnail are shown.
 If MUSIC-SYMBOL is specified, use it instead of play/pause."
   (unless audio
@@ -928,7 +929,7 @@ If MUSIC-SYMBOL is specified, use it instead of play/pause."
 
 (defun telega-ins--video (msg &optional video how)
   "Insert video message MSG.
-HOW is one of `header' or `thumbnail'.  If ommited, then both metainfo
+HOW is one of `header' or `thumbnail'.  If omitted, then both metainfo
 and thumbnail are shown."
   (let* ((content (plist-get msg :content))
          (video (or video (plist-get content :video)))
@@ -1229,11 +1230,11 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachment symbol."
 
 (defun telega-ins--document (msg &optional doc how)
   "Insert document DOC.
-HOW is one of `header' or `thumbnail'.  If ommited, then both metainfo
+HOW is one of `header' or `thumbnail'.  If omitted, then both metainfo
 and thumbnail are shown."
   (unless doc
     (setq doc (telega--tl-get msg :content :document)))
-  
+
   (let (ret)
     (unless (eq how 'thumbnail)
       (telega-ins--document-header doc)
@@ -1846,21 +1847,33 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
 (defun telega-ins--poll-media-one-line (media &optional chat)
   "Insert poll's MEDIA content for the message MSG in one line manner."
   (cl-ecase (telega--tl-type media)
-    (messageAnimation
+    (pollMediaAnimation
+     (telega-ins "<TODO: pollMediaAnimation")
      )
-    (messageLocation
+    (pollMediaAudio
+     (telega-ins "<TODO: pollMediaAudio")
      )
-    (messagePhoto
+    (pollMediaDocument
+     (telega-ins "<TODO: pollMediaDocument")
+     )
+    (pollMediaLink
+     (telega-ins "<TODO: pollMediaLink")
+     )
+    (pollMediaLocation
+     (telega-ins "<TODO: pollMediaLocation>")
+     )
+    (pollMediaPhoto
      (when-let ((img (telega-photo-preview--create-image-one-line
                       (plist-get media :photo) chat)))
        (telega-ins--image img)))
-    (messageSticker
+    (pollMediaSticker
      (telega-ins--image
       (telega-sticker--create-image-one-line
        (plist-get media :sticker))))
-    (messageVenue
+    (pollMediaVenue
+     (telega-ins "<TODO: pollMediaVenue")
      )
-    (messageVideo
+    (pollMediaVideo
      (when-let ((img (telega-video-preview--create-image-one-line
                       (plist-get media :video) chat)))
        (telega-ins--image img)))
@@ -2411,7 +2424,7 @@ Return number of done tasks."
              (telega-ins-from-newline
               (telega-ins--with-face 'telega-shadow
                 (telega-ins-i18n "telega_loading"))))
-            ((not full-p)
+            ((and msg (not full-p))
              (telega-ins-from-newline
               (telega-ins--text-button (telega-i18n "lng_stories_show_more")
                 'face 'telega-link
@@ -2423,7 +2436,8 @@ Return number of done tasks."
     (save-excursion
       (goto-char pos)
       (when-let* ((pos-eol (pos-eol))
-                  (lh (get-text-property pos-eol 'line-height)))
+                  (lh (get-text-property pos-eol 'line-height))
+                  ((consp lh)))         ; See https://t.me/emacs_telega/51458
         (put-text-property pos-eol (1+ pos-eol)
                            'line-height (list 1 (nth 1 lh)))))
     t))
@@ -2507,6 +2521,7 @@ Return number of done tasks."
           messagePollOptionDeleted
           messageChatAddedToCommunity
           messageChatRemovedFromCommunity
+          messageManagedBotCreated
           telegaInternal)))
 
 (defun telega-ins--special-replied-msg (msg &optional _attrs)
@@ -2928,9 +2943,17 @@ Special messages are determined with `telega-msg-special-p'."
          :from sender-name
          :option (telega-tl-str content :text)))
       (messageChatAddedToCommunity
-       )
+       (telega-ins-i18n "lng_action_community_added"
+         :from sender-name
+         :community (telega-community-title--special
+                     (telega-community-get
+                      (plist-get content :community_id)))))
       (messageChatRemovedFromCommunity
        )
+      (messageManagedBotCreated
+       (telega-ins-i18n "lng_managed_bot_created_title"
+         :name (telega-msg-sender-title--special
+                   (telega-user-get (plist-get content :bot_user_id)))))
 
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))
@@ -3168,7 +3191,7 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
                 (message "receipt: %S" receipt)))))
 
 (defun telega-reply-markup--keyboard-layout (reply-markup &optional fit-width)
-  "Calculate keyboard layout for the REPLY-MARKUP." 
+  "Calculate keyboard layout for the REPLY-MARKUP."
  ;; Layout: list of (width . spacing) conses for each button
   (when (eq (telega--tl-type reply-markup)
             'replyMarkupShowKeyboard)
@@ -4148,9 +4171,11 @@ If SHORT-P is non-nil then use short version."
                   (plist-get tl-ttl :self_destruct_time))))))
 
 (defun telega-ins--input-content-one-line (imc)
-  "Insert input message's MSG content for one line usage."
+  "Insert input message content IMC for one line usage."
   (telega-ins--one-lined
    (cl-case (telega--tl-type imc)
+     (inputMessageText
+      (telega-ins--fmt-text (plist-get imc :text)))
      (inputMessageLocation
       (telega-ins--location (plist-get imc :location))
       (when (> (or (plist-get imc :live_period) 0) 0)
@@ -4209,8 +4234,9 @@ If SHORT-P is non-nil then use short version."
                     (telega-ins--self-destruct-type tl-ttl 'short)))
                  ))))
      (inputMessageVoiceNote
-      (let ((duration (or (plist-get imc :duration) 0))
-            (waveform (plist-get imc :waveform)))
+      (let* ((note (plist-get imc :voice_note))
+             (duration (or (plist-get note :duration) 0))
+             (waveform (plist-get note :waveform)))
         (telega-ins "VoiceNote ")
         (when (and telega-use-images waveform)
           (telega-ins--image
@@ -4220,8 +4246,9 @@ If SHORT-P is non-nil then use short version."
         (telega-ins " (" (telega-duration-human-readable duration) ")")))
      (inputMessageVideoNote
       (telega-ins "VideoNote")
-      (let ((duration (or (plist-get imc :duration) 0))
-            (thumb-filename (telega--tl-get imc :thumbnail :thumbnail :path)))
+      (let* ((note (plist-get imc :video_note))
+             (duration (or (plist-get note :duration) 0))
+             (thumb-filename (telega--tl-get note :thumbnail :thumbnail :path)))
         (when (and telega-use-images thumb-filename)
           (telega-ins " ")
           (telega-ins--image
@@ -4346,6 +4373,27 @@ If SHORT-P is non-nil then use short version."
       (telega-ins-fmt "<TODO: %S>" (telega--tl-type imc)))
      ))
   t)
+
+(defun telega-ins--draft-content-one-line (draft-content)
+  "Insert DRAFT-CONTENT for one line usage."
+  (cl-ecase (telega--tl-type draft-content)
+    (draftMessageContentText
+     (telega-ins--one-lined
+      (telega-ins--fmt-text (plist-get draft-content :text))))
+    (draftMessageContentRichMessage
+     (telega-ins--one-lined
+      (telega-ins--rich-message (plist-get draft-content :message))))
+    (draftMessageContentVideoNote
+     (telega-ins "VideoNote ("
+                 (telega-duration-human-readable
+                  (plist-get draft-content :duration))
+                 ")"))
+    (draftMessageContentVoiceNote
+     (telega-ins "VoiceNote ("
+                 (telega-duration-human-readable
+                  (plist-get draft-content :duration))
+                 ")"))
+    ))
 
 (defun telega-ins--content-media-thumbnail-one-line (msg &optional content)
   "Insert one line thumbnail for the media message MSG."
@@ -4870,19 +4918,13 @@ If TOPIC is given, insert chat status for the TOPIC."
              (telega-ins--actions actions)))
 
           (draft-msg
-           (let ((draft-content (plist-get draft-msg :content)))
-           ;; (let ((inmsg (plist-get draft-msg :input_message_text)))
-           ;;   (cl-assert (eq (telega--tl-type inmsg) 'inputMessageText) nil
-           ;;              "tdlib states that draft must be `inputMessageText'")
-             (telega-ins--with-attrs (list :align 'left
-                                           :max max-width
-                                           :elide t)
-               (telega-ins--with-face 'error
-                 (telega-ins (telega-i18n "lng_from_draft") ": "))
-               (telega-ins "TODO draft msg")
-               ;; (telega-ins--one-lined
-               ;;  (telega-ins--fmt-text (plist-get inmsg :text)))
-               )))
+           (telega-ins--with-attrs (list :align 'left
+                                         :max max-width
+                                         :elide t)
+             (telega-ins--with-face 'error
+               (telega-ins (telega-i18n "lng_from_draft") ": "))
+             (telega-ins--draft-content-one-line
+              (plist-get draft-msg :content))))
 
           (last-msg
            (if (telega-msg-match-p last-msg 'ignored)
@@ -5020,7 +5062,7 @@ requests title as part of the button."
                          ;; Direct messages group can't be joined
                          (telega-chat-match-p chat 'is-direct-messages-group)
 
-                         ;; Discussion group 
+                         ;; Discussion group
                          ;; of a channel, where no need to join
                          ;; NOTE: if no thread filtering is applied
                          ;; (telega-chat-match-p chat

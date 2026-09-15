@@ -103,7 +103,7 @@
 (make-variable-buffer-local 'telega-chatbuf--input-idx)
 
 (defvar telega-chatbuf--input-pending nil
-  "Non-nil if last input is not yet commited.
+  "Non-nil if last input is not yet committed.
 Real value is the pending input string.")
 (make-variable-buffer-local 'telega-chatbuf--input-pending)
 
@@ -213,12 +213,17 @@ If OFFLINE-P is non-nil then do not request the telega-server."
                  (throw 'found chat)))
              telega--chats)))
 
+(defun telega-chat--id-by-supergroup-id (supergroup-id)
+  "Return chat id for the supergroup with SUPERGROUP-ID.
+Chat id is TDLib's ZERO_CHANNEL_ID minus SUPERGROUP-ID, see DialogId.h."
+  (- -1000000000000 supergroup-id))
+
 (defun telega-chat-by-supergroup (supergroup)
   "Return chat by SUPERGROUP."
   (or
    ;; Try very fast heuristic first
-   (telega-chat-get (string-to-number
-                     (format "-100%S" (plist-get supergroup :id)))
+   (telega-chat-get (telega-chat--id-by-supergroup-id
+                     (plist-get supergroup :id))
                     'offline)
    ;; Fallback to full scan
    (telega-chat-by (lambda (chat)
@@ -2039,8 +2044,8 @@ View only if message matches TEMEX or not yet viewed."
                (lambda-with-current-buffer (_ignored)
                  (telega--getForumTopic telega-chatbuf--chat topic-id
                    (lambda-with-current-buffer (topic)
-                     (telega-topic--ensure topic telega-chatbuf--chat)
-                     (setq telega-chatbuf--topic topic)
+                     (setq telega-chatbuf--topic
+                           (telega-topic--ensure topic telega-chatbuf--chat))
                      (telega-chatbuf--chat-update "topic-update"))))))
 
             ;; NOTE: updated thread info does not change its
@@ -2088,7 +2093,7 @@ Add DIRTINESS into the variable denoted by `telega-chatbuf--dirtiness-symbol'."
 (defun telega-chatbuf-header-concat (&rest header-format)
   "If all strings in a HEADER-FORMAT is non-empty return HEADER-FORMAT.
 If HEADER-FORMAT contains at least one empty string, return nil.
-Use this to surrond header with some prefix and suffix."
+Use this to surround header with some prefix and suffix."
   (when (seq-every-p (lambda (elem)
                        (and elem (not (string-empty-p elem))))
                      header-format)
@@ -3541,7 +3546,7 @@ otherwise set draft only if chatbuf input is also draft."
          (goto-char telega-chatbuf--input-marker)
          (telega-ins--with-props '(:draft-input-p t)
            (telega-ins--fmt-text
-            (telega--tl-get draft-msg :input_message_text :text))))))))
+            (telega--tl-get draft-msg :content :text))))))))
 
 (defun telega-chatbuf--load-initial-history ()
   "Load initial history in the chatbuf."
@@ -4964,9 +4969,9 @@ Return valid \"messageSendOptions\"."
     (inputMessageSticker
      (telega--tl-get imc :sticker :sticker))
     (inputMessageVideoNote
-     (plist-get imc :video_note))
+     (telega--tl-get imc :video_note :video_note))
     (inputMessageVoiceNote
-     (plist-get imc :voice_note))))
+     (telega--tl-get imc :voice_note :voice_note))))
 
 (defun telega-chatbuf-input-send (arg &optional preview-p)
   "Send chatbuf input to the chat.
@@ -5408,7 +5413,7 @@ Recenter to the bottom if point is at prompt, otherwise call
   (interactive)
   ;; NOTE: if next unread message is shown in the chat, then just jump
   ;; to it, otherwise load fresh history and jump to it.
-  ;; 
+  ;;
   ;; Examine last-read-inbox-msg only if chat has unread messages,
   ;; otherwise we assume that all messages are read
   (let* ((unread-count (telega-chatbuf--unread-message-count))
@@ -5765,7 +5770,9 @@ ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
                :update-callback upload-ahead-callback))))
       (list :@type (propertize "inputFileLocal"
                                'telega-preview preview
-                               'telega-upload-ahead-file ufile)
+                               'telega-upload-ahead-file
+                               (unless (telega--tl-error-p ufile)
+                                 ufile))
             :path filename))))
 
 (defun telega-chatbuf-attach-file (filename &optional preview-p
@@ -5817,7 +5824,7 @@ This attachment can be used only in private chats."
   (interactive (list (telega-read-file-name
                       (concat (telega-symbol 'flames)
                               (telega-i18n "lng_attach_photo") ": "))
-                     (telega-read-self-destruct-timer "Self desctruct in")))
+                     (telega-read-self-destruct-timer "Self destruct in")))
   (telega-chatbuf-attach-photo filename tl-ttl))
 
 (defun telega-chatbuf-attach-video (filename &optional tl-ttl spoiler-p)
@@ -5856,7 +5863,7 @@ This attachment can be used only in private chats."
   (interactive (list (telega-read-file-name
                       (concat (telega-symbol 'flames)
                               "Video: "))
-                     (telega-read-self-destruct-timer "Self desctruct in")))
+                     (telega-read-self-destruct-timer "Self destruct in")))
   (telega-chatbuf-attach-video filename tl-ttl))
 
 (defun telega-chatbuf-attach-audio (filename)
@@ -5920,17 +5927,19 @@ record video notes."
          (i-filename (plist-get ifile :path))
          (frame1 (plist-get telega-vvnote-video--preview :first-frame)))
     (telega-chatbuf-input-insert
-     (nconc
-      (list :@type "inputMessageVideoNote"
-            :duration (round (telega-ffplay-get-duration i-filename))
-            :length 240
-            :video_note ifile)
-      (when frame1
-        `(:thumbnail
-          (:@type "inputThumbnail"
-                  :thumbnail (:@type "inputFileLocal" :path ,frame1)
-                  :width 240
-                  :height 240)))))))
+     (list :@type "inputMessageVideoNote"
+           :video_note
+           (nconc
+            (list :@type "inputVideoNote"
+                  :video_note ifile
+                  :duration (round (telega-ffplay-get-duration i-filename))
+                  :length 240)
+            (when frame1
+              `(:thumbnail
+                (:@type "inputThumbnail"
+                        :thumbnail (:@type "inputFileLocal" :path ,frame1)
+                        :width 240
+                        :height 240))))))))
 
 (defun telega-chatbuf-attach-voice-note (as-file-p)
   "Attach a voice note to the chatbuf input.
@@ -5951,9 +5960,11 @@ voice-note.  Otherwise record voice note inplace.
          (i-filename (plist-get ifile :path)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageVoiceNote"
-           :waveform (telega-vvnote--waveform-for-file i-filename)
-           :duration (round (telega-ffplay-get-duration i-filename))
-           :voice_note ifile))))
+           :voice_note
+           (list :@type "inputVoiceNote"
+                 :voice_note ifile
+                 :duration (round (telega-ffplay-get-duration i-filename))
+                 :waveform (telega-vvnote--waveform-for-file i-filename))))))
 
 (defun telega-chatbuf--yank-media (mime-type data &optional doc-p)
   "Handler for the `yank-media' command."
@@ -6418,10 +6429,9 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
        telega-chatbuf--chat
        (list :@type "draftMessage"
              :reply_to (telega-chatbuf-replying-imr)
-             :input_message_text
-             (list :@type "inputMessageText"
-                   :text (telega-string-fmt-text
-                          (telega-chatbuf-input-string)))))))
+             :content (list :@type "draftMessageContentText"
+                            :text (telega-string-fmt-text
+                                   (telega-chatbuf-input-string)))))))
 
   (telega-chatbuf--history-state-set
    :newer-freezed
@@ -6565,30 +6575,37 @@ Return non-nil if message MSG has been redisplayed."
 
 (defun telega-chatbuf--input-text-quote ()
   "Return TL inputTextQuote from currently selected region."
-  (when (and (region-active-p)
-             (when-let ((msg (telega-msg-at)))
-               ;; 1. Check message has some text to work with
-               ;; 2. Check region spans on the same message
-               (and (telega-msg-content-text msg)
-                    (eq msg (telega-msg-at (region-beginning)))
-                    (eq msg (telega-msg-at (region-end))))))
+  (when-let* (((region-active-p))
+              (msg (telega-msg-at))
+              (raw-msg-content-text
+               (or (telega--tl-get msg :content :text)
+                   (telega--tl-get msg :content :caption)))
+              ((eq msg (telega-msg-at (region-beginning))))
+              ((eq msg (telega-msg-at (region-end))))
+              (content-begin
+               (save-excursion
+                 (telega-chatbuf--goto-msg-content 0)))
+              (quote-position
+               (telega-string-fmt-text-length
+                (buffer-substring content-begin (region-beginning))))
+              (quote-length
+               (telega-string-fmt-text-length
+                (buffer-substring (region-beginning) (region-end)))))
     ;; NOTE: Check reply quote limits first, to avoid "400: Message is
     ;; too long" errors
     (when-let ((quote-limit
                 (plist-get telega--options :message_reply_quote_length_max)))
-      (when (> (- (region-end) (region-beginning)) quote-limit)
+      (when (> quote-length quote-limit)
         (user-error "telega: %s (limit=%d)"
                     (telega-i18n "lng_reply_quote_long_text")
                     quote-limit)))
     (prog1
         (list :@type "inputTextQuote"
-              :text (telega-string-fmt-text
-                     (buffer-substring (region-beginning) (region-end)))
-              :position (if-let ((content-begin
-                                  (save-excursion
-                                    (telega-chatbuf--goto-msg-content 0))))
-                            (- (region-beginning) content-begin)
-                          0))
+              :text (telega-fmt-text-desurrogate
+                     (telega-fmt-text-substring
+                      raw-msg-content-text quote-position
+                      (+ quote-position quote-length)))
+              :position quote-position)
       (deactivate-mark))))
 
 (defun telega-msg-reply (msg &optional other-chat-p input-quote)
@@ -6710,7 +6727,7 @@ use for editing.  For example `C-u RET' will use
     (telega-help-message--cancel-aux 'edit)))
 
 (defun telega-chatbuf-attach-fwd-msg (msg &optional send-copy-p rm-cap-p)
-  "Attach MSG as foward message into chatbuf's input."
+  "Attach MSG as forward message into chatbuf's input."
   (telega-chatbuf-input-insert
    (list :@type "telegaForwardMessage"
          :message msg
@@ -6925,7 +6942,7 @@ To be used in the `telega-chat-input-complete-functions'."
                            'bot-user))
           (setq telega-chatbuf--inline-bot-plist
                 (list :bot-user bot-user)))
-        
+
         (when-let ((bot-type (plist-get bot-user :type))
                    ((plist-get bot-type :is_inline)))
           ;; Start querying the bot
@@ -7535,7 +7552,7 @@ sent by some chat member, member name is queried."
 
 (defun telega-chatbuf-filter-cancel (&optional topic-cancel-p)
   "Cancel current messages filtering.
-If point is at some message, then keep point on this message after reseting.
+If point is at some message, then keep point on this message after resetting.
 If `\\[universal-argument]' is given, then cancel topic filtering as well."
   (interactive "P")
   (when (or telega-chatbuf--msg-filter
@@ -7659,7 +7676,7 @@ non-interactive use cases only."
       (cond ((or (plist-get telega-chatbuf--msg-filter :saved-messages-tag)
                  (telega-topic-match-p telega-chatbuf--topic '(type sm)))
              (when tl-msg-filter
-               (user-error "telega: Can't seach for %s in Saved Messages tags"
+               (user-error "telega: Can't search for %s in Saved Messages tags"
                            (plist-get isearch-filter :title)))
              (when by-sender
                (user-error

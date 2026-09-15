@@ -282,6 +282,64 @@ Have Stoploss 690 Satoshi." :entities []))))
         (button-activate button)
         (should (= (point) target))))))
 
+(ert-deftest telega-vvnote-tdlib-1.8.66-input-file ()
+  "Voice and video note attachments keep their file inside a wrapper."
+  (let ((ifile '(:@type "inputFileLocal" :path "/tmp/note.mp4")))
+    (should (equal ifile
+                   (telega-chatbuf--input-imc-file
+                    `(:@type "inputMessageVoiceNote"
+                             :voice_note (:@type "inputVoiceNote"
+                                                 :voice_note ,ifile
+                                                 :duration 3
+                                                 :waveform "AAAA")))))
+    (should (equal ifile
+                   (telega-chatbuf--input-imc-file
+                    `(:@type "inputMessageVideoNote"
+                             :video_note (:@type "inputVideoNote"
+                                                 :video_note ,ifile
+                                                 :duration 3
+                                                 :length 240)))))))
+
+(ert-deftest telega-vvnote-tdlib-1.8.66-one-line ()
+  "Input line reads a wrapped attachment, and a draft converted into one."
+  (let ((telega-use-images nil))
+    (cl-flet ((one-line (imc)
+                (with-temp-buffer
+                  (telega-ins--input-content-one-line imc)
+                  (buffer-substring-no-properties (point-min) (point-max))))
+              (draft-line (draft-content)
+                (with-temp-buffer
+                  (telega-ins--draft-content-one-line draft-content)
+                  (buffer-substring-no-properties (point-min) (point-max)))))
+      (should (string-match-p
+               "VoiceNote.*(3s)"
+               (one-line '(:@type "inputMessageVoiceNote"
+                                  :voice_note (:@type "inputVoiceNote"
+                                                      :voice_note (:@type "inputFileLocal"
+                                                                          :path "/tmp/note.mp4")
+                                                      :duration 3
+                                                      :waveform "AAAA")))))
+      (should (string-match-p
+               "VideoNote.*(9s)"
+               (one-line '(:@type "inputMessageVideoNote"
+                                  :video_note (:@type "inputVideoNote"
+                                                      :video_note (:@type "inputFileLocal"
+                                                                          :path "/tmp/note.mp4")
+                                                      :duration 9
+                                                      :length 240)))))
+      ;; A draft keeps these fields flat, and is rendered by the same function
+      ;; after `telega-ins--draft-content-one-line' has nested them.
+      (should (string-match-p
+               "VoiceNote.*(7s)"
+               (draft-line '(:@type "draftMessageContentVoiceNote"
+                                    :file_path "/tmp/note.mp4"
+                                    :duration 7 :waveform "AAAA"))))
+      (should (string-match-p
+               "VideoNote.*(11s)"
+               (draft-line '(:@type "draftMessageContentVideoNote"
+                                    :file_path "/tmp/note.mp4"
+                                    :duration 11 :length 240)))))))
+
 (ert-deftest telega-box-button-content-metrics ()
   (let (line-heights)
     (cl-letf (((symbol-function 'get-buffer-window)
@@ -495,6 +553,34 @@ Have Stoploss 690 Satoshi." :entities []))))
           (should (equal (nth 2 capf)
                          '(":rocket:"))))))))
 
+(ert-deftest telega-capf-ignores-history-before-input ()
+  "CAPFs should return nil when point precedes the chat input."
+  (with-temp-buffer
+    (insert " :rocket")
+    (let ((history-end (point)))
+      (insert "\n> ")
+      (setq-local telega-chatbuf--input-marker (point-marker))
+      (goto-char history-end)
+      (cl-letf (((symbol-function 'telega-emoji-init) #'ignore))
+        (should-not (telega-capf-emoji)))))
+  (with-temp-buffer
+    (insert "/help")
+    (let ((history-end (point)))
+      (insert "\n")
+      (setq-local telega-chatbuf--input-marker (point-marker))
+      (goto-char history-end)
+      (should-not (telega-capf-botcmd)))))
+
+(ert-deftest telega-supergroup-chat-id ()
+  "Chat id is TDLib's ZERO_CHANNEL_ID minus the supergroup id."
+  ;; Ten digit ids, where appending to \"-100\" happens to give the same answer.
+  (should (= -1001234567890 (telega-chat--id-by-supergroup-id 1234567890)))
+  (should (= -1009876543210 (telega-chat--id-by-supergroup-id 9876543210)))
+  ;; Ids of any other length, where it does not.  Telegram issues supergroup
+  ;; ids past ZERO_CHANNEL_ID's magnitude nowadays.
+  (should (= -2000000000000 (telega-chat--id-by-supergroup-id 1000000000000)))
+  (should (= -1000001234567 (telega-chat--id-by-supergroup-id 1234567))))
+
 (ert-deftest telega-bot-chat-with-topics-is-forum ()
   "Bot chats with topics enabled should reuse forum topic support."
   (let* ((bot-id 90901)
@@ -514,6 +600,31 @@ Have Stoploss 690 Satoshi." :entities []))))
           (should (telega-chat-match-p bot-chat 'is-forum)))
       (remhash bot-id users-ht)
       (remhash chat-id telega--chats))))
+
+(ert-deftest telega-topic-ensure-returns-cached-topic ()
+  "Ensuring a known topic returns the cached object, not the fresh one.
+Callers keep the result and compare topics with `eq', so handing back the
+argument would leave them holding an object the cache does not use."
+  (let* ((chat-id -1001)
+         (topic-id 7)
+         (chat `(:@type "chat" :id ,chat-id))
+         (make-topic
+          (lambda (unread)
+            `(:@type "forumTopic"
+                     :info (:@type "forumTopicInfo"
+                                   :chat_id ,chat-id
+                                   :forum_topic_id ,topic-id)
+                     :unread_count ,unread))))
+    (unwind-protect
+        (cl-letf (((symbol-function 'telega-chat--forum-topics-icons-fetch)
+                   #'ignore))
+          (let* ((cached (telega-topic--ensure (funcall make-topic 1) chat))
+                 (again (telega-topic--ensure (funcall make-topic 9) chat)))
+            (should (eq cached (telega-topic-get chat topic-id)))
+            (should (eq again cached))
+            ;; The fresh data still lands in the cached object.
+            (should (= 9 (plist-get cached :unread_count)))))
+      (remhash chat-id telega--chat-topics))))
 
 (ert-deftest telega-msg-open-thread-or-topic-fetches-forum-topic ()
   "Opening a forum topic message should fetch missing topic info."

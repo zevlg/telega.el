@@ -100,7 +100,7 @@ only for code larger then this number of chars."
 ;; - {{{user-option(telega-mnz-edit-display-buffer-action, 2)}}}
 (defcustom telega-mnz-edit-display-buffer-action
   '((display-buffer-below-selected))
-  "Action value when poping to code edit buffer.
+  "Action value when popping to code edit buffer.
 See docstring for `display-buffer' for the value meaning."
   :type (get 'display-buffer-alist 'custom-type)
   :group 'telega-modes)
@@ -286,7 +286,7 @@ language-detection is used in this case, used for
     ))
 
 (defun telega-mnz--text-entity-apply (ent &optional object)
-  "Highligh OBJECT in case of code block with defined language."
+  "Highlight OBJECT in case of code block with defined language."
   (when (and object
              (memq (telega--tl-type (plist-get ent :type))
                    telega-mnz-entity-types)

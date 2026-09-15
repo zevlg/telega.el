@@ -36,6 +36,7 @@
 (defvar ido-matches)
 (defvar ivy--index)
 (defvar ivy--old-cands)
+(declare-function vertico--candidate "vertico" (&optional hl))
 
 (declare-function telega-chatbuf-sticker-insert "telega-chat" (sticker))
 (declare-function telega-chatbuf-animation-insert "telega-chat" (animation))
@@ -68,7 +69,7 @@ Thumbnail is a smaller (and faster) version of sticker image.")
   'keymap telega-sticker-button-map)
 
 (defun telega-sticker-at (&optional pos)
-  "Retur sticker at POS."
+  "Return sticker at POS."
   (let ((button (button-at (or pos (point)))))
     (when (and button (eq (button-type button) 'telega-sticker))
       (button-get button :value))))
@@ -429,9 +430,12 @@ Return path to png file."
 
       ;; Start downloading sticker/thumbnail, and fallback to
       ;; downloading progress image
-      (seq-doseq (file (list tfile sfile))
-        (unless (telega-file--downloading-p file)
-          (telega-file--download file
+      (let ((sticker-file (if (or telega-sticker--use-thumbnail
+                                  (not (telega-sticker-static-p sticker)))
+                              tfile
+                            sfile)))
+        (unless (telega-file--downloading-p sticker-file)
+          (telega-file--download sticker-file
             :priority 32
             :update-callback
             (lambda (dfile)
@@ -964,7 +968,7 @@ Install from https://github.com/zevlg/tgs2png"))
   :inserter 'telega-ins--animation-image)
 
 (defun telega-animation-at (&optional pos)
-  "Retur sticker at POS."
+  "Return sticker at POS."
   (let ((button (button-at (or pos (point)))))
     (when (and button (eq (button-type button) 'telega-animation))
       (button-get button :value))))

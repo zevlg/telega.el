@@ -127,7 +127,7 @@ Otherwise query user about building flags."
     (unless (file-exists-p (expand-file-name "include/td/telegram/td_json_client.h"
                                              telega-server-libs-prefix))
       (user-error "TDLib is not installed into \"%s\". \
-Set `telega-server-libs-prefix' to the TDLib installion path"
+Set `telega-server-libs-prefix' to the TDLib installation path"
                   telega-server-libs-prefix))
     (message "Telega: building telega-server...")
     (let ((default-directory telega--lib-directory))
@@ -293,7 +293,9 @@ Return parsed command."
                    (telega-tl-error-equal value 404)
 
                    ;; Proxy errors
-                   (telega-tl-error-equal value 400)
+                   (telega-tl-error-equal value 400 "Network is unreachable")
+                   (telega-tl-error-equal value 400 "Connection timeout expired")
+                   (telega-tl-error-equal value 400 "Pong timeout expired")
 
                    ;; 400 - Special case for `downloadFile' to alsways
                    ;; call it's callback in order to delete update
@@ -330,7 +332,7 @@ Return parsed command."
   ;; used in the `(telega-time-seconds)' calls to adjust time to
   ;; match time on Telegram server side.  Also take into account
   ;; time used to accomplish request.
-  ;; 
+  ;;
   ;; We do sync while idle to prevent local clock drift, see
   ;; https://github.com/tdlib/td/issues/1681
   (when (plist-get telega-tdlib--unix-time :need-update)

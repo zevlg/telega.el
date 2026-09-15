@@ -138,9 +138,12 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
          ;; NOTE: Folders always active
          (active-p (or (telega-filter--folder-p filter) (not (null chats))))
          (nchats (length chats))
-         (unread (apply #'+ (mapcar (telega--tl-prop :unread_count) chats)))
-         (mentions (apply #'+ (mapcar
-                               (telega--tl-prop :unread_mention_count) chats)))
+         ;; NOTE: sum in place, `mapcar' allocated a list per button per
+         ;; redisplay.  See https://github.com/zevlg/telega.el/pull/599
+         (unread (cl-loop for chat in chats
+                          sum (plist-get chat :unread_count)))
+         (mentions (cl-loop for chat in chats
+                            sum (plist-get chat :unread_mention_count)))
          (umstring
           (telega-ins--as-string
            (telega-ins--with-attrs (list :max 7
@@ -607,7 +610,7 @@ Do not add FSPEC if it is already in the list."
   "Match chats in CHAT-LIST against CHAT-TEMEX.
 Return list of chats matching CHAT-TEMEX.
 Return only chats with non-0 order.
-If CHAT-TEMEX is ommited, then active chat filter from
+If CHAT-TEMEX is omitted, then active chat filter from
 `telega--filters' is used as CHAT-TEMEX."
   (declare (indent 1))
   (unless chat-temex

@@ -49,18 +49,20 @@ DIRTINESS specifies additional CHAT dirtiness."
     (when dirtiness
       (plist-put chat :telega-dirtiness chat-dirtiness)))
 
-  ;; Update root ewocs, filters and chatbuf
-  (telega-root-view--update :on-chat-update chat)
-  (telega-filters--chat-update chat)
-  (with-telega-chatbuf chat
-    (telega-chatbuf--chat-update))
+  (unwind-protect
+      (progn
+        ;; Update root ewocs, filters and chatbuf
+        (telega-root-view--update :on-chat-update chat)
+        (telega-filters--chat-update chat)
+        (with-telega-chatbuf chat
+          (telega-chatbuf--chat-update))
 
-  (telega-describe-chat--maybe-redisplay chat)
+        (telega-describe-chat--maybe-redisplay chat)
 
-  (run-hook-with-args 'telega-chat-update-hook chat)
+        (run-hook-with-args 'telega-chat-update-hook chat))
 
-  ;; Finally chat has been updated
-  (plist-put chat :telega-dirtiness nil))
+    ;; Finally chat has been updated
+    (plist-put chat :telega-dirtiness nil)))
 
 (defun telega-chat--mark-dirty (chat &optional event)
   "Mark CHAT as dirty by EVENT."
@@ -1190,7 +1192,7 @@ messages."
     ;; Check number of the admins has been changed, it might be not up
     ;; to date, see https://github.com/tdlib/td/issues/1040
     (when-let ((chat (telega-chat-get
-                      (string-to-number (format "-100%d" supergroup-id))
+                      (telega-chat--id-by-supergroup-id supergroup-id)
                       'offline)))
       ;; TODO: Might affect root's buffer view
       ;; NOTE: chatbuf might need to be updated, since for example
@@ -1808,7 +1810,7 @@ For Saved Messages and channel direct messages chat topics only."
   (telega-describe-quick-replies--maybe-redisplay))
 
 (defun telega--on-updateQuickReplyShortcutDeleted (event)
-  "Qick reply has been deleted."
+  "Quick reply has been deleted."
   (setq telega--quick-replies
         (cl-remove (plist-get event :shortcut_id) telega--quick-replies
                    :key (telega--tl-prop :id)))

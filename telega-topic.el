@@ -168,13 +168,17 @@
       telega-topic-brackets))
 
 (defun telega-topic--ensure (topic &optional chat)
-  "Ensure TOPIC for CHAT is stored in the `telega--chat-topics'."
+  "Ensure TOPIC for CHAT is stored in the `telega--chat-topics'.
+Return the stored topic, which for an already known topic is the object
+in the cache rather than TOPIC."
   (unless chat
     (setq chat (telega-topic-chat topic)))
 
   (if-let ((existing-topic (telega-topic-get chat (telega-topic-id topic))))
       ;; Update topic inplace
-      (setcdr existing-topic (cdr topic))
+      (progn
+        (setcdr existing-topic (cdr topic))
+        (setq topic existing-topic))
     (setf (alist-get (telega-topic-id topic) (telega-chat-topics-alist chat))
           topic))
 

@@ -121,7 +121,7 @@ telega-tdlib-releases)) "#+begin_src shell\n$ brew install
 tdlib\n#+end_src" "#+begin_src shell\n$ brew install tdlib
 --HEAD\n#+end_src"), t)}}}
 
-On Linux, you will need to build =TDLib= from source.  Use 
+On Linux, you will need to build =TDLib= from source.  Use
 [[https://tdlib.github.io/td/build.html][TDLib build instructions generator]] for comprehensive build
 instructions.
 
@@ -675,7 +675,7 @@ Markup syntax table:
 | [[http://t.me/user][name]]             | ~[name](tg://user?id=<USER-ID>)~ | ~[[tg://user?id=<USER-ID>][name]]~ | ~[name](tg://user?id=<USER-ID>)~ |
 
 There is also "markdown1" syntax to insert multiline code blocks of
-specified languge:
+specified language:
 #+begin_example
 ```<language-name>
 first line of multiline preformatted code
@@ -827,7 +827,7 @@ You can navigate your previous chatbuf input using commands:
 It is possible to complete chatbuf's input with
 {{{where-is(telega-chatbuf-complete-or-next-link,telega-chat-mode-map)}}}.
 
-You can use standard Emacs ~capf~ (completion at point) or advanced 
+You can use standard Emacs ~capf~ (completion at point) or advanced
 [[#telega-company][telega-company]].
 
 To enable ~capf~ completions use:
@@ -990,7 +990,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 #+begin_example
-[⏪] [⏩] [2×] [Stop] 
+[⏪] [⏩] [2×] [Stop]
 #+end_example
 
 For fast access to media controls you can you next bindings:
@@ -1199,7 +1199,7 @@ backtrace buffer.  Report this backtrace to github issues or to the
 stickers, like on the screenshot:
 [[file:https:/zevlg.github.io/telega/bad-stickers.jpg]]
 
-**A**: If your Emacs does not have bultin WEBP format
+**A**: If your Emacs does not have builtin WEBP format
 support. =telega= will use =dwebp= tool to convert stickers from WEBP
 format to the format supported by your Emacs.  See [[#stickers--animations][Stickers /
 Animations]] for details.  So, make sure =dwebp= tool is available on

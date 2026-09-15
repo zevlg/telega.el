@@ -245,7 +245,7 @@ Also matches if TEMEX-LIST is empty."
 ;; - (search ~QUERY~), {{{where-is(telega-filter-by-search,telega-root-mode-map)}}} ::
 ;;   {{{temexdoc(chat, search, 2)}}}
 (define-telega-matcher chat search (chat _query)
-  "Matches if chat maches search QUERY."
+  "Matches if chat matches search QUERY."
   (memq chat telega--search-chats))
 
 ;;; ellit-org: chat-temex

@@ -1351,7 +1351,7 @@ TDLib 1.8.12:
                          :is_current_phone_number :false))))
 
 (defun telega--checkAuthenticationPassword (password)
-  "Check the PASSWORD for the 2-factor authentification."
+  "Check the PASSWORD for the 2-factor authentication."
   (telega-server--send
    (list :@type "checkAuthenticationPassword"
          :password password)))
@@ -1508,7 +1508,7 @@ by 86400."
 
 (defun telega--setChatDraftMessage (chat &optional draft-msg)
   "Set CHAT's draft message to DRAFT-MSG.
-If DRAFT-MSG is ommited, then clear draft message."
+If DRAFT-MSG is omitted, then clear draft message."
   (telega-server--send
    (nconc (list :@type "setChatDraftMessage"
                 :chat_id (plist-get chat :id)
@@ -1784,7 +1784,7 @@ PRIORITY is same as for `telega-file--download'."
                                     options &key reply-markup callback sync-p)
   "Send the message content represented by IMC to CHAT.
 If CALLBACK is specified, then call it with one argument - new
-message uppon message is created."
+message upon message is created."
   ;; We catch new message with `telega--on-updateNewMessage', so
   ;; ignore result returned from `sendMessage'
   (telega-server--call
@@ -1805,7 +1805,7 @@ message uppon message is created."
                                          options &key callback sync-p)
   "Send IMCS as media album.
 If CALLBACK is specified, then call it with one argument - new
-message uppon message is created."
+message upon message is created."
   (telega-server--call
    (nconc (list :@type "sendMessageAlbum"
                 :chat_id (plist-get chat :id)
@@ -1834,7 +1834,7 @@ PARAM is additional parameter for deep linking."
                                                      options &key callback sync-p)
   "Send IMC as inline query result from bot.
 If CALLBACK is specified, then call it with one argument - new
-message uppon message is created."
+message upon message is created."
   (telega-server--call
    (nconc (list :@type "sendInlineQueryResultMessage"
                 :chat_id (plist-get chat :id)
@@ -2207,7 +2207,7 @@ Return error if all chats are loaded."
    callback))
 
 (defun telega--getChats (chat-list &optional callback)
-  "Retreive all chats from the server in async manner.
+  "Retrieve all chats from the server in async manner.
 OFFSET-CHAT is the chat to start getting chats from."
   (declare (indent 1))
   (with-telega-server-reply (reply)
@@ -2344,7 +2344,7 @@ be marked as read."
          :chat_list tdlib-chat-list)))
 
 (defun telega--toggleChatHasProtectedContent (chat has-protected-content-p)
-  "Toogle ability of users to save, forward, or copy CHAT content."
+  "Toggle ability of users to save, forward, or copy CHAT content."
   (telega-server--send
    (list :@type "toggleChatHasProtectedContent"
          :chat_id (plist-get chat :id)
@@ -2481,7 +2481,7 @@ If OPTION-IDS is not specified, then retract the voice."
          :protocol telega-voip-protocol)))
 
 (defun telega--acceptCall (call-id)
-  "Accept incomming call, defined by CALL-ID."
+  "Accept incoming call, defined by CALL-ID."
   (telega-server--call
    (list :@type "acceptCall"
          :call_id call-id
@@ -2513,7 +2513,7 @@ Return FoundMessages TL structure."
 
 (cl-defun telega--searchPublicPosts (query &key offset (limit 100) star-count
                                            callback)
-  "Searche for public channel posts using the given QUERY.
+  "Search for public channel posts using the given QUERY.
 Return FoundPublicPosts."
   (declare (indent 1))
   (telega-server--call
@@ -3797,7 +3797,7 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
    callback))
 
 (defun telega--searchChatAffiliateProgram (username referrer &optional callback)
-  "Searche a chat with an affiliate program."
+  "Search a chat with an affiliate program."
   (declare (indent 2))
   (with-telega-server-reply (reply)
       (telega-chat-get (plist-get reply :id))

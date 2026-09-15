@@ -201,7 +201,7 @@ If DEFAULT-VALUE is not specified, then nil is used."
      (telega-ins--chat chat))))
 
 (transient-define-argument telega-transient--infix-fwd-chats ()
-  "List of chats to forward messges to."
+  "List of chats to forward messages to."
   :description (lambda () (telega-i18n "lng_recent_chats"))
   :class 'telega-transient--chats
   :format " %k %d%v"
@@ -550,7 +550,7 @@ If DEFAULT-VALUE is not specified, then nil is used."
   (interactive (list (telega-transient-scope)))
   (cl-ecase (telega--tl-type topic)
     (forumTopic
-     (telega--deleteForumTopic 
+     (telega--deleteForumTopic
       (telega-topic-chat topic) topic))
     (directMessagesChatTopic
      (telega--deleteDirectMessagesChatTopicHistory
@@ -1521,7 +1521,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
   (telega-msg-summarize msg nil (telega-transient--translate-ai-tone)))
 
 (transient-define-suffix telega-transient--suffix-summarize-translate (msg)
-  :description 
+  :description
   (lambda ()
     (telega-ins--as-string
      (telega-ins (telega-i18n "lng_summarize_header_title")
@@ -1576,7 +1576,7 @@ Return first applicable imc."
         'inputMessageVoiceNote)))
 
 (defun telega-transient--input-options-can-spoiler-p ()
-  "Retrun non-nil if spoiler is applicable."
+  "Return non-nil if spoiler is applicable."
   (telega-transient--input-option-applicable-p
    'inputMessageAnimation
    'inputMessagePhoto
@@ -1640,7 +1640,7 @@ Return first applicable imc."
 (transient-define-prefix telega-transient-chatbuf-input-options (attaches)
   "Edit chatbuf input options before sending message."
   [
-   ["Media Options"             
+   ["Media Options"
     ("s" telega-transient--infix-input-option-spoiler)
     ("d" telega-transient--infix-input-option-self-destruct)
     ]

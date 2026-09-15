@@ -505,6 +505,7 @@ Handles repeated leading CHARs (e.g. @@).  Returns nil if not applicable."
 (defun telega-capf--botcmd-bounds ()
   "Return (START . END) if point is in a /command at start of chatbuf input."
   (when (and telega-chatbuf--input-marker
+             (>= (point) telega-chatbuf--input-marker)
              (save-excursion
                (re-search-backward "/[^ ]*" telega-chatbuf--input-marker t))
              (= (match-beginning 0) telega-chatbuf--input-marker))
@@ -516,22 +517,23 @@ Non-nil ALLOW-SPACES-P allows spaces for the closed (having trailing
 colon) emoji."
   (let ((end (point))
         (bound (or bound (1- telega-chatbuf--input-marker))))
-    (save-excursion
-      ;; NOTE: rx in emacs-28 does not support `space'
-      ;; as character set, thats why we don't use rx
-      (when (and (or (re-search-backward
-                      ;;  (rx (or bol space) (group
-                      ;;   ":" (1+ (not (or space ":"))) (? ":")))
-                      "\\(?:^\\|[[:space:]]\\)\\(:[^:[:space:]]+:?\\)"
-                      bound 'no-error)
-                     ;; Try closed emoji if spaces allowed
-                     (and allow-spaces-p
-                          (re-search-backward
-                           ;; (rx (or bol space) (group ":" (1+ (not ":"))) ":")
-                           "\\(?:^\\|[[:space:]]\\)\\(:[^:]+\\):"
-                           bound 'no-error)))
-                 (equal end (match-end 0)))
-        (cons (match-beginning 1) end)))))
+    (when (<= bound end)
+      (save-excursion
+        ;; NOTE: rx in emacs-28 does not support `space'
+        ;; as character set, thats why we don't use rx
+        (when (and (or (re-search-backward
+                        ;;  (rx (or bol space) (group
+                        ;;   ":" (1+ (not (or space ":"))) (? ":")))
+                        "\\(?:^\\|[[:space:]]\\)\\(:[^:[:space:]]+:?\\)"
+                        bound 'no-error)
+                       ;; Try closed emoji if spaces allowed
+                       (and allow-spaces-p
+                            (re-search-backward
+                             ;; (rx (or bol space) (group ":" (1+ (not ":"))) ":")
+                             "\\(?:^\\|[[:space:]]\\)\\(:[^:]+\\):"
+                             bound 'no-error)))
+                   (equal end (match-end 0)))
+          (cons (match-beginning 1) end))))))
 
 ;;; CAPF: local emoji (:<name>:)
 (defun telega-capf-emoji ()
