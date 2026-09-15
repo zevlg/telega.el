@@ -371,16 +371,19 @@ Have Stoploss 690 Satoshi." :entities []))))
   (let ((calls 0)
         body-point
         (telega-use-images nil))
-    (with-temp-buffer
-      (telega-ins--with-style (telega-box-button-style 'reaction)
-        (cl-incf calls)
-        (setq body-point (point))
-        (telega-ins "x"))
-      (should (= calls 1))
-      (should (= body-point 2))
-      (should (equal (buffer-string) "(x)"))))
+    (cl-letf (((symbol-function 'telega-box-button--content-metrics)
+               (lambda (_content) (ert-fail "Text buttons need no metrics"))))
+      (with-temp-buffer
+        (telega-ins--with-style (telega-box-button-style 'reaction)
+          (cl-incf calls)
+          (setq body-point (point))
+          (telega-ins "x"))
+        (should (= calls 1))
+        (should (= body-point 2))
+        (should (equal (buffer-string) "(x)")))))
 
   (let ((telega-use-images t)
+        (measurements 0)
         measured-content)
     (cl-letf (((symbol-function 'telega-ins--image)
                (lambda (image &optional _slice-num &rest _props)
@@ -388,45 +391,39 @@ Have Stoploss 690 Satoshi." :entities []))))
                    (telega-ins
                     (plist-get (cdr image) :telega-text))
                    (put-text-property start (point) 'display image))))
-              ((symbol-function 'telega-box-button--bracket-image)
-               (lambda (_style bracket-prop &optional _spec content)
-                 (when content
-                   (setq measured-content content))
-                 (list 'image
-                       :type 'svg
-                       :data ""
-                       :telega-text
-                       (if (eq bracket-prop :left-bracket) "(" ")")
-                       :height (if content 2 1)))))
+              ((symbol-function 'telega-box-button--content-metrics)
+               (lambda (content)
+                 (cl-incf measurements)
+                 (setq measured-content content)
+                 '(2 . 80))))
       (with-temp-buffer
         (telega-ins "prefix ")
         (let ((button-start (point)))
           (telega-ins--with-style (telega-box-button-style 'reaction)
             (telega-ins "x"))
-          (should (= (plist-get
-                      (cdr (get-text-property button-start 'display))
-                      :height)
-                     2)))
-        (should (= (plist-get
-                    (cdr (get-text-property (1- (point-max)) 'display))
-                    :height)
-                   2))
-        (should (string-prefix-p "prefix " measured-content))))))
+          (let ((left (get-text-property button-start 'display))
+                (right (get-text-property (1- (point-max)) 'display)))
+            (dolist (image (list left right))
+              (should (equal (plist-get (cdr image) :height)
+                             (telega-ch-height 2)))
+              (should (= (plist-get (cdr image) :ascent) 80)))))
+        (should (= measurements 1))
+        (should (equal (substring-no-properties measured-content)
+                       "prefix x"))))))
 
 (ert-deftest telega-box-button-bracket-metrics ()
   (cl-letf (((symbol-function 'telega-chars-xwidth)
              (lambda (n) (* n 10)))
             ((symbol-function 'telega-chars-xheight)
              (lambda (n) (ceiling (* n 16))))
-            ((symbol-function 'telega-box-button--content-metrics)
-             (lambda (_content) '(1.5 . 80)))
             ((symbol-function 'telega-emoji--image-cache-get)
              (lambda (&rest _args) nil))
             ((symbol-function 'telega-emoji--image-cache-put)
              (lambda (_key _scale image) image)))
     (let ((default-image
            (telega-box-button--bracket-image
-            (telega-box-button-style 'default) :left-bracket)))
+            (telega-box-button-style 'default)
+            :left-bracket nil '(1.5 . 80))))
       (should (equal (plist-get (cdr default-image) :height)
                      (telega-ch-height 1)))
       (should (eq (plist-get (cdr default-image) :ascent)
@@ -437,10 +434,17 @@ Have Stoploss 690 Satoshi." :entities []))))
                "<svg width=\"[^\"]+\" height=\"16\""
                (plist-get (cdr default-image) :data)))
       (dolist (style '(reaction telega-ui iv comments))
+        ;; Missing measurements (e.g. older Emacs) keep the fixed size.
+        (let ((fallback-image
+               (telega-box-button--bracket-image
+                (telega-box-button-style style) :left-bracket)))
+          (should (equal (plist-get (cdr fallback-image) :height)
+                         (telega-ch-height 1)))
+          (should (eq (plist-get (cdr fallback-image) :ascent) 'center)))
         (let ((content-image
                (telega-box-button--bracket-image
                 (telega-box-button-style style)
-                :left-bracket nil "emoji")))
+                :left-bracket nil '(1.5 . 80))))
           (should (equal (plist-get (cdr content-image) :height)
                          (telega-ch-height 1.5)))
           (should (= (plist-get (cdr content-image) :ascent) 80))

@@ -2433,11 +2433,12 @@ account."
                   (max 0 (min 100 (ceiling (* 100 (/ (float ascent) h1))))))))))))
 
 (defun telega-box-button--bracket-image (style bracket-prop
-                                               &optional bracket-spec content)
+                                               &optional bracket-spec metrics)
   "Generate bracket image for the STYLE and BRACKET-PROP.
 BRACKET-SPEC is a cons (TEXT . PROPS).  The `:height' property
 in PROPS specifies proportional image height in characters, or
-the symbol `content' to use rendered line metrics of CONTENT."
+the symbol `content' to use METRICS, a (HEIGHT . ASCENT) cons from
+`telega-box-button--content-metrics'.  Nil METRICS uses the default size."
   (when-let* ((bracket-spec
                (or bracket-spec
                    (telega-box-button--style-get style bracket-prop)))
@@ -2451,12 +2452,11 @@ the symbol `content' to use rendered line metrics of CONTENT."
            (outline-width (telega-box-button--style-outline-width style))
            (content-metrics
             (when (eq (plist-get bracket-props :height) 'content)
-              (telega-box-button--content-metrics content)))
-           (height (let ((hval (plist-get bracket-props :height)))
-                     (cond ((numberp hval) hval)
-                           ((eq hval 'content)
-                            (or (car content-metrics) 1))
-                           (t 1))))
+              metrics))
+           (height (or (car content-metrics)
+                       (let ((hval (plist-get bracket-props :height)))
+                         (when (numberp hval) hval))
+                       1))
            (ascent (or (cdr content-metrics) 'center))
            (left-p (eq bracket-prop :left-bracket))
            (icon-symbol (unless left-p
