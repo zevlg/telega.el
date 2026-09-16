@@ -1850,6 +1850,8 @@ Return first applicable imc."
   (transient-setup 'telega-transient-chatbuf-input-ai-compose nil nil
                    :scope (plist-get imc :text)))
 
+;; TODO: transient dialog for input poll
+
 
 ;;; ellit-org: minor-modes
 ;; ** telega-transient-keymaps-mode -- Use transient for telega keymaps

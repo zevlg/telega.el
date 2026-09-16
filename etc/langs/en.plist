@@ -626,6 +626,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "You cannot edit the rights of this admin.") ; :can_be_edited
  ("lng_rights_group_manage_calls"
   :value "Manage Video chats")
+ ("lng_rights_group_send_welcome_messages"
+  :value "Send Welcome Messages")
  ("lng_rights_group_anonymous"
   :value "Remain Anonymous")
  ("lng_rights_group_manage_ranks"

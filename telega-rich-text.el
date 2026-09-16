@@ -363,6 +363,9 @@
         (unless telega-rich-text--block-quote-p
           (add-text-properties (1- (point)) (point) '(line-height (1 1.25))))
         ))
+      (pageBlockExpandableBlockQuote
+       (telega-ins-from-newline
+        (telega-ins "<TODO: pageBlockExpandableBlockQuote>")))
       (pageBlockPullQuote
        (telega-ins-from-newline
         (telega-rich-text--ins-divider telega-webpage-fill-column)
@@ -384,6 +387,11 @@
       (pageBlockAudio
        (telega-rich-text--ins-block
         (telega-ins--audio nil (plist-get pb :audio))
+        (telega-ins-from-newline
+         (telega-rich-text--ins-pb (plist-get pb :caption)))))
+      (pageBlockDocument
+       (telega-rich-text--ins-block
+        (telega-ins--document nil (plist-get pb :document))
         (telega-ins-from-newline
          (telega-rich-text--ins-pb (plist-get pb :caption)))))
       (pageBlockPhoto
@@ -513,8 +521,35 @@
          (telega-rich-text--ins-rt (plist-get pb :text))
          (telega-ins-prefix " • "
            (telega-rich-text--ins-rt (plist-get pb :credit)))))
+      (pageBlockButtonRow
+       (telega-ins "<TODO: pageBlockButtonRow>"))
+      (pageBlockUnsupported
+       (telega-ins "<TODO: pageBlockUnsupported>"))
       )
     t))
+
+(defun telega-rich-text--ins-pb-one-line (pb &optional msg)
+  "One line inserter for page block PB."
+  (when pb
+    (telega-ins--one-lined
+     (cl-case (telega--tl-type pb)
+       (pageBlockPhoto
+        (if-let ((preview-img (telega-photo-preview--create-image-one-line
+                               (plist-get pb :photo)
+                               (when msg
+                                 (telega-msg-chat msg 'offline)))))
+            (telega-ins--image preview-img)
+          (telega-ins (telega-symbol 'photo)))
+        (telega-ins-prefix " "
+          (or (telega-rich-text--ins-pb (plist-get pb :caption))
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins-i18n "lng_in_dlg_photo")))))
+
+       ;; TODO: other media types
+
+       (t
+        (telega-rich-text--ins-pb pb msg)))
+     t)))
 
 (provide 'telega-rich-text)
 

@@ -5839,14 +5839,14 @@ This attachment can be used only in private chats."
          (resolution (telega-ffplay-get-resolution i-filename)))
     (telega-chatbuf-input-insert
      `(:@type "inputMessageVideo"
-              :video (:type "inputVideo"
-                            :video ,ifile
-                            :duration ,(round (telega-ffplay-get-duration
-                                               i-filename))
-                            :supports_streaming t
-                            ,@(when resolution
-                                (list :width (car resolution)
-                                      :height (cdr resolution))))
+              :video (:@type "inputVideo"
+                             :video ,ifile
+                             :duration ,(round (telega-ffplay-get-duration
+                                                i-filename))
+                             :supports_streaming t
+                             ,@(when resolution
+                                 (list :width (car resolution)
+                                       :height (cdr resolution))))
               ,@(when tl-ttl
                   (list :self_destruct_type tl-ttl))
               ,@(when spoiler-p
@@ -6194,10 +6194,15 @@ OPTIONS - List of strings representing poll options."
    (list :@type "inputMessagePoll"
          :question (telega-string-fmt-text question)
          :is_anonymous (if anonymous-p t :false)
-         :type (list :@type "pollTypeRegular"
+         :type (list :@type "inputPollTypeRegular"
                      :allow_multiple_answers
                      (if allow-multiple-answers-p t :false))
-         :options (apply #'vector (mapcar #'telega-string-fmt-text options)))))
+         :options (cl-map #'vector
+                          (lambda (opt)
+                            (list :@type "inputPollOption"
+                                  :text (telega-string-fmt-text opt)))
+                          options))
+   ))
 
 (defun telega-chatbuf-attach-checklist (title allow-add-p allow-done-p
                                               &rest tasks)

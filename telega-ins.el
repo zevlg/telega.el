@@ -4581,6 +4581,12 @@ If REMOVE-CAPTION is specified, then do not insert caption."
         (telega-ins--with-face 'telega-shadow
           (telega-ins (telega-symbol 'checklist) " "))
         (telega-ins--checklist-header (plist-get content :list)))
+       (messageRichMessage
+        ;; NOTE: insert only first block to avoid heavy insertions
+        (telega-ins--with-face 'telega-rich-text-face
+          (telega-rich-text--ins-pb-one-line
+           (seq-elt (telega--tl-get content :message :blocks) 0))))
+
        (t (telega-ins--content msg)))
      t)))
 

@@ -1356,15 +1356,15 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
        (propertize (telega-i18n "lng_scam_badge") 'face 'error))
      (when (plist-get v-status :is_fake)
        (propertize (telega-i18n "lng_fake_badge") 'face 'error))
-     (if (plist-get v-status :is_verified)
-         (telega-symbol 'verified)
-       (let ((v-custom-emoji-id
-              (plist-get v-status :bot_verification_icon_custom_emoji_id)))
-         (unless (telega-zerop v-custom-emoji-id)
-           (telega-symbol
-            'verified-by-bot
-            (when-let ((v-sticker (telega-custom-emoji-get v-custom-emoji-id)))
-              (telega-sticker--image v-sticker)))))))))
+     (cond ((plist-get v-status :is_verified)
+            (telega-symbol 'verified))
+           ((not (telega-zerop
+                  (plist-get v-status :bot_verification_icon_custom_emoji_id)))
+            (telega-symbol
+             'verified-by-bot
+             (telega-custom-emoji--image v-status
+               :prop-name :bot_verification_icon_custom_emoji_id)))
+           ))))
 
 (defun telega-msg-sender-title (msg-sender &rest args)
   "Return title for the message sender MSG-SENDER.

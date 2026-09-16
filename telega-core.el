@@ -139,6 +139,7 @@ Use FILENAME as is if resulting file does not exist."
 
     (:can_manage_direct_messages . "lng_rights_channel_manage_direct")
     (:can_manage_tags . "lng_rights_group_manage_ranks")
+    (:can_send_welcome_messages . "lng_rights_group_send_welcome_messages")
     (:is_anonymous . "lng_rights_group_anonymous")))
 
 (defconst telega-chat--admin-permissions-for-channels

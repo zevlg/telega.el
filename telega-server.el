@@ -188,8 +188,9 @@ Raise error if not found."
 
 (defun telega-server-version ()
   "Return telega-server version."
-  (let ((ts-usage (shell-command-to-string
-                   (telega-server--process-command "-h"))))
+  (let* ((default-directory telega--lib-directory)
+         (ts-usage (shell-command-to-string
+                    (telega-server--process-command "-h"))))
     (when (string-match "^Version \\([0-9.]+\\)" ts-usage)
       (match-string 1 ts-usage))))
 
@@ -432,19 +433,18 @@ Used to optimize events processing in the `telega-server--parse-commands'."
                   (cl-delete cmd-val parsed-commands
                              :test #'telega-server--commands-equal))))
     (dolist (cmd (nreverse parsed-commands))
-      ;; NOTE: make sure all commands are processed even if some
-      ;; triggers an error
+      ;; NOTE: make sure all commands are processed even if some of
+      ;; them triggers an error
       (condition-case-unless-debug nil
           (apply #'telega-server--dispatch-cmd cmd)
         (error
          (message "telega: Error while processing cmd %S" cmd))))
 
-    (if telega-server--idle-timer
-        (timer-set-time telega-server--idle-timer
-                        (time-add nil (/ telega-server-idle-delay 2)))
-      (setq telega-server--idle-timer
-            (run-with-timer telega-server-idle-delay nil
-                            #'telega-server--idle-timer-function)))
+    (when telega-server--idle-timer
+      (cancel-timer telega-server--idle-timer))
+    (setq telega-server--idle-timer
+          (run-with-timer telega-server-idle-delay nil
+                          #'telega-server--idle-timer-function))
     ))
 
 (defun telega-server--filter (proc output)
@@ -572,7 +572,6 @@ COMMAND is passed directly to `telega-server--send'."
    (erase-buffer)
    (insert (format "%s ---[ telega-server started\n" (current-time-string))))
 
-  ;;
   (let* ((process-connection-type nil)
          (process-adaptive-read-buffering nil)
          (telega-docker--cidfile

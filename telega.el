@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (transient "0.9.0"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.660
-(defconst telega-version "0.8.660")
+;; Version: 0.8.670
+(defconst telega-version "0.8.670")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.8.66")
 (defconst telega-tdlib-max-version nil)
@@ -221,8 +221,13 @@ If `\\[universal-argument]' is specified, then do not pop to root buffer."
       ;; default strings before entering rootbuf
       (let ((telega-language "en"))
         (telega-i18n-init))
-      (with-current-buffer (get-buffer-create telega-root-buffer-name)
-        (telega-root-mode))
+
+      ;; NOTE: Ensure `default-directory' is local, chats created from
+      ;; rootbuf inherits rootbuf's `default-directory'
+      ;; ref. https://github.com/zevlg/telega.el/issues/610
+      (let ((default-directory (expand-file-name "~/")))
+        (with-current-buffer (get-buffer-create telega-root-buffer-name)
+          (telega-root-mode)))
 
       (telega-server--ensure-build)
       (telega-server--start)

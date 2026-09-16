@@ -2736,7 +2736,7 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-forward (compose-chars ?🗩 ?🠒)
+(defcustom telega-symbol-forward "⮊"
   "Symbol used to display forwarding."
   :type 'string
   :group 'telega-symbol)
