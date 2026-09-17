@@ -291,6 +291,50 @@ Have Stoploss 690 Satoshi." :entities []))))
             (button-activate button)
             (should (equal opened-url "https://example.com"))))))))
 
+(ert-deftest telega-rich-message-spoilers ()
+  "Spoilers in paragraphs and tables reveal before following nested links."
+  (let* ((msg '(:@type "message" :chat_id -123 :id 456))
+         (spoiler '(:@type "richTextSpoiler"
+                    :text (:@type "richTexts"
+                            :texts [(:@type "richTextUrl" :url "https://example.com"
+                                     :text (:@type "richTextPlain" :text "Secret"))
+                                    (:@type "richTextPlain" :text " tail")])))
+         opened-url)
+    (cl-letf (((symbol-function 'telega-msg-redisplay) #'ignore)
+              ((symbol-function 'telega-browse-url)
+               (lambda (url &rest _) (setq opened-url url))))
+      (dolist (block (list (list :@type "pageBlockParagraph" :text spoiler)
+                          (list :@type "pageBlockTable" :is_bordered t
+                                :cells (vector (vector (list :text spoiler
+                                                             :colspan 1 :rowspan 1))))))
+        (with-temp-buffer
+          (cl-labels ((render ()
+                        (let ((inhibit-read-only t)
+                              (telega-msg--current msg))
+                          (erase-buffer)
+                          (telega-button--insert 'telega-msg msg
+                            :inserter (lambda (_msg)
+                                        (telega-rich-text--ins-pb block msg)))
+                          (goto-char (point-min)))))
+            (setq opened-url nil)
+            (render)
+            (should-not (string-match-p "Secret" (buffer-string)))
+            (let ((pos (text-property-any (point-min) (point-max)
+                                          :action #'telega-msg-text-spoiler-toggle)))
+              (should pos)
+              (button-activate (button-at pos)))
+            (should (plist-get msg :telega-text-spoiler-removed))
+            (should-not opened-url)
+            (render)
+            (search-forward "Secret")
+            (button-activate (button-at (1- (point))))
+            (should (equal opened-url "https://example.com"))
+            (search-forward "tail")
+            (button-activate (button-at (1- (point))))
+            (should-not (plist-get msg :telega-text-spoiler-removed))
+            (render)
+            (should-not (string-match-p "Secret" (buffer-string)))))))))
+
 (ert-deftest telega-rich-message-table-alignment ()
   "Table columns align inside message and quote prefixes."
   (let ((table
