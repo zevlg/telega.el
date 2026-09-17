@@ -129,13 +129,20 @@
        (telega-ins--with-face 'telega-webpage-strike-through
          (telega-rich-text--ins-rt (plist-get rt :text))))
       (richTextSpoiler
-       (if (plist-get telega-msg--current :telega-text-spoiler-removed)
-           (telega-rich-text--ins-rt (plist-get rt :text))
-         (telega-ins (with-temp-buffer
-                          (telega-rich-text--ins-rt (plist-get rt :text))
-                          (translate-region (point-min) (point-max)
-                                            telega-spoiler-translation-table)
-                          (buffer-string)))))
+       (telega-ins--with-props
+           (when telega-msg--current
+             (list :action #'telega-msg-text-spoiler-toggle))
+         (if (plist-get telega-msg--current :telega-text-spoiler-removed)
+             (telega-rich-text--ins-rt (plist-get rt :text))
+           (telega-ins--with-props
+               (when telega-msg--current
+                 '(action telega-msg-button--action))
+             (telega-ins
+              (with-temp-buffer
+                (telega-rich-text--ins-rt (plist-get rt :text))
+                (translate-region (point-min) (point-max)
+                                  telega-spoiler-translation-table)
+                (buffer-string)))))))
       (richTextDateTime
        (telega-ins--with-face 'telega-link
          (or (when-let* ((ts-fmt (plist-get rt :formatting_type)))
