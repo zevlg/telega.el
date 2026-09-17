@@ -291,6 +291,43 @@ Have Stoploss 690 Satoshi." :entities []))))
             (button-activate button)
             (should (equal opened-url "https://example.com"))))))))
 
+(ert-deftest telega-rich-message-table-alignment ()
+  "Table columns align inside message and quote prefixes."
+  (let ((table
+         (list :@type "pageBlockTable" :is_bordered t
+               :cells (cl-map 'vector
+                        (lambda (row)
+                          (cl-map 'vector
+                            (lambda (text)
+                              (list :text (list :@type "richTextPlain" :text text)
+                                    :colspan 1 :rowspan 1))
+                            row))
+                        '(("中文" "Long value 🙂 ❤️") ("" "X\nY")
+                          ("Emoji" "👩‍💻 🇨🇳"))))))
+    (dolist (block (list table (list :@type "pageBlockBlockQuote"
+                                   :blocks (vector table))))
+      (with-temp-buffer
+        (telega-ins--line-wrap-prefix "    "
+          (telega-ins "Before")
+          (telega-rich-text--ins-pb block)
+          (telega-rich-text--ins-pb
+           '(:@type "pageBlockParagraph"
+             :text (:@type "richTextPlain" :text "After"))))
+        (should (string-prefix-p "Before\n" (buffer-string)))
+        (should (string-suffix-p "\nAfter\n" (buffer-string)))
+        (save-window-excursion
+          (set-window-buffer (selected-window) (current-buffer))
+          (let (expected)
+            (dolist (text '("Long value" "X" "👩‍💻"))
+              (goto-char (point-min))
+              (let* ((start (- (search-forward text) (length text)))
+                     (column (car (window-text-pixel-size
+                                   nil (line-beginning-position) start))))
+                (if expected
+                    (should (= column expected))
+                  (setq expected column))))
+            (should expected)))))))
+
 (ert-deftest telega-webpage-tdlib-1.8.66-block-fields ()
   (with-temp-buffer
     (let ((telega-webpage-strip-nl t))
