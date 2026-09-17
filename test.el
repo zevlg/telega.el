@@ -328,6 +328,20 @@ Have Stoploss 690 Satoshi." :entities []))))
                   (setq expected column))))
             (should expected)))))))
 
+(ert-deftest telega-rich-message-open-content ()
+  "Opening a rich message fetches its full content only when needed."
+  (let (requested)
+    (cl-letf (((symbol-function 'telega--openMessageContent) #'ignore)
+              ((symbol-function 'telega-msg-rich-message-show-full)
+               (lambda (msg) (push msg requested))))
+      (dolist (state '(nil loading t))
+        (let ((msg (list :@type "message"
+                         :content (list :@type "messageRichMessage"
+                                        :message (list :is_full state)))))
+          (setq requested nil)
+          (telega-msg-open-content msg)
+          (should (equal requested (unless state (list msg)))))))))
+
 (ert-deftest telega-webpage-tdlib-1.8.66-block-fields ()
   (with-temp-buffer
     (let ((telega-webpage-strip-nl t))
