@@ -200,6 +200,26 @@ Have Stoploss 690 Satoshi." :entities []))))
                  "test.domain.ru##[title~=\\[NSP\\]]:nth-ancestor(6)"))
   )
 
+(ert-deftest telega-rich-message-links ()
+  "Rich-text links keep their targets inside message buttons."
+  (let ((msg '(:@type "message" :chat_id -123 :id 456))
+        opened-url)
+    (cl-letf (((symbol-function 'telega-browse-url)
+               (lambda (url &rest _) (setq opened-url url))))
+      (dolist (type '("richTextUrl" "richTextReferenceLink"))
+        (with-temp-buffer
+          (telega-button--insert 'telega-msg msg
+            :inserter
+            (lambda (_msg)
+              (telega-rich-text--ins-rt
+               `(:@type ,type :url "https://example.com"
+                 :text (:@type "richTextPlain" :text "Open")))))
+          (let ((button (button-at (point-min))))
+            (should (eq (button-get button :value) msg))
+            (setq opened-url nil)
+            (button-activate button)
+            (should (equal opened-url "https://example.com"))))))))
+
 (ert-deftest telega-webpage-tdlib-1.8.66-block-fields ()
   (with-temp-buffer
     (let ((telega-webpage-strip-nl t))

@@ -173,13 +173,11 @@
       (richTextUrl
        (let ((url (telega-tl-str rt :url)))
          (telega-ins--raw-button
-             (list 'action #'telega-button--action
-                   :help-echo (format "URL: %s%s" url
-                                      (if (plist-get rt :is_cached)
-                                          ", has IV"
-                                        ""))
-                   :value url
-                   :action #'telega-browse-url)
+             (telega-link-props 'url url
+               'help-echo (format "URL: %s%s" url
+                                  (if (plist-get rt :is_cached)
+                                      ", has IV"
+                                    "")))
            (telega-ins--with-face 'telega-link
              (telega-rich-text--ins-rt (plist-get rt :text))))))
       (richTextEmailAddress
@@ -233,10 +231,8 @@
        ;; TODO: use `:reference_name'
        (let ((ref-url (telega-tl-str rt :url)))
          (telega-ins--raw-button
-             (list 'action #'telega-button--action
-                   :help-echo (concat "Reference: " ref-url)
-                   :value ref-url
-                   :action #'telega-browse-url)
+             (telega-link-props 'url ref-url
+               'help-echo (concat "Reference: " ref-url))
            (telega-ins--with-face 'telega-link
              (telega-rich-text--ins-rt (plist-get rt :text))))))
       (richTextAnchor
