@@ -1182,6 +1182,9 @@ non-nil CLICKED-P means message explicitly has been clicked by user."
     (messageText
      (when-let ((link-preview (telega--tl-get msg :content :link_preview)))
        (telega-msg-open-link-preview msg link-preview)))
+    (messageRichMessage
+     (unless (telega--tl-get msg :content :message :is_full)
+       (telega-msg-rich-message-show-full msg)))
     (messagePoll
      (telega-msg-open-poll msg))
     (messageGame
