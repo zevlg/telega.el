@@ -27,6 +27,7 @@
 (require 'telega-core)
 
 (declare-function telega-webpage--add-anchor "telega-webpage" (name))
+(declare-function telega-ins--date-time-formatting "telega-ins" (timestamp ts-fmt))
 
 
 (defvar telega-rich-text--block-quote-p nil
@@ -134,9 +135,10 @@
                                             telega-spoiler-translation-table)
                           (buffer-string)))))
       (richTextDateTime
-       ;; TODO: use `telega-ins--date-time-formatting'
-       (telega-ins "<TODO: richTextDateTime>")
-       )
+       (telega-ins--with-face 'telega-link
+         (or (when-let* ((ts-fmt (plist-get rt :formatting_type)))
+               (telega-ins--date-time-formatting (plist-get rt :unix_time) ts-fmt))
+             (telega-rich-text--ins-rt (plist-get rt :text)))))
       (richTextMention
        (telega-ins--with-props
            (list 'action #'telega-rich-text--link-button-action
