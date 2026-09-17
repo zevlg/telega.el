@@ -341,7 +341,7 @@ Have Stoploss 690 Satoshi." :entities []))))
                                     :duration 11 :length 240)))))))
 
 (ert-deftest telega-box-button-content-metrics ()
-  (let (line-heights)
+  (let (line-heights expected-remapping)
     (cl-letf (((symbol-function 'get-buffer-window)
                (lambda (&rest _args) (selected-window)))
               ((symbol-function 'telega-chars-xheight)
@@ -351,7 +351,10 @@ Have Stoploss 690 Satoshi." :entities []))))
               ;; First call measures the line height H1, second call
               ;; measures H1 + line descent (the baseline probe)
               ((symbol-function 'buffer-text-pixel-size)
-               (lambda (&rest _args) (cons 42 (pop line-heights)))))
+               (lambda (&rest _args)
+                 (when expected-remapping
+                   (should (equal face-remapping-alist expected-remapping)))
+                 (cons 42 (pop line-heights)))))
       ;; Plain text line: height 14, descent 2 -> ascent 12
       (setq line-heights (list 14 16))
       (should (equal (telega-box-button--content-metrics "A")
@@ -365,7 +368,14 @@ Have Stoploss 690 Satoshi." :entities []))))
       ;; the bracket 1px too low; 79% restores exact 18px
       (setq line-heights (list 23 28))
       (should (equal (telega-box-button--content-metrics (string ?A #xfe0f))
-                     (cons (/ 23.0 14) 79))))))
+                     (cons (/ 23.0 14) 79)))
+      ;; Text scaling is buffer-local and must carry into the work buffer.
+      (with-temp-buffer
+        (face-remap-add-relative 'default :height 1.5)
+        (setq expected-remapping face-remapping-alist
+              line-heights (list 21 24))
+        (should (equal (telega-box-button--content-metrics "A")
+                       (cons 1.5 86)))))))
 
 (ert-deftest telega-box-button-content-height-inserter ()
   (let ((calls 0)
@@ -409,7 +419,22 @@ Have Stoploss 690 Satoshi." :entities []))))
               (should (= (plist-get (cdr image) :ascent) 80)))))
         (should (= measurements 1))
         (should (equal (substring-no-properties measured-content)
-                       "prefix x"))))))
+                       "prefix x"))
+        (should (memq 'telega-reaction
+                      (get-text-property 7 'face measured-content))))
+      ;; Multiline labels keep the fixed-size fallback.
+      (setq measurements 0)
+      (with-temp-buffer
+        (telega-ins--with-style (telega-box-button-style 'reaction)
+          (telega-ins "first\nsecond"))
+        (should (zerop measurements)))
+      ;; Only image brackets may have their display replaced.
+      (with-temp-buffer
+        (telega-ins--with-style
+            (list :left-bracket (propertize "[" 'display "(")
+                  :right-bracket '("]" :width 0.5 :height content))
+          (telega-ins "x"))
+        (should (equal (get-text-property (point-min) 'display) "("))))))
 
 (ert-deftest telega-box-button-bracket-metrics ()
   (cl-letf (((symbol-function 'telega-chars-xwidth)
@@ -448,6 +473,8 @@ Have Stoploss 690 Satoshi." :entities []))))
           (should (equal (plist-get (cdr content-image) :height)
                          (telega-ch-height 1.5)))
           (should (= (plist-get (cdr content-image) :ascent) 80))
+          (should (plist-member (cdr content-image) :background))
+          (should-not (plist-get (cdr content-image) :background))
           (should (string-match-p
                    "<svg width=\"[^\"]+\" height=\"16\""
                    (plist-get (cdr content-image) :data))))))))

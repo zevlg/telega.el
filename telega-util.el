@@ -2409,28 +2409,25 @@ account."
                 ((display-graphic-p (window-frame window)))
                 (char-height (telega-chars-xheight 1))
                 ((> char-height 0)))
-      (with-temp-buffer
-        (setq-local truncate-lines t)
-        (insert content)
-        ;; Anchor char in the default face, because button resides on
-        ;; a screen line also having default face glyphs, and screen
-        ;; line height is max(ascents) + max(descents)
-        (insert (propertize "x" 'face 'default))
-        (when-let* ((h1 (cdr (buffer-text-pixel-size
-                              (current-buffer) window t)))
-                    ((> h1 0)))
-          ;; Baseline probe: appending H1 pixels high `:ascent 100'
-          ;; space grows the line by exactly the line's descent
-          (insert (propertize " " 'display `(space :height (,h1) :ascent 100)))
-          (let* ((h2 (cdr (buffer-text-pixel-size
-                           (current-buffer) window t)))
-                 (ascent (- (* 2 h1) h2)))
-            ;; NOTE: `ceiling' is essential, image ascent is truncated
-            ;; on display as floor(percent * height / 100), so
-            ;; `round'ing down here would place the image 1px lower,
-            ;; with content peeking out above the button
-            (cons (/ (float h1) char-height)
-                  (max 0 (min 100 (ceiling (* 100 (/ (float ascent) h1))))))))))))
+      (let ((remapping face-remapping-alist))
+        (with-temp-buffer
+          ;; Keep buffer-local text scaling in the measurement buffer.
+          (setq-local face-remapping-alist remapping
+                      truncate-lines t)
+          (insert content)
+          ;; Include the default font's ascent and descent in the line metrics.
+          (insert (propertize "x" 'face 'default))
+          (when-let* ((h1 (cdr (buffer-text-pixel-size
+                                (current-buffer) window t)))
+                      ((> h1 0)))
+            ;; A full-ascent H1-pixel probe adds the line's descent to H1.
+            (insert (propertize " " 'display `(space :height (,h1) :ascent 100)))
+            (let* ((h2 (cdr (buffer-text-pixel-size
+                             (current-buffer) window t)))
+                   (ascent (- (* 2 h1) h2)))
+              ;; Image ascent is truncated to pixels, so round up to cover content.
+              (cons (/ (float h1) char-height)
+                    (max 0 (min 100 (ceiling (* 100 ascent) h1)))))))))))
 
 (defun telega-box-button--bracket-image (style bracket-prop
                                                &optional bracket-spec metrics)
@@ -2469,10 +2466,7 @@ the symbol `content' to use METRICS, a (HEIGHT . ASCENT) cons from
                (telega-emoji--image-cache-get cacheprop 1))
           (let* ((w (round (telega-chars-xwidth
                             (or (plist-get bracket-props :width) 1))))
-                 ;; NOTE: viewport is 1 char high on purpose, svg is
-                 ;; proportionally scaled up to the displayed
-                 ;; `:height', so bracket caps keep their shape,
-                 ;; growing wider for taller content
+                 ;; Scale the one-char viewport to keep the bracket cap's shape.
                  (h (telega-chars-xheight 1))
                  (svg (telega-svg-create w h))
                  (mask (dom-node 'mask `((id . "hole"))))
@@ -2481,11 +2475,7 @@ the symbol `content' to use METRICS, a (HEIGHT . ASCENT) cons from
                  (round-fraction
                   (or (plist-get bracket-props :rx) 0.25))
                  (xpos (round (* w (if left-p pos-fraction (- 1 pos-fraction)))))
-                 ;; NOTE: proportional scaling is compensated in the
-                 ;; outline width, so on display outline is exactly
-                 ;; `outline-width' pixels, matching horizontal
-                 ;; outline lines drawn in the button body by the
-                 ;; `:box' of the `telega-box-button--body-face'
+                 ;; Keep the displayed outline width equal to the body's box.
                  (sw (/ (or outline-width 0) (float height)))
                  (sw2 (/ sw 2.0)))
             (svg--def svg mask)
