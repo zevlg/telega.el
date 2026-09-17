@@ -25,6 +25,7 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'shr)
 
 (declare-function telega-webpage--add-anchor "telega-webpage" (name))
 (declare-function telega-ins--keyboard-button "telega-ins" (kbd-button msg &rest args))
@@ -263,6 +264,47 @@
          (telega--tl-type rt))))
     t))
 
+(defun telega-rich-text--ins-pb-table (pb)
+  "Insert `pageBlockTable' PB using SHR's table layout."
+  ;; TODO: honor cell alignment, `:is_striped' and `:is_compact'.
+  (let* ((rows
+          (cl-loop for row across (plist-get pb :cells)
+                   for cells =
+                   (cl-loop for cell across row
+                            for attrs =
+                            (cl-loop for (attr . prop) in '((colspan . :colspan)
+                                                           (rowspan . :rowspan))
+                                     for span = (plist-get cell prop)
+                                     when (> span 1)
+                                     collect (cons attr (number-to-string span)))
+                            collect `(td ,attrs (telega-cell ((cell . ,cell)))))
+                   collect `(tr nil ,@cells)))
+         (shr-use-fonts t)
+         (shr-width telega-webpage-fill-column)
+         (shr-table-horizontal-line (when (plist-get pb :is_bordered) ?─))
+         (shr-table-vertical-line ?\s)
+         (shr-table-corner ?\s)
+         (shr-external-rendering-functions
+          '((telega-cell .
+             (lambda (dom)
+               (let ((cell (dom-attr dom 'cell)))
+                 (telega-ins--with-face (when (plist-get cell :is_header) 'bold)
+                   (telega-rich-text--ins-rt (plist-get cell :text)))))))))
+    (telega-ins
+     (with-temp-buffer
+       (shr-insert-document `(table nil ,@rows))
+       ;; SHR uses absolute pixel positions; telega adds line prefixes later.
+       (let ((offset (telega-chars-xwidth telega--column-offset))
+             (pos (point-min)))
+         (while (setq pos (text-property-not-all
+                          pos (point-max) 'shr-table-indent nil))
+           (pcase (get-text-property pos 'display)
+             (`(space :align-to (,x))
+              (put-text-property pos (1+ pos) 'display
+                                 `(space :align-to (,(+ offset x))))))
+           (setq pos (1+ pos))))
+       (buffer-string)))))
+
 (defun telega-rich-text--ins-pb-details (pb &optional msg)
   "Inserter for `pageBlockDetails' page block PB."
   (let ((open-p (plist-get pb :is_open)))
@@ -465,10 +507,11 @@
            :action 'telega-tme-open-username)
          (telega-ins "\n")))
       (pageBlockTable
-       (telega-ins-from-newline
-        (telega-ins "<TODO: pageBlockTable>\n")
-        (telega-ins-from-newline
-         (telega-rich-text--ins-rt (plist-get pb :caption)))))
+       (telega-rich-text--ins-block
+        (telega-rich-text--ins-pb-table pb)
+        (telega-rich-text--ins-block
+         (telega-rich-text--ins-rt (plist-get pb :caption)))
+        t))
       (pageBlockDetails
        (telega-button--insert 'telega pb
          'action (lambda (button)
