@@ -27,6 +27,7 @@
 (require 'telega-core)
 
 (declare-function telega-webpage--add-anchor "telega-webpage" (name))
+(declare-function telega-ins--keyboard-button "telega-ins" (kbd-button msg &rest args))
 (declare-function telega-ins--date-time-formatting "telega-ins" (timestamp ts-fmt))
 
 
@@ -262,7 +263,7 @@
          (telega--tl-type rt))))
     t))
 
-(defun telega-rich-text--ins-pb-details (pb)
+(defun telega-rich-text--ins-pb-details (pb &optional msg)
   "Inserter for `pageBlockDetails' page block PB."
   (let ((open-p (plist-get pb :is_open)))
     (telega-ins--with-face 'telega-shadow
@@ -271,10 +272,10 @@
     (telega-rich-text--ins-rt (plist-get pb :header))
     (when open-p
       (seq-doseq (pb-item (plist-get pb :blocks))
-        (telega-rich-text--ins-pb pb-item)))
+        (telega-rich-text--ins-pb pb-item msg)))
     t))
 
-(defun telega-rich-text--ins-pb (pb &optional _msg)
+(defun telega-rich-text--ins-pb (pb &optional msg)
   "Inserter for the page block PB."
   (when pb
     (cl-case (telega--tl-type pb)
@@ -343,13 +344,13 @@
        (telega-webpage--add-anchor (plist-get pb :name)))
       (pageBlockList
        (seq-doseq (pb-item (plist-get pb :items))
-         (telega-rich-text--ins-pb pb-item)))
+         (telega-rich-text--ins-pb pb-item msg)))
       (pageBlockBlockQuote
        (telega-ins-from-newline
         (telega-ins--line-wrap-prefix (telega-symbol 'vbar-left)
           (let ((telega-rich-text--block-quote-p t))
             (seq-doseq (quote-pb (plist-get pb :blocks))
-              (telega-rich-text--ins-pb quote-pb)))
+              (telega-rich-text--ins-pb quote-pb msg)))
           (when-let ((credit-rt (plist-get pb :credit)))
             (telega-ins-from-newline
              (telega-ins--with-face 'telega-shadow
@@ -417,7 +418,7 @@
         (telega-ins-from-newline
          (telega-rich-text--ins-pb (plist-get pb :caption)))))
       (pageBlockCover
-       (telega-rich-text--ins-pb (plist-get pb :cover)))
+       (telega-rich-text--ins-pb (plist-get pb :cover) msg))
       (pageBlockEmbedded
        (telega-button--insert 'telega pb
          :inserter (lambda (pb-embedded)
@@ -445,14 +446,14 @@
        (telega-ins "<TODO: pageBlockEmbeddedPost>\n"))
       (pageBlockCollage
        (seq-doseq (pb-item (plist-get pb :blocks))
-         (telega-rich-text--ins-pb pb-item))
+         (telega-rich-text--ins-pb pb-item msg))
        (telega-ins-from-newline
         (telega-rich-text--ins-pb (plist-get pb :caption))))
       (pageBlockSlideshow
        (let ((page-blocks (plist-get pb :blocks)))
          (dotimes (n (length page-blocks))
            (telega-ins-from-newline
-            (telega-rich-text--ins-pb (aref page-blocks n))
+            (telega-rich-text--ins-pb (aref page-blocks n) msg)
             (telega-ins-fmt "%d/%d\n" (1+ n) (length page-blocks)))))
        (telega-rich-text--ins-pb (plist-get pb :caption)))
       (pageBlockChatLink
@@ -477,7 +478,8 @@
                      ;; TODO: actually open details
                      (save-excursion
                        (telega-button--update-value button new-val))))
-         :inserter #'telega-rich-text--ins-pb-details
+         :inserter (lambda (details)
+                     (telega-rich-text--ins-pb-details details msg))
          'help-echo "Toggle details")
        (telega-ins-from-newline
         (telega-rich-text--ins-divider telega-webpage-fill-column)))
@@ -513,14 +515,22 @@
               (cons (concat label " ")
                     (concat (make-string (string-width label) ?\s " ") " "))
             (seq-doseq (pb-item (plist-get pb :blocks))
-              (telega-rich-text--ins-pb pb-item))))))
+              (telega-rich-text--ins-pb pb-item msg))))))
       (pageBlockCaption
        (telega-ins--with-face 'telega-shadow
          (telega-rich-text--ins-rt (plist-get pb :text))
          (telega-ins-prefix " • "
            (telega-rich-text--ins-rt (plist-get pb :credit)))))
       (pageBlockButtonRow
-       (telega-ins "<TODO: pageBlockButtonRow>"))
+       ;; TODO: honor `:align'.
+       (when-let* ((buttons (append (plist-get pb :buttons) nil)))
+         (telega-rich-text--ins-block
+          (while buttons
+            (telega-ins--keyboard-button (pop buttons) msg)
+            (when buttons
+              (telega-ins--box-button-delimiter
+               (telega-box-button-style 'keyboard-default) :col-delimiter)))
+          t)))
       (pageBlockUnsupported
        (telega-ins "<TODO: pageBlockUnsupported>"))
       )
