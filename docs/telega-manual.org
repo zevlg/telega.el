@@ -232,6 +232,11 @@ support (graphical).
 See [[https://ritschmaster.github.io/2021/06/13/Using-telga-in-Windows-10.html][detailed description]] how to install =telega= under Windows 10.
 
 Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
+
+Pre-built =telega-server= and =TDLib= binaries for Windows x86-64 are
+available from [[https://github.com/zHaOdANiuu/telega-rc][telega-rc]].
+
+Thanks to [[https://t.me/zdn_y][=@zdn_y=]]
 ** Building TDLib
 :PROPERTIES:
 :CUSTOM_ID: building-tdlib

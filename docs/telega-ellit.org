@@ -108,6 +108,11 @@ See [[https://ritschmaster.github.io/2021/06/13/Using-telga-in-Windows-10.html][
 
 Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
+Pre-built =telega-server= and =TDLib= binaries for Windows x86-64 are
+available from [[https://github.com/zHaOdANiuu/telega-rc][telega-rc]].
+
+Thanks to [[https://t.me/zdn_y][=@zdn_y=]]
+
 ** Building TDLib
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
