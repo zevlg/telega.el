@@ -37,6 +37,8 @@
 (require 'telega-tme)
 (require 'telega-sticker)
 (require 'telega-customize)
+(require 'telega-decls)
+(telega-declare-functions telega-webpage)
 
 (defvar telega-webpage-history nil
   "History of viewed webpages.")

@@ -25,14 +25,19 @@
 
 ;;; Code:
 (require 'transient)
+(require 'ewoc)
 
 (require 'telega-core)
 (require 'telega-ins)
+(require 'telega-i18n)
+(require 'telega-util)
+(require 'telega-decls)
 
 (defvar telega-prefix-map)
 
 (declare-function telega-msg-forward-dwim "telega-chat" (messages &optional remove-sender-p remove-caption-p chat))
 (declare-function telega-msg-forward-dwim-to-many "telega-chat" (messages chats &optional remove-sender-p remove-caption-p))
+(telega-declare-functions telega-transient)
 
 ;; Compatibility with older transient
 (unless (fboundp 'transient-prefix-object)

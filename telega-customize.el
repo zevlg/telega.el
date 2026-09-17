@@ -677,7 +677,7 @@ See `telega-avatar--create-image' for more info."
   :options '((return t))
   :group 'telega)
 
-(defcustom telega-avatar-text-function #'telega-avatar-text-simple
+(defcustom telega-avatar-text-function 'telega-avatar-text-simple
   "Function to be used to get text for the first slice of the avatar."
   :package-version '(telega . "0.8.215")
   :type 'function

@@ -25,10 +25,14 @@
 
 ;;; Code:
 (require 'telega-tdlib)
+(require 'telega-i18n)
+(require 'telega-media)
+(require 'telega-decls)
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-user "telega-chat" (chat))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
+(telega-declare-functions telega-user)
 
 
 (defvar telega-user-button-map

@@ -31,11 +31,17 @@
 (require 'telega-server)
 (require 'telega-filter)
 (require 'telega-util)
+(require 'telega-i18n)
+(require 'telega-msg)
+(require 'telega-sticker)
+(require 'telega-user)
+(require 'telega-voip)
 
 (defvar tracking-buffers)
 (declare-function telega-account-current "telega")
 (declare-function telega "telega" (&optional arg))
 (declare-function telega-kill "telega" (force))
+(telega-declare-functions telega-modes)
 
 (defgroup telega-modes nil
   "Customization for telega minor modes."
@@ -739,6 +745,7 @@ squashing is not applied."
 ;; To view high resolution image in chatbuf with ~telega-image-mode~
 ;; press {{{kbd(RET)}}} on the message with photo.
 (require 'image-mode)
+(require 'telega-decls)
 
 (declare-function telega-chat-title "telega-chat" (chat &optional fmt-type no-badges))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg msg-temex &optional backward))

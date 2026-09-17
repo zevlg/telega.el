@@ -32,6 +32,7 @@
 (require 'rx)
 
 (require 'telega-customize)
+(require 'telega-decls)
 
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-window-recenter "telega-util" (win &optional nlines from-point))
@@ -40,6 +41,7 @@
 (declare-function telega-chars-xwidth "telega-util" (n))
 (declare-function telega-em-width-ratio "telega-util")
 (declare-function telega-em-height-ratio "telega-util")
+(telega-declare-functions telega-core)
 
 (defvar telega--lib-directory nil
   "The directory from where this library was first loaded.")
@@ -2125,13 +2127,16 @@ If help message has been inserted, insert newline at the end."
                                      style)))
                           (list :color o-color)))))))
 
-(if (version< emacs-version "28.0")
-    ;; NOTE: Emacs 27 has only one argument to `string-width'
-    (defun telega-string-width (str &optional from to)
-      (when (or from to)
-        (setq str (substring str from to)))
-      (string-width str))
-  (defalias 'telega-string-width 'string-width))
+;; NOTE: wrapped so the byte compiler sees the definition; a bare
+;; top-level `if' hides both branches from it.
+(eval-and-compile
+  (if (version< emacs-version "28.0")
+      ;; NOTE: Emacs 27 has only one argument to `string-width'
+      (defun telega-string-width (str &optional from to)
+        (when (or from to)
+          (setq str (substring str from to)))
+        (string-width str))
+    (defalias 'telega-string-width 'string-width)))
 
 (defmacro telega-ins--with-props (props &rest body)
   "Execute inserters applying PROPS after insertation.
@@ -2519,6 +2524,35 @@ buffer."
         (insert str)
       (message "%s" str))
     str))
+
+;; Moved here from telega-util.el: needed by telega-core itself.
+(defun telega-plist-del (plist prop)
+  "From PLIST destructively remove property PROP."
+  ;; NOTE: `cl--plist-remove' has been removed in Emacs master
+  ;; See https://t.me/emacs_telega/27687
+  ;; Code taken from `org-plist-delete'
+  (let (p)
+    (while plist
+      (if (not (eq prop (car plist)))
+          (setq p (plist-put p (car plist) (nth 1 plist))))
+      (setq plist (cddr plist)))
+    p))
+(defun telega-plist-map (func plist)
+  "Map FUNCTION on PLIST and return resulting list.
+FUNCTION must accept two arguments: KEY and VALUE."
+  (let (result)
+    (telega--tl-dolist ((prop-name value) plist)
+      (setq result (cons (funcall func prop-name value) result)))
+    (nreverse result)))
+(defun telega-focus-state (&optional frame)
+  "Return non-nil if FRAME has focus.
+Can be used as value for `telega-online-status-function'."
+  (if (fboundp 'frame-focus-state)
+      (funcall 'frame-focus-state frame)
+    ;; NOTE: For tty frame always return non-nil
+    ;; see https://t.me/emacs_telega/7419
+    (or (not (display-graphic-p frame))
+        (frame-parameter frame 'x-has-focus))))
 
 (provide 'telega-core)
 

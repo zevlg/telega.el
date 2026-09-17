@@ -34,6 +34,9 @@
 (require 'telega-sticker)
 (require 'telega-util)
 (require 'telega-transient)
+(require 'telega-filter)
+(require 'telega-story)
+(require 'telega-decls)
 
 ;; telega-chat.el depends on telega-tme.el
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
@@ -44,6 +47,7 @@
 
 (declare-function telega-webpage--instant-view "telega-webpage" (url &optional sitename instant-view))
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
+(telega-declare-functions telega-tme)
 
 
 (defun telega-tme--media-timestamp-callback (media-timestamp-str)

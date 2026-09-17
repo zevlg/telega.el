@@ -32,6 +32,7 @@
 ;;; Code:
 (require 'telega-core)
 (require 'telega-tdlib)
+(require 'telega-decls)
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-chat-title "telega-chat" (chat &optional fmt-type no-badges))
@@ -39,6 +40,7 @@
 (declare-function telega-msg-redisplay "telega-msg" (msg))
 
 (declare-function telega-image-view-file "telega-modes" (tl-file &optional for-msg))
+(telega-declare-functions telega-media)
 
 
 ;;; Files downloading/uploading

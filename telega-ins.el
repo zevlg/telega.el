@@ -39,6 +39,14 @@
 (require 'telega-topic)
 (require 'telega-community)
 (require 'telega-customize)
+(require 'telega-ffplay)
+(require 'telega-i18n)
+(require 'telega-media)
+(require 'telega-sticker)
+(require 'telega-story)
+(require 'telega-user)
+(require 'telega-util)
+(require 'telega-decls)
 
 ;; telega-chat.el depends on telega-ins.el
 (declare-function telega-msg-delete0 "telega-chat" (msg &optional revoke))
@@ -59,6 +67,7 @@
 (declare-function telega-describe-chat-join-requests
                   "telega-info" (chat &optional show-p))
 (declare-function telega-topic-button-action "telega-root" (chat-topic))
+(telega-declare-functions telega-ins)
 
 (defun telega-ins--text-button (label &rest props)
   "Insert pressable button labeled with LABEL."

@@ -41,8 +41,16 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-ffplay)
+(require 'telega-i18n)
+(require 'telega-media)
+(require 'telega-server)
+(require 'telega-tdlib)
+(require 'telega-util)
+(require 'telega-decls)
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
+(telega-declare-functions telega-story)
 
 (defun telega-story-chat (story &optional offline-p)
   (telega-chat-get (plist-get story :poster_chat_id) offline-p))

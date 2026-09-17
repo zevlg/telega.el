@@ -29,9 +29,17 @@
 (require 'telega-tdlib)
 (require 'telega-customize)
 (require 'telega-ffplay)
+(require 'telega-i18n)
+(require 'telega-ins)
+(require 'telega-media)
+(require 'telega-msg)
+(require 'telega-user)
+(require 'telega-util)
+(require 'telega-decls)
 
 (declare-function telega-status--set "telega-root"
                   (conn-status &optional aux-status raw))
+(telega-declare-functions telega-voip)
 
 
 (defconst telega-voip-protocol

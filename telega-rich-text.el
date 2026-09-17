@@ -25,8 +25,13 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-i18n)
+(require 'telega-media)
+(require 'telega-util)
+(require 'telega-decls)
 
 (declare-function telega-webpage--add-anchor "telega-webpage" (name))
+(telega-declare-functions telega-rich-text)
 
 
 (defvar telega-rich-text--block-quote-p nil

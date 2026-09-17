@@ -28,6 +28,10 @@
 
 (require 'telega-ffplay)
 (require 'telega-util)                  ;`with-telega-symbol-animate'
+(require 'telega-ins)
+(require 'telega-decls)
+
+(telega-declare-functions telega-vvnote)
 
 (defcustom telega-vvnote-voice-max-dur (* 30 60)
   "Maximum duration of voice command in seconds."

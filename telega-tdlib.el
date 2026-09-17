@@ -26,6 +26,7 @@
 ;;; Code:
 (require 'telega-core)
 (require 'telega-server)
+(require 'telega-decls)
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat--ensure "telega-chat" (chat))
@@ -33,6 +34,7 @@
 (declare-function telega-stickerset--ensure "telega-sticker" (sset))
 (declare-function telega-user-get "telega-user" (user-id))
 (declare-function telega-file--ensure "telega-media" (file))
+(telega-declare-functions telega-tdlib)
 
 (defvar telega-version)
 (defvar telega-app)

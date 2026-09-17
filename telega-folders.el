@@ -31,9 +31,12 @@
 
 (require 'telega-core)
 (require 'telega-tdlib)
+(require 'telega-i18n)
+(require 'telega-decls)
 
 (declare-function telega-chatbuf--name "telega-chat" (chat))
 (declare-function telega-chat--set-uaprops "telega-chat" (chat uaprops))
+(telega-declare-functions telega-folders)
 
 
 (defconst telega-folder-icon-names

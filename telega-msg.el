@@ -39,6 +39,7 @@
 (require 'telega-webpage)
 (require 'telega-story)
 (require 'telega-transient)
+(require 'telega-decls)
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
@@ -55,6 +56,7 @@
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 
 (declare-function telega--full-info "telega-info" (tlobj &optional _callback))
+(telega-declare-functions telega-msg)
 
 
 ;; Menu for right-mouse on message

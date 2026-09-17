@@ -31,6 +31,9 @@
 (require 'telega-util)
 (require 'telega-media)
 (require 'telega-ffplay)
+(require 'telega-i18n)
+(require 'telega-user)
+(require 'telega-decls)
 
 ;; shutup compiler
 (defvar ido-matches)
@@ -40,6 +43,7 @@
 
 (declare-function telega-chatbuf-sticker-insert "telega-chat" (sticker))
 (declare-function telega-chatbuf-animation-insert "telega-chat" (animation))
+(telega-declare-functions telega-sticker)
 
 
 (defvar telega-help-win--emoji nil

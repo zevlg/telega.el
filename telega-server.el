@@ -28,6 +28,7 @@
 
 (require 'telega-core)
 (require 'telega-customize)
+(require 'telega-decls)
 
 (declare-function telega-chats-dirty--update "telega-tdlib-events")
 
@@ -36,6 +37,7 @@
 (declare-function telega-status--set "telega-root" (conn-status &optional aux-status raw))
 
 (declare-function telega-appindicator--on-event "telega-modes" (event))
+(telega-declare-functions telega-server)
 
 
 (defun telega--on-event (event)

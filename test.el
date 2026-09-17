@@ -95,6 +95,10 @@ Have Stoploss 690 Satoshi." :entities []))))
   "Test emacs is suitable to run telega."
   (should (telega-test-env 'quiet)))
 
+(ert-deftest telega-decls ()
+  "Test forward declarations still match the sources they name."
+  (should (null (telega-decls-check))))
+
 (ert-deftest telega-info ()
   "Test info related functionality."
   (let ((user1 (telega-user-get 22220))

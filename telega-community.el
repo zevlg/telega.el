@@ -25,6 +25,12 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-i18n)
+(require 'telega-media)
+(require 'telega-util)
+(require 'telega-decls)
+
+(telega-declare-functions telega-community)
 
 (defun telega-community-get (cid)
   "Get community by community id CID."

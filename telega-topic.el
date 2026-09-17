@@ -28,11 +28,15 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-i18n)
+(require 'telega-tdlib)
+(require 'telega-decls)
 
 (declare-function telega-chat--mark-dirty "telega-tdlib-events" (chat &optional event))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega--getForumTopic "telega-tdlib" (chat forum-topic-id &optional callback))
 (declare-function telega-topic-button-action "telega-root" (topic))
+(telega-declare-functions telega-topic)
 
 (defvar telega-topic--default-icons nil
   "Cached list of topic icons which can be used by all users.")

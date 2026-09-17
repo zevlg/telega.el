@@ -28,12 +28,19 @@
 ;;; Code:
 (require 'telega-core)
 (require 'telega-tdlib)
+(require 'telega-i18n)
+(require 'telega-media)
+(require 'telega-sticker)
+(require 'telega-user)
+(require 'telega-util)
+(require 'telega-decls)
 
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 (declare-function telega-chatbuf-input-insert "telega-chat" (imc))
 (declare-function telega-chatbuf-attach-inline-bot-query "telega-chat" (&optional no-empty-search))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 (declare-function telega-chat-private-p "telega-chat" (chat))
+(telega-declare-functions telega-inline)
 
 (defvar telega--inline-bot nil
   "BOT value for the inline results help buffer.")
