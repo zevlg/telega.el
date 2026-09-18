@@ -2394,9 +2394,48 @@ integer values, then absolute value in pixels is used."
       :mask 'heuristic
       :telega-text "()")))
 
+(defun telega-box-button--content-metrics (content)
+  "Return image metrics as (HEIGHT . ASCENT) cons for the CONTENT.
+HEIGHT is in characters and ASCENT is a percentage.
+Metrics are measured from real CONTENT rendering, so emoji
+compositions, embedded images and raised text are all taken into
+account."
+  (when (and content (not (string-empty-p content))
+             (fboundp 'buffer-text-pixel-size))
+    (when-let* ((window
+                 (or (get-buffer-window nil t)
+                     (when-let ((frame (telega-x-frame)))
+                       (frame-selected-window frame))))
+                ((display-graphic-p (window-frame window)))
+                (char-height (telega-chars-xheight 1))
+                ((> char-height 0)))
+      (let ((remapping face-remapping-alist))
+        (with-temp-buffer
+          ;; Keep buffer-local text scaling in the measurement buffer.
+          (setq-local face-remapping-alist remapping
+                      truncate-lines t)
+          (insert content)
+          ;; Include the default font's ascent and descent in the line metrics.
+          (insert (propertize "x" 'face 'default))
+          (when-let* ((h1 (cdr (buffer-text-pixel-size
+                                (current-buffer) window t)))
+                      ((> h1 0)))
+            ;; A full-ascent H1-pixel probe adds the line's descent to H1.
+            (insert (propertize " " 'display `(space :height (,h1) :ascent 100)))
+            (let* ((h2 (cdr (buffer-text-pixel-size
+                             (current-buffer) window t)))
+                   (ascent (- (* 2 h1) h2)))
+              ;; Image ascent is truncated to pixels, so round up to cover content.
+              (cons (/ (float h1) char-height)
+                    (max 0 (min 100 (ceiling (* 100 ascent) h1)))))))))))
+
 (defun telega-box-button--bracket-image (style bracket-prop
-                                               &optional bracket-spec)
-  "Generate bracket image for the STYLE and BRACKET-PROP."
+                                               &optional bracket-spec metrics)
+  "Generate bracket image for the STYLE and BRACKET-PROP.
+BRACKET-SPEC is a cons (TEXT . PROPS).  The `:height' property
+in PROPS specifies proportional image height in characters, or
+the symbol `content' to use METRICS, a (HEIGHT . ASCENT) cons from
+`telega-box-button--content-metrics'.  Nil METRICS uses the default size."
   (when-let* ((bracket-spec
                (or bracket-spec
                    (telega-box-button--style-get style bracket-prop)))
@@ -2408,17 +2447,26 @@ integer values, then absolute value in pixels is used."
                            (face-background 'default)))
            (outline-color (telega-box-button--style-outline-color style))
            (outline-width (telega-box-button--style-outline-width style))
+           (content-metrics
+            (when (eq (plist-get bracket-props :height) 'content)
+              metrics))
+           (height (or (car content-metrics)
+                       (let ((hval (plist-get bracket-props :height)))
+                         (when (numberp hval) hval))
+                       1))
+           (ascent (or (cdr content-metrics) 'center))
            (left-p (eq bracket-prop :left-bracket))
            (icon-symbol (unless left-p
                           (telega-box-button--style-get style :icon-symbol)))
-           (cacheprop (format "button-bracket-%S-%S-%S-%S-%S-%S"
+           (cacheprop (format "button-bracket-%S-%S-%S-%S-%S-%S-%S-%S"
                               bracket-prop bracket-spec
                               fill-color outline-color
-                              outline-width icon-symbol)))
+                              outline-width height ascent icon-symbol)))
       (or (and (not (plist-get (cdr bracket-spec) :no-cache))
                (telega-emoji--image-cache-get cacheprop 1))
           (let* ((w (round (telega-chars-xwidth
                             (or (plist-get bracket-props :width) 1))))
+                 ;; Scale the one-char viewport to keep the bracket cap's shape.
                  (h (telega-chars-xheight 1))
                  (svg (telega-svg-create w h))
                  (mask (dom-node 'mask `((id . "hole"))))
@@ -2427,16 +2475,15 @@ integer values, then absolute value in pixels is used."
                  (round-fraction
                   (or (plist-get bracket-props :rx) 0.25))
                  (xpos (round (* w (if left-p pos-fraction (- 1 pos-fraction)))))
-                 (sw (or outline-width 0))
+                 ;; Keep the displayed outline width equal to the body's box.
+                 (sw (/ (or outline-width 0) (float height)))
                  (sw2 (/ sw 2.0)))
             (svg--def svg mask)
             (svg-rectangle mask 0 0 w h :fill "white")
-            (svg-rectangle mask (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
-                           (if left-p (+ w w) (+ w xpos)) (- h sw)
+            (svg-rectangle mask (if left-p (+ xpos sw) (- 0 w sw)) sw
+                           (if left-p (+ w w) (+ w xpos)) (- h (* 2 sw))
                            :rx (round (* h round-fraction))
-                           :fill "black"
-                           :stroke-width sw
-                           :stroke-color "black")
+                           :fill "black")
 
             (svg-rectangle svg 0 0 w h
                            :fill (telega-color-name-as-hex-2digits fill-color)
@@ -2461,9 +2508,10 @@ integer values, then absolute value in pixels is used."
 
             (let ((image (telega-svg-image svg
                            :scale 1.0
-                           :height (telega-ch-height 1)
+                           :height (telega-ch-height height)
+                           :background nil
                            :telega-text (car bracket-spec)
-                           :ascent 'center)))
+                           :ascent ascent)))
               (telega-emoji--image-cache-put cacheprop 1 image)
               image))))))
 

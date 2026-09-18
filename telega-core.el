@@ -2148,14 +2148,23 @@ Return what BODY returns."
   (declare (indent 1))
   (let ((style-sym (gensym "style"))
         (left-bracket-sym (gensym "left-bracket"))
-        (right-bracket-sym (gensym "right-bracket")))
-    `(let ((,style-sym ,style))
+        (right-bracket-sym (gensym "right-bracket"))
+        (left-start-sym (gensym "left-start"))
+        (body-start-sym (gensym "body-start"))
+        (metrics-sym (gensym "metrics")))
+    `(let* ((,style-sym ,style)
+            (,left-bracket-sym
+             (telega-box-button--style-get ,style-sym :left-bracket))
+            (,right-bracket-sym
+             (telega-box-button--style-get ,style-sym :right-bracket))
+            (,left-start-sym (point))
+            ,body-start-sym
+            ,metrics-sym)
        (telega-ins--with-face
            (telega-box-button--style-get ,style-sym :passive-face)
 
          ;; Left bracket
-         (when-let ((,left-bracket-sym
-                     (telega-box-button--style-get ,style-sym :left-bracket)))
+         (when ,left-bracket-sym
            (if (stringp ,left-bracket-sym)
                (telega-ins ,left-bracket-sym)
              (telega-ins--image
@@ -2163,20 +2172,46 @@ Return what BODY returns."
                ,style-sym :left-bracket ,left-bracket-sym))))
 
          ;; Button body
+         (setq ,body-start-sym (point))
          (telega-ins--with-face (telega-box-button--body-face ,style-sym)
            (telega-ins (telega-box-button--style-get ,style-sym :prefix))
            ,@body
-           (telega-ins (telega-box-button--style-get ,style-sym :suffix)))
+           (telega-ins (telega-box-button--style-get ,style-sym :suffix))))
 
-         ;; Right bracket
-         (when-let ((,right-bracket-sym
-                     (telega-box-button--style-get ,style-sym :right-bracket)))
+       ;; Measure styled, single-line content once for both brackets.
+       ;; Exclude the placeholder; multiline labels keep the fixed size.
+       (when (and telega-use-images
+                  (<= (line-beginning-position) ,left-start-sym)
+                  (cl-some (lambda (spec)
+                             (and (consp spec)
+                                  (eq (plist-get (cdr spec) :height)
+                                      'content)))
+                           (list ,left-bracket-sym ,right-bracket-sym)))
+         (setq ,metrics-sym
+               (telega-box-button--content-metrics
+                (concat (buffer-substring
+                         (line-beginning-position) ,left-start-sym)
+                        (buffer-substring ,body-start-sym (point))))))
+
+       ;; Adjust already inserted left bracket to content height.
+       (when (and ,metrics-sym (consp ,left-bracket-sym)
+                  (get-text-property ,left-start-sym 'display))
+         (put-text-property
+          ,left-start-sym ,body-start-sym 'display
+          (telega-box-button--bracket-image
+           ,style-sym :left-bracket ,left-bracket-sym ,metrics-sym)))
+
+       ;; Right bracket
+       (telega-ins--with-face
+           (telega-box-button--style-get ,style-sym :passive-face)
+         (when ,right-bracket-sym
            (if (stringp ,right-bracket-sym)
                (telega-ins ,right-bracket-sym)
              (telega-ins--image
               (telega-box-button--bracket-image
-               ,style-sym :right-bracket ,right-bracket-sym))))
-         t))))
+               ,style-sym :right-bracket ,right-bracket-sym
+               ,metrics-sym)))))
+       t)))
 
 (defmacro telega-ins--box-button2 (label style &rest button-props)
   "Insert box button of STYLE.
