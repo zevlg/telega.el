@@ -2418,7 +2418,7 @@ Return number of done tasks."
   (let ((pos (point)))
     (telega-ins--with-face 'telega-rich-text-face
       (seq-doseq (pb (plist-get rich-msg :blocks))
-        (telega-rich-text--ins-pb pb)))
+        (telega-rich-text--ins-pb pb msg)))
     (let ((full-p (plist-get rich-msg :is_full)))
       (cond ((eq full-p 'loading)
              (telega-ins-from-newline
@@ -2435,7 +2435,7 @@ Return number of done tasks."
     ;; its `line-height' to not have gap above the heading
     (save-excursion
       (goto-char pos)
-      (when-let* ((pos-eol (pos-eol))
+      (when-let* ((pos-eol (line-end-position))
                   (lh (get-text-property pos-eol 'line-height))
                   ((consp lh)))         ; See https://t.me/emacs_telega/51458
         (put-text-property pos-eol (1+ pos-eol)
@@ -3135,7 +3135,10 @@ ADDITIONAL-ACTION function is called when button is pressed.
 ADDITIONAL-ACTION is called with two args kbd-button and message."
   (declare (indent 2))
   (let* ((text (or (telega--tl-get kbd-button :telega-translated :text)
-                   (telega-tl-str kbd-button :text)))
+                   (if (eq (telega--tl-type kbd-button) 'inlineButton)
+                       (telega-ins--as-string
+                        (telega-rich-text--ins-rt (plist-get kbd-button :text)))
+                     (telega-tl-str kbd-button :text))))
          (kbdb-text
           (telega-ins--as-string
            (telega-ins--with-attrs (when forced-width
@@ -3155,7 +3158,8 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
                          (buttonStyleDefault 'keyboard-default)
                          (buttonStylePrimary 'keyboard-primary)
                          (buttonStyleDanger 'keyboard-danger)
-                         (buttonStyleSuccess 'keyboard-success)))))
+                         (buttonStyleSuccess 'keyboard-success)
+                         (buttonStyleLink 'keyboard-link)))))
     (telega-ins--box-button2 kbdb-text
         (telega-box-button-style bb-style
           ;; Additional styles for buttons of different type
@@ -3169,7 +3173,7 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
                 (when additional-action
                   (funcall additional-action kbd-button msg)))
       'help-echo (cl-case (telega--tl-type kbd-button)
-                   (inlineKeyboardButton
+                   ((inlineKeyboardButton inlineButton)
                     (telega-inline--help-echo kbd-button msg))
                    (keyboardButton
                     (substring (telega--tl-get kbd-button :type :@type) 18))))))
@@ -4585,7 +4589,8 @@ If REMOVE-CAPTION is specified, then do not insert caption."
         ;; NOTE: insert only first block to avoid heavy insertions
         (telega-ins--with-face 'telega-rich-text-face
           (telega-rich-text--ins-pb-one-line
-           (seq-elt (telega--tl-get content :message :blocks) 0))))
+           (seq-elt (telega--tl-get content :message :blocks) 0)
+           msg)))
 
        (t (telega-ins--content msg)))
      t)))

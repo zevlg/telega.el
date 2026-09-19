@@ -148,6 +148,9 @@
         msg (list :@type "callbackQueryPayloadData"
                   :data (plist-get kbd-type :data))))
 
+      (inlineKeyboardButtonTypeDisabled
+       nil)
+
       (inlineKeyboardButtonTypeSwitchInline
        ;; Generate another inline query to the bot
        (let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
