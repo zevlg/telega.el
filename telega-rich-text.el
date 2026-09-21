@@ -281,7 +281,7 @@
                             for attrs =
                             (cl-loop for (attr . prop) in '((colspan . :colspan)
                                                            (rowspan . :rowspan))
-                                     for span = (plist-get cell prop)
+                                     for span = (telega-tl-get0 cell prop)
                                      when (> span 1)
                                      collect (cons attr (number-to-string span)))
                             collect `(td ,attrs (telega-cell ((cell . ,cell)))))
@@ -352,7 +352,7 @@
       (pageBlockSectionHeading
        (telega-ins-from-newline
         (telega-ins--with-face `(telega-rich-text-section-heading
-                                 (:height ,(nth (1- (plist-get pb :size))
+                                 (:height ,(nth (1- (telega-tl-get0 pb :size))
                                                 '(1.3 1.15 1.0 0.85 0.7 0.55))))
           (telega-ins--with-props '(line-height (1.25 1.25))
             (telega-rich-text--ins-rt (plist-get pb :text))

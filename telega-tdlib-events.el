@@ -1525,7 +1525,7 @@ Please downgrade TDLib and recompile `telega-server'"
     (telega--on-updateChatUnreadReactionCount event chat)
 
     (plist-put msg :unread_reactions
-               (telega-tl-get0 event :unread_reactions))
+               (plist-get event :unread_reactions))
     (when node
       (with-telega-chatbuf chat
         (telega-chatbuf--redisplay-node node)))

@@ -1926,8 +1926,8 @@ Take threads and topics into account."
   "Return last read inbox message id.
 Takes into account `telega-chatbuf--topic'."
   (cond ((telega-topic-match-p telega-chatbuf--topic '(type thread))
-         (telega--tl-get telega-chatbuf--topic
-                         :reply_info :last_read_inbox_message_id))
+         (telega-tl-get0 (plist-get  telega-chatbuf--topic :reply_info)
+                         :last_read_inbox_message_id))
 
         ((telega-topic-match-p telega-chatbuf--topic '(type sm))
          ;; NOTE: `savedMessagesTopic' does not have
@@ -1937,10 +1937,10 @@ Takes into account `telega-chatbuf--topic'."
          0)
 
         (telega-chatbuf--topic
-         (plist-get telega-chatbuf--topic :last_read_inbox_message_id))
+         (telega-tl-get0 telega-chatbuf--topic :last_read_inbox_message_id))
 
         (t
-         (plist-get telega-chatbuf--chat :last_read_inbox_message_id))))
+         (telega-tl-get0 telega-chatbuf--chat :last_read_inbox_message_id))))
 
 (defun telega-chatbuf--unread-message-count ()
   "Return number of unread message in the chatbuf.

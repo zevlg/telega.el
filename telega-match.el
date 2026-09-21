@@ -1128,7 +1128,7 @@ Return message's content if matches."
       (let ((chat (telega-msg-chat msg)))
         (or (with-telega-chatbuf chat
               (telega-chatbuf--last-read-inbox-msg-id))
-            (plist-get chat :last_read_inbox_message_id)))))
+            (telega-tl-get0 chat :last_read_inbox_message_id)))))
 
 ;;; ellit-org: msg-temex
 ;; - (unread-reactions [ ~N~ ]) ::
