@@ -200,6 +200,192 @@ Have Stoploss 690 Satoshi." :entities []))))
                  "test.domain.ru##[title~=\\[NSP\\]]:nth-ancestor(6)"))
   )
 
+(ert-deftest telega-rich-message-links ()
+  "Rich-text links keep their targets inside message buttons."
+  (let ((msg '(:@type "message" :chat_id -123 :id 456))
+        opened-url)
+    (cl-letf (((symbol-function 'telega-browse-url)
+               (lambda (url &rest _) (setq opened-url url))))
+      (dolist (type '("richTextUrl" "richTextReferenceLink"))
+        (with-temp-buffer
+          (telega-button--insert 'telega-msg msg
+            :inserter
+            (lambda (_msg)
+              (telega-rich-text--ins-rt
+               `(:@type ,type :url "https://example.com"
+                 :text (:@type "richTextPlain" :text "Open")))))
+          (let ((button (button-at (point-min))))
+            (should (eq (button-get button :value) msg))
+            (setq opened-url nil)
+            (button-activate button)
+            (should (equal opened-url "https://example.com"))))))))
+
+(ert-deftest telega-rich-message-button-row-callbacks ()
+  "Buttons after a footer keep their full labels and message callbacks."
+  (let* ((telega-use-images nil)
+         (msg '(:@type "message" :chat_id -123 :id 456))
+         (row '(:@type "pageBlockButtonRow"
+                :buttons
+                [(:@type "inlineButton"
+                  :text (:@type "richTexts"
+                          :texts [(:@type "richTextPlain" :text "First")
+                                  (:@type "richTextPlain" :text "Button")])
+                  :type (:@type "inlineKeyboardButtonTypeCallback" :data "Zmlyc3Q="))
+                 (:@type "inlineButton"
+                  :text (:@type "richTextPlain" :text "Second")
+                  :style (:@type "buttonStyleLink")
+                  :type (:@type "inlineKeyboardButtonTypeCallback" :data "c2Vjb25k"))
+                 (:@type "inlineButton"
+                  :text (:@type "richTextPlain" :text "Disabled")
+                  :type (:@type "inlineKeyboardButtonTypeDisabled"))]))
+         calls)
+    (cl-letf (((symbol-function 'telega--getCallbackQueryAnswer)
+               (lambda (message payload &rest _)
+                 (push (list message payload) calls))))
+      ;; The same message context must also reach nested rows.
+      (dolist (block (list row (list :@type "pageBlockBlockQuote"
+                                    :blocks (vector row))))
+        (with-temp-buffer
+          (telega-ins--rich-message
+           (list :@type "richMessage" :is_full t
+                 :blocks (vector (list :@type "pageBlockFooter"
+                                       :footer (list :@type "richTextPlain"
+                                                     :text (make-string 100 ?x)))
+                                 block
+                                 '(:@type "pageBlockParagraph"
+                                   :text (:@type "richTextPlain" :text "After"))))
+           msg)
+          (should (string-match-p "x\n+.*FirstButton" (buffer-string)))
+          (should (string-suffix-p "\nAfter\n" (buffer-string)))
+          (goto-char (point-min))
+          (dolist (expected '(("FirstButton" . "Zmlyc3Q=") ("Second" . "c2Vjb25k")))
+            (search-forward (car expected))
+            (button-activate (button-at (1- (point))))
+            (should (equal (pop calls)
+                           (list msg (list :@type "callbackQueryPayloadData"
+                                           :data (cdr expected))))))
+          (search-forward "Disabled")
+          (button-activate (button-at (1- (point))))
+          (should-not calls))))))
+
+(ert-deftest telega-keyboard-button-rich-labels ()
+  "Rich and ordinary keyboard labels preserve URL actions and hints."
+  (let ((telega-use-images nil)
+        opened-url)
+    (cl-letf (((symbol-function 'telega-browse-url)
+               (lambda (url &rest _) (setq opened-url url))))
+      (dolist (type '("inlineButton" "inlineKeyboardButton"))
+        (with-temp-buffer
+          (telega-ins--keyboard-button
+              (list :@type type
+                    :text (if (equal type "inlineButton")
+                              '(:@type "richTextPlain" :text "Open")
+                            "Open")
+                    :type '(:@type "inlineKeyboardButtonTypeUrl"
+                            :url "https://example.com"))
+              nil)
+          (let ((button (button-at (point-min))))
+            (should (string-match-p "Open" (button-label button)))
+            (should (equal (button-get button 'help-echo) "https://example.com"))
+            (setq opened-url nil)
+            (button-activate button)
+            (should (equal opened-url "https://example.com"))))))))
+
+(ert-deftest telega-rich-message-spoilers ()
+  "Spoilers in paragraphs and tables reveal before following nested links."
+  (let* ((msg '(:@type "message" :chat_id -123 :id 456))
+         (spoiler '(:@type "richTextSpoiler"
+                    :text (:@type "richTexts"
+                            :texts [(:@type "richTextUrl" :url "https://example.com"
+                                     :text (:@type "richTextPlain" :text "Secret"))
+                                    (:@type "richTextPlain" :text " tail")])))
+         opened-url)
+    (cl-letf (((symbol-function 'telega-msg-redisplay) #'ignore)
+              ((symbol-function 'telega-browse-url)
+               (lambda (url &rest _) (setq opened-url url))))
+      (dolist (block (list (list :@type "pageBlockParagraph" :text spoiler)
+                          (list :@type "pageBlockTable" :is_bordered t
+                                :cells (vector (vector (list :text spoiler
+                                                             :colspan 1 :rowspan 1))))))
+        (with-temp-buffer
+          (cl-labels ((render ()
+                        (let ((inhibit-read-only t)
+                              (telega-msg--current msg))
+                          (erase-buffer)
+                          (telega-button--insert 'telega-msg msg
+                            :inserter (lambda (_msg)
+                                        (telega-rich-text--ins-pb block msg)))
+                          (goto-char (point-min)))))
+            (setq opened-url nil)
+            (render)
+            (should-not (string-match-p "Secret" (buffer-string)))
+            (let ((pos (text-property-any (point-min) (point-max)
+                                          :action #'telega-msg-text-spoiler-toggle)))
+              (should pos)
+              (button-activate (button-at pos)))
+            (should (plist-get msg :telega-text-spoiler-removed))
+            (should-not opened-url)
+            (render)
+            (search-forward "Secret")
+            (button-activate (button-at (1- (point))))
+            (should (equal opened-url "https://example.com"))
+            (search-forward "tail")
+            (button-activate (button-at (1- (point))))
+            (should-not (plist-get msg :telega-text-spoiler-removed))
+            (render)
+            (should-not (string-match-p "Secret" (buffer-string)))))))))
+
+(ert-deftest telega-rich-message-table-alignment ()
+  "Table columns align inside message and quote prefixes."
+  (let ((table
+         (list :@type "pageBlockTable" :is_bordered t
+               :cells (cl-map 'vector
+                        (lambda (row)
+                          (cl-map 'vector
+                            (lambda (text)
+                              (list :text (list :@type "richTextPlain" :text text)
+                                    :colspan 1 :rowspan 1))
+                            row))
+                        '(("中文" "Long value 🙂 ❤️") ("" "X\nY")
+                          ("Emoji" "👩‍💻 🇨🇳"))))))
+    (dolist (block (list table (list :@type "pageBlockBlockQuote"
+                                   :blocks (vector table))))
+      (with-temp-buffer
+        (telega-ins--line-wrap-prefix "    "
+          (telega-ins "Before")
+          (telega-rich-text--ins-pb block)
+          (telega-rich-text--ins-pb
+           '(:@type "pageBlockParagraph"
+             :text (:@type "richTextPlain" :text "After"))))
+        (should (string-prefix-p "Before\n" (buffer-string)))
+        (should (string-suffix-p "\nAfter\n" (buffer-string)))
+        (save-window-excursion
+          (set-window-buffer (selected-window) (current-buffer))
+          (let (expected)
+            (dolist (text '("Long value" "X" "👩‍💻"))
+              (goto-char (point-min))
+              (let* ((start (- (search-forward text) (length text)))
+                     (column (car (window-text-pixel-size
+                                   nil (line-beginning-position) start))))
+                (if expected
+                    (should (= column expected))
+                  (setq expected column))))
+            (should expected)))))))
+
+(ert-deftest telega-rich-message-open-content ()
+  "Opening a rich message fetches its full content only when needed."
+  (let (requested)
+    (cl-letf (((symbol-function 'telega--openMessageContent) #'ignore)
+              ((symbol-function 'telega-msg-rich-message-show-full)
+               (lambda (msg) (push msg requested))))
+      (dolist (state '(nil loading t))
+        (let ((msg (list :@type "message"
+                         :content (list :@type "messageRichMessage"
+                                        :message (list :is_full state)))))
+          (setq requested nil)
+          (telega-msg-open-content msg)
+          (should (equal requested (unless state (list msg)))))))))
+
 (ert-deftest telega-webpage-tdlib-1.8.66-block-fields ()
   (with-temp-buffer
     (let ((telega-webpage-strip-nl t))
