@@ -6095,13 +6095,13 @@ EMOJI - emoji string to use instead of emoji associated with the STICKER."
                         :id ,(telega--tl-get animation :animation :id))
             ;; Use remote thumbnail and animation files
             :thumbnail (:@type "inputThumbnail"
-                        :width ,(plist-get thumb :width)
-                        :height ,(plist-get thumb :height)
+                        :width ,(telega-tl-get0 thumb :width)
+                        :height ,(telega-tl-get0 thumb :height)
                         :thumbnail (:@type "inputFileId"
                                     :id ,(telega--tl-get thumb :photo :id)))
-            :duration ,(plist-get animation :duration)
-            :width ,(plist-get animation :width)
-            :height ,(plist-get animation :height))))
+            :duration ,(telega-tl-get0 animation :duration)
+            :width ,(telega-tl-get0 animation :width)
+            :height ,(telega-tl-get0 animation :height))))
     ))
 
 (defun telega-chatbuf-attach-custom-emoji ()

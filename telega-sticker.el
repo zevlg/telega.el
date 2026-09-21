@@ -1119,7 +1119,7 @@ Its behavior is controlled by `telega-animation-play-inline' and
   (unless (memq 'animation telega-open-message-as-file)
     (if (numberp telega-animation-play-inline)
         (>= telega-animation-play-inline
-            (or (plist-get animation :duration) 0))
+            (telega-tl-get0 animation :duration))
       telega-animation-play-inline)))
 
 (provide 'telega-sticker)

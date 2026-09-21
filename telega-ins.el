@@ -1106,7 +1106,7 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
 (defun telega-ins--voice-note (msg &optional voice-note)
   "Insert message MSG with VOICE-NOTE content."
   (let* ((note (or voice-note (telega--tl-get msg :content :voice_note)))
-         (dur (plist-get note :duration))
+         (dur (telega-tl-get0 note :duration))
          (proc (plist-get msg :telega-ffplay-proc))
          (playing-p (telega-ffplay-playing-p proc))
          (played (if (telega-ffplay-playing-p proc)
@@ -1156,7 +1156,7 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
 (defun telega-ins--video-note (msg &optional video-note)
   "Insert message MSG with VIDEO-NOTE content."
   (let* ((note (or video-note (telega--tl-get msg :content :video_note)))
-         (dur (plist-get note :duration))
+         (dur (telega-tl-get0 note :duration))
          (note-file (telega-file--renew note :video))
          (recognition (plist-get note :speech_recognition_result))
          (ffplay-proc (plist-get msg :telega-ffplay-proc))
@@ -1183,7 +1183,7 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
       (telega-ins " ")
       (telega-ins--image
        (telega-vvnote--waves-svg
-        waves (plist-get note :duration)
+        waves (telega-tl-get0 note :duration)
         (telega-ffplay-progress ffplay-proc))))
 
     (telega-ins--speech-recognition-button recognition msg dur)
@@ -1756,7 +1756,7 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
     (telega-ins (propertize label 'face 'telega-shadow))
     (telega-ins-fmt " (%s)"
       (telega-duration-human-readable
-       (plist-get content :duration)))))
+       (telega-tl-get0 content :duration)))))
 
 (defun telega-ins--dice-msg-content (content &optional one-line-p)
   "Inserter for the \"messageDice\" MSG."
@@ -2036,10 +2036,10 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
             (telega-ins (telega-short-filename local-path))))
       (telega-ins (telega-tl-str animation :file_name)))
     (telega-ins-fmt " (%dx%d %s %s)"
-      (plist-get animation :width)
-      (plist-get animation :height)
+      (telega-tl-get0 animation :width)
+      (telega-tl-get0 animation :height)
       (file-size-human-readable (telega-file--size anim-file))
-      (telega-duration-human-readable (telega--tl-get animation :duration)))
+      (telega-duration-human-readable (telega-tl-get0 animation :duration)))
     (telega-ins-prefix " "
       (telega-ins--file-progress msg anim-file))
     (telega-ins "\n")
@@ -2702,7 +2702,7 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins-i18n "lng_action_group_call_finished_group"
          :from sender-name
          :duration (telega-duration-human-readable
-                    (plist-get content :duration))))
+                    (telega-tl-get0 content :duration))))
       (messageInviteVideoChatParticipants
        (telega-ins-i18n "lng_action_invite_users_many"
          :from sender-name
@@ -4221,9 +4221,9 @@ If SHORT-P is non-nil then use short version."
         (telega-ins--input-file (plist-get input-audio :audio) "")))
      (inputMessageVideo
       (let* ((input-video (plist-get imc :video))
-             (duration (or (plist-get input-video :duration) 0))
-             (width (plist-get input-video :width))
-             (height (plist-get input-video :height)))
+             (duration (telega-tl-get0 input-video :duration))
+             (width (telega-tl-get0 input-video :width))
+             (height (telega-tl-get0 input-video :height)))
         (telega-ins--input-file
          (plist-get input-video :video) (telega-symbol 'video)
          (concat " "
@@ -4238,7 +4238,7 @@ If SHORT-P is non-nil then use short version."
                  ))))
      (inputMessageVoiceNote
       (let* ((note (plist-get imc :voice_note))
-             (duration (or (plist-get note :duration) 0))
+             (duration (telega-tl-get0 note :duration))
              (waveform (plist-get note :waveform)))
         (telega-ins "VoiceNote ")
         (when (and telega-use-images waveform)
@@ -4250,7 +4250,7 @@ If SHORT-P is non-nil then use short version."
      (inputMessageVideoNote
       (telega-ins "VideoNote")
       (let* ((note (plist-get imc :video_note))
-             (duration (or (plist-get note :duration) 0))
+             (duration (telega-tl-get0 note :duration))
              (thumb-filename (telega--tl-get note :thumbnail :thumbnail :path)))
         (when (and telega-use-images thumb-filename)
           (telega-ins " ")
@@ -4263,9 +4263,9 @@ If SHORT-P is non-nil then use short version."
        (telega--tl-get imc :sticker :sticker) "Sticker"))
      (inputMessageAnimation
       (let* ((input-animation (plist-get imc :animation))
-             (duration (or (plist-get input-animation :duration) 0))
-             (width (plist-get input-animation :width))
-             (height (plist-get input-animation :height)))
+             (duration (telega-tl-get0 input-animation :duration))
+             (width (telega-tl-get0 input-animation :width))
+             (height (telega-tl-get0 input-animation :height)))
         (telega-ins--input-file
          (plist-get input-animation :animation) "GIF"
          (concat " (" (when (and width height)
@@ -4389,12 +4389,12 @@ If SHORT-P is non-nil then use short version."
     (draftMessageContentVideoNote
      (telega-ins "VideoNote ("
                  (telega-duration-human-readable
-                  (plist-get draft-content :duration))
+                  (telega-tl-get0 draft-content :duration))
                  ")"))
     (draftMessageContentVoiceNote
      (telega-ins "VoiceNote ("
                  (telega-duration-human-readable
-                  (plist-get draft-content :duration))
+                  (telega-tl-get0 draft-content :duration))
                  ")"))
     ))
 
@@ -4474,7 +4474,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
         (telega-ins--with-face 'telega-shadow
           (telega-ins-fmt " (%s)"
             (telega-duration-human-readable
-             (telega--tl-get content :audio :duration)))))
+             (telega-tl-get0 (plist-get content :audio) :duration)))))
        (messageVideo
         (telega-ins--content-media-thumbnail-one-line msg content)
         (telega-ins " ")
@@ -4485,7 +4485,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
         (telega-ins--with-face 'telega-shadow
           (telega-ins-fmt " (%s)"
             (telega-duration-human-readable
-             (telega--tl-get content :video :duration)))))
+             (telega-tl-get0 (plist-get content :video) :duration)))))
        (messageGame
         (telega-ins (telega-symbol 'game) " ")
         (let ((game (plist-get content :game)))
@@ -4505,7 +4505,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
         (telega-ins--with-face 'telega-shadow
           (telega-ins-fmt " (%s)"
             (telega-duration-human-readable
-             (telega--tl-get content :voice_note :duration)))))
+             (telega-tl-get0 (plist-get content :voice_note) :duration)))))
        (messageVideoNote
         (let* ((note (plist-get content :video_note))
                (thumb (plist-get note :thumbnail))
@@ -4527,7 +4527,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
           (telega-ins--with-face 'telega-shadow
             (telega-ins-fmt " (%s)"
               (telega-duration-human-readable
-               (plist-get note :duration))))))
+               (telega-tl-get0 note :duration))))))
        (messageContact
         (telega-ins--with-face 'telega-shadow
           (telega-ins-i18n "lng_in_dlg_contact"))

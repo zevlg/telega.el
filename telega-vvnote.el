@@ -630,7 +630,7 @@ duration."
 
   (when-let ((proc (plist-get msg :telega-ffplay-proc))
              (duration
-              (plist-get
+              (telega-tl-get0
                (or (plist-get (telega-msg-match-p msg
                                 '(or (type VoiceNote) (link-preview VoiceNote)))
                               :voice_note)

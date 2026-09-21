@@ -288,7 +288,7 @@
                    collect `(tr nil ,@cells)))
          (shr-use-fonts t)
          (shr-width telega-webpage-fill-column)
-         (shr-table-horizontal-line (when (plist-get pb :is_bordered) ?─))
+         (shr-table-horizontal-line (when (plist-get pb :is_bordered) ?‒))
          (shr-table-vertical-line ?\s)
          (shr-table-corner ?\s)
          (shr-external-rendering-functions

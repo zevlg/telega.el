@@ -529,7 +529,7 @@ Return nil for deleted messages."
          (let* ((fsize (telega-file--size video-file))
                 (dsize (telega-tl-get0 (plist-get video-file :local)
                                        :downloaded_prefix_size))
-                (duration (or (plist-get video :duration) 50))
+                (duration (telega-tl-get0 video :duration))
                 (probe-size (plist-get video :telega-video-probe-size))
                 (open-time (plist-get video :telega-video-pending-open))
                 ;; Downloaded duration
@@ -584,7 +584,7 @@ Return nil for deleted messages."
                ;; file
                (plist-get video :supports_streaming)
                (not (memq 'video telega-open-message-as-file))
-               (let ((moov-size (* 2 1024 (or (plist-get video :duration) 50))))
+               (let ((moov-size (* 2 1024 (telega-tl-get0 video :duration))))
                  (when (> video-file-size (* 2 moov-size))
                    moov-size)))))
     (when (telega--tl-get msg :content :is_secret)

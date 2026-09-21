@@ -1354,7 +1354,7 @@ Call CALLBACK on updates."
               (networkStatisticsEntryCall
                (telega-ins-fmt
                    "Call: %s" (telega-duration-human-readable
-                               (plist-get entry :duration)))))
+                               (telega-tl-get0 entry :duration)))))
             (insert " via ")
             (cl-ecase (telega--tl-type (plist-get entry :network_type))
               (networkTypeNone (insert "Unknown"))

@@ -388,9 +388,9 @@
       (telega-ins--image thumb-img 1)
       (telega-ins " "))
     (telega-ins-fmt "%dx%d %s"
-      (plist-get video :width)
-      (plist-get video :height)
-      (telega-duration-human-readable (plist-get video :duration)))
+      (telega-tl-get0 video :width)
+      (telega-tl-get0 video :height)
+      (telega-duration-human-readable (telega-tl-get0 video :duration)))
     (telega-ins "\n")))
 
 (defun telega-ins--inline-game (qr)

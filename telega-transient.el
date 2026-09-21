@@ -404,8 +404,9 @@ If DEFAULT-VALUE is not specified, then nil is used."
   "Help for message auto deletion duration."
   :format "  %d"
   :description (lambda ()
-                 (let ((auto-delete-in (plist-get (car (telega-transient-scope))
-                                                  :auto_delete_in)))
+                 (let ((auto-delete-in (telega-tl-get0
+                                        (car (telega-transient-scope))
+                                        :auto_delete_in)))
                    (telega-ins--as-string
                     (telega-ins--with-attrs (list :fill 'left
                                                   :fill-column fill-column
