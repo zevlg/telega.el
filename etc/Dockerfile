@@ -16,8 +16,8 @@
 # This comment is to trigger ARM64 build
 
 FROM alpine:latest AS builder
-ARG tdlib_version=v1.8.66
-ARG tdlib_branch=022d60202
+ARG tdlib_version=v1.8.67
+ARG tdlib_branch=d1085f9ce
 ARG telega_branch=master
 
 RUN set +x && apk update && apk upgrade && \
@@ -39,7 +39,7 @@ RUN echo "TDLib ${tdlib_version}-${tdlib_branch}" > tdlib-version && \
     php SplitSource.php --undo
 
 RUN set +x && apk update && apk upgrade && \
-    apk add --update pkgconfig libayatana-appindicator-dev libayatana-indicator-dev ayatana-ido-dev libwebp-tools libpng-dev ffmpeg libglycin
+    apk add --update pkgconfig libayatana-appindicator-dev libayatana-indicator-dev ayatana-ido-dev libwebp-tools libpng-dev ffmpeg
 
 # build librlottie from sources
 RUN cd / && git clone https://github.com/Samsung/rlottie.git && \
@@ -78,7 +78,7 @@ FROM alpine:latest
 # - psmisc (with killall tool) used to kill ffmpeg processes
 # - libqrencode-tools (with qrencode tool) used for QR code auth method
 RUN set +x && apk update && apk upgrade && \
-    apk add --update zlib-dev openssl ffmpeg libwebp-tools psmisc libqrencode-tools bash
+    apk add --update zlib-dev openssl ffmpeg libwebp-tools psmisc libqrencode-tools libglycin util-linux bash
 
 # To make ALSA work
 COPY etc/asound.conf /etc/asound.conf

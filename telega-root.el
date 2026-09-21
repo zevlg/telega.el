@@ -1106,9 +1106,9 @@ If corresponding chat node does not exists in EWOC, then create new one."
   ;; NOTE: `telega-root--found-messages-add' also used for
   ;; `FoundPublicPosts' structure, which has no `:total_count'
   ;; property
-  (let ((total-count (plist-get found-messages :total_count))
+  (let ((total-count (telega-tl-get0 found-messages :total_count))
         (next-offset (telega-tl-str found-messages :next_offset)))
-    (cond ((and total-count (zerop total-count))
+    (cond ((zerop total-count)
            (with-telega-root-view-ewoc ewoc-name ewoc
              (telega-save-cursor
                (telega-ewoc--set-footer ewoc
@@ -1180,7 +1180,8 @@ If corresponding chat node does not exists in EWOC, then create new one."
            (telega-ins "\n")
            (telega-ins--help-message
             (telega-ins-i18n "lng_posts_remaining"
-              :count (plist-get pp-limits :remaining_free_query_count)))))))))
+              :count (telega-tl-get0 pp-limits :remaining_free_query_count)))))))
+    ))
 
 (defun telega-root--call-messages-search (&optional offset)
   "Search for call messages."
@@ -1493,10 +1494,10 @@ VIEW-FILTER is additional chat filter for this root view."
         (telega-chat> (telega-msg-chat msg1) (telega-msg-chat msg2)))
 
     ;; Sort by message date
-    (> (if (zerop (plist-get msg1 :edit_date))
+    (> (if (zerop (telega-tl-get0 msg1 :edit_date))
            (plist-get msg1 :date)
          (plist-get msg1 :edit_date))
-       (if (zerop (plist-get msg2 :edit_date))
+       (if (zerop (telega-tl-get0 msg2 :edit_date))
            (plist-get msg2 :date)
          (plist-get msg2 :edit_date)))))
 

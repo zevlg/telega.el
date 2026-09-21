@@ -1,7 +1,7 @@
 /*
  * telega-server.c --- Bridge between Emacs and TDLib.
  *
- * Copyright (C) 2016-2025 by Zajcev Evgeny
+ * Copyright (C) 2016-2026 by Zajcev Evgeny
  *
  * Author: Zajcev Evgeny <zevlg@yandex.ru>
  *
@@ -72,7 +72,7 @@ void pngext_main(int ac, char** av);
 char* logfile = NULL;
 size_t logfile_size = 4 * 1024 * 1024;
 int verbosity = 5;
-const char* version = "1.2.0";
+const char* version = "1.2.1";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;

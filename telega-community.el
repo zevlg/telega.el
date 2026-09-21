@@ -26,6 +26,18 @@
 ;;; Code:
 (require 'telega-core)
 
+(defconst telega-community--permissions
+  '((:can_edit_chat_list . "lng_rights_community_linked")
+    ))
+
+(defconst telega-community--admin-rights
+  '((:can_manage_community . "lng_community_manage")
+    (:can_change_info . "lng_rights_community_info")
+    (:can_edit_chat_list . "lng_rights_community_linked")
+    (:can_promote_members . "lng_rights_add_admins")
+    (:can_ban_members . "lng_rights_community_ban")
+    ))
+
 (defun telega-community-get (cid)
   "Get community by community id CID."
   (alist-get cid telega--communities-alist))
@@ -66,8 +78,16 @@
   (interactive (list (telega-completing-read-community
                       (concat (telega-i18n "lng_community_title") ": "))))
   ;; TODO:
-  (message "TODO: describe a community")
-  )
+  (with-telega-help-win "*Telega Community*"
+    (telega-ins-describe-item (telega-i18n "lng_community_manage_name")
+      (telega-ins (telega-community-title--special community)))
+
+    (telega-ins "TODO: Who can add chats?\n")
+    (telega-ins "TODO: Administrators\n")
+    (telega-ins "TODO: Removed Users\n")
+    (telega-ins "TODO: Community Chats\n")
+    (telega-ins "TODO: [Delete Community]")
+    ))
 
 (provide 'telega-community)
 

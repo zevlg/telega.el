@@ -900,7 +900,7 @@ HOW specifies how list is changed, one of: `prepend', `append' or `remove'."
 
 (defun telega--text-entity-at-newline-p (ent text)
   "Return non-nil if textEntity ENT for TEXT starts at newline."
-  (let ((beg (plist-get ent :offset)))
+  (let ((beg (telega-tl-get0 ent :offset)))
     (or (zerop beg) (= ?\n (aref text (1- beg))))))
 
 (defun telega--text-entity-apply (ent &optional object)
@@ -909,8 +909,8 @@ Optional OBJECT could be a buffer (or nil, which means the current
 buffer) or a string."
   (let* ((ent-type (plist-get ent :type))
          (ent-type-tl-type (telega--tl-type ent-type))
-         (beg (plist-get ent :offset))
-         (end (+ (plist-get ent :offset) (plist-get ent :length)))
+         (beg (telega-tl-get0 ent :offset))
+         (end (+ beg (telega-tl-get0 ent :length)))
          (ent-text (if object
                        (substring object beg end)
                      (buffer-substring beg end))))
@@ -1450,11 +1450,11 @@ Return nil if STR does not specify an org mode link."
         ;; NOTE: In emacs27 `cl-incf' with `plist-get' does not work,
         ;; thats why we use `plist-put' instead. See
         ;; https://t.me/emacs_ru/454836
-        (plist-put ent :offset (+ (plist-get ent :offset) offset-shift))
+        (plist-put ent :offset (+ (telega-tl-get0 ent :offset) offset-shift))
 
         (when-let* ((ent-type (plist-get ent :type))
-                    (ent-len (plist-get ent :length))
-                    (beg (plist-get ent :offset))
+                    (ent-len (telega-tl-get0 ent :length))
+                    (beg (telega-tl-get0 ent :offset))
                     (end (+ beg ent-len))
                     (pre-p (eq 'textEntityTypePre (telega--tl-type ent-type)))
                     (text (plist-get fmt-text :text))
@@ -1580,8 +1580,8 @@ parts without explicit markup."
   ;;                             |---ent---|  (partially inside)
   ;;                                      |--ent--| (outside substring)
   ;;
-  (let* ((ent-off (plist-get ent :offset))
-         (ent-len (plist-get ent :length))
+  (let* ((ent-off (telega-tl-get0 ent :offset))
+         (ent-len (telega-tl-get0 ent :length))
          (ent-end (+ ent-off ent-len))
          (ent-ioff (if (< ent-off from) from ent-off))
          (ent-iend (if (> ent-end to) to ent-end)))
@@ -1621,8 +1621,8 @@ Return desurrogated formattedText."
                   (prog1
                       (mapcar (lambda (ent)
                                 (list :@type "textEntity"
-                                      :offset (+ offset (plist-get ent :offset))
-                                      :length (plist-get ent :length)
+                                      :offset (+ offset (telega-tl-get0 ent :offset))
+                                      :length (telega-tl-get0 ent :length)
                                       :type (plist-get ent :type)))
                               (plist-get fmt-text :entities))
                     (cl-incf offset (telega-string-fmt-text-length
@@ -1639,8 +1639,8 @@ ENTITY-TO-MARKUP-FUN is function to convert TDLib entities to string."
         (offset 0)
         (strings nil))
     (seq-doseq (ent (plist-get fmt-text :entities))
-      (let ((ent-off (plist-get ent :offset))
-            (ent-len (plist-get ent :length)))
+      (let ((ent-off (telega-tl-get0 ent :offset))
+            (ent-len (telega-tl-get0 ent :length)))
         ;; Part without attached entity
         (when (> ent-off offset)
           (push (cons nil (substring text offset ent-off)) strings))

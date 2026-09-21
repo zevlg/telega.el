@@ -418,8 +418,9 @@ If DEFAULT-VALUE is not specified, then nil is used."
   :if (lambda ()
         (when-let* ((messages (telega-transient-scope))
                     ((= 1 (length messages)))
-                    (auto-delete-in (plist-get (car messages) :auto_delete_in)))
-          (not (telega-zerop auto-delete-in))))
+                    (auto-delete-in (telega-tl-get0
+                                     (car messages) :auto_delete_in)))
+          (not (zerop auto-delete-in))))
   :class 'telega-transient-information)
 
 (transient-define-infix telega-transient--infix-msg-revoke ()
@@ -1310,9 +1311,9 @@ Return fake chat suitable for `telega-ins--msg-sender'."
            (telega-ins-i18n (if (telega-chat-match-p fake-chat '(type channel))
                                 "lng_chat_status_subscribers"
                               "lng_chat_status_members")
-             :plural-count (plist-get il-info :member_count)
+             :plural-count (telega-tl-get0 il-info :member_count)
              :count (telega-number-human-readable
-                     (plist-get il-info :member_count))))
+                     (telega-tl-get0 il-info :member_count))))
          (telega-ins "\n")
 
          (unless (telega-transient--invite-link-need-subscription-p)
@@ -1328,7 +1329,8 @@ Return fake chat suitable for `telega-ins--msg-sender'."
              :channel (propertize (telega-tl-str il-info :title)
                                   'face 'bold)
              :price (format "%s%d" (telega-symbol 'telegram-star)
-                            (telega--tl-get s-info :pricing :star_count)))
+                            (telega-tl-get0 (plist-get s-info :pricing)
+                                            :star_count)))
            (telega-ins "\n")
 
            ;; My stars balance
@@ -1607,7 +1609,7 @@ Return first applicable imc."
     (let ((imc (telega-transient--input-option-applicable-p
                 'inputMessageLocation)))
       (or (not imc)
-          (telega-zerop (plist-get imc :live_period))))))
+          (zerop (telega-tl-get0 imc :live_period))))))
 
 (transient-define-infix telega-transient--infix-input-option-spoiler ()
   "Hide media content under spoiler."

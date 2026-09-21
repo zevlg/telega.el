@@ -884,7 +884,7 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
   :type 'integer
   :group 'telega-server)
 
-(defcustom telega-server-optimize 31
+(defcustom telega-server-optimize (logior 1 2 4 8 16 32)
   "Optimizations to use in `telega-server'.
 Requires at least telega-server 1.0.0.
 Optimization flags:
@@ -893,6 +893,7 @@ Optimization flags:
 4 - Remove [] values from resulting values.
 8 - Remove empty strings from resulting values.
 16 - Remove empty \"ok\" replies without extra data.
+32 - Remove 0 and \"0\" values from resulting values.
 
 Flags are combined with logical or."
   :type 'integer

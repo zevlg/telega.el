@@ -194,7 +194,7 @@ in the cache rather than TOPIC."
   (declare (indent 1))
   (let ((cb (lambda (reply)
               (plist-put chat :telega_topics_count
-                         (plist-get reply :total_count))
+                         (telega-tl-get0 reply :total_count))
               (seq-doseq (topic (plist-get reply :topics))
                 (telega-topic--ensure topic))
 
@@ -347,7 +347,7 @@ If START-MSG-ID is specified, jump to the this message in the topic."
   (let ((chat (telega-topic-chat topic)))
     (cl-ecase (telega--tl-type topic)
       (forumTopic
-       (unless (telega-zerop (plist-get topic :unread_count))
+       (unless (zerop (telega-tl-get0 topic :unread_count))
          (telega--viewMessages chat (list (plist-get topic :last_message))
            :source '(:@type "messageSourceForumTopicHistory")
            :force t))

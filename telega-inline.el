@@ -153,7 +153,7 @@
 
       (inlineKeyboardButtonTypeSwitchInline
        ;; Generate another inline query to the bot
-       (let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
+       (let* ((via-bot-user-id (telega-tl-get0 msg :via_bot_user_id))
               (bot (if (not (zerop via-bot-user-id))
                        (telega-user-get via-bot-user-id)
                      (telega-msg-sender msg)))

@@ -99,7 +99,8 @@ DIRTINESS specifies additional CHAT dirtiness."
 
 (defun telega--verification-fetch-custom-emoji (v-status)
   "Maybe fetch `verificationStatus' V-STATUS custom emoji icon."
-  (when-let ((ceid (plist-get v-status :bot_verification_icon_custom_emoji_id)))
+  (when-let ((ceid (telega-tl-get0
+                    v-status :bot_verification_icon_custom_emoji_id 'int64)))
     (unless (or (telega-zerop ceid) (telega-custom-emoji-get ceid))
       (telega--getCustomEmojiStickers (list ceid)
         (lambda (stickers)
@@ -134,9 +135,8 @@ DIRTINESS specifies additional CHAT dirtiness."
 
 (defun telega--on-updateUserStatus (event)
   "User status has been changed."
-  (let* ((user-id (plist-get event :user_id))
-         (user (telega-user-get user-id))
-         (status (plist-get event :status)))
+  (let ((user (telega-user-get (plist-get event :user_id)))
+        (status (plist-get event :status)))
     (plist-put user :status status)
     ;; NOTE: For online status, set special USER property with value
     ;; of time last seen online
@@ -297,7 +297,7 @@ DIRTINESS specifies additional CHAT dirtiness."
 
 (defun telega--on-updateChatReadInbox (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
-        (unread-count (plist-get event :unread_count)))
+        (unread-count (telega-tl-get0 event :unread_count)))
     (cl-assert chat)
     (plist-put chat :last_read_inbox_message_id
                (plist-get event :last_read_inbox_message_id))
@@ -333,7 +333,7 @@ DIRTINESS specifies additional CHAT dirtiness."
 
   (cl-assert chat)
   (plist-put chat :unread_mention_count
-             (plist-get event :unread_mention_count))
+             (telega-tl-get0 event :unread_mention_count))
 
   (telega-chat--mark-dirty chat event))
 
@@ -423,7 +423,7 @@ NOTE: we store the number as custom chat property, to use it later."
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
     (plist-put chat :x-online-count
-               (plist-get event :online_member_count))
+               (telega-tl-get0 event :online_member_count))
 
     (telega-chat--mark-dirty chat event)))
 
@@ -667,14 +667,14 @@ NOTE: we store the number as custom chat property, to use it later."
           ;; all chat mentions as read if there is no other mentions.
           ;; See https://github.com/zevlg/telega.el/issues/314
           (when (and (plist-get new-msg :contains_unread_mention)
-                     (eq 1 (plist-get chat :unread_mention_count)))
+                     (eq 1 (telega-tl-get0 chat :unread_mention_count)))
             (telega--readAllChatMentions chat))
           ;; NOTE: If all messages in the chat are read and ignored
           ;; message arives, automatically read it
           ;; See https://github.com/zevlg/telega.el/issues/381
           (when-let ((last-message (plist-get chat :last_message)))
             (when (<= (plist-get last-message :id)
-                      (plist-get chat :last_read_inbox_message_id))
+                      (telega-tl-get0 chat :last_read_inbox_message_id))
             (telega--viewMessages chat (list new-msg)
               :source '(:@type "messageSourceChatHistory")
               :force t))))
@@ -762,7 +762,7 @@ Message id could be updated on this update."
       ;; NOTE: In case outgoing message is done via bot, we need to
       ;; update recently used inline bots list
       (when-let ((outgoing-p (plist-get new-msg :is_outgoing))
-                 (via-bot-id (plist-get new-msg :via_bot_user_id)))
+                 (via-bot-id (telega-tl-get0 new-msg :via_bot_user_id)))
         (unless (zerop via-bot-id)
           (telega--recent-inline-bots-fetch)))
 
@@ -1185,7 +1185,7 @@ messages."
     ;; this update event, so we could calculate time left in slow mode
     ;; before expiration
     (plist-put supergroup-fi :telega-update-event-timestamp
-               (unless (zerop (plist-get
+               (unless (zerop (telega-tl-get0
                                supergroup-fi :slow_mode_delay_expires_in))
                  (float-time)))
 
@@ -1200,7 +1200,7 @@ messages."
       (telega-chat--mark-dirty chat event)
 
       (with-telega-chatbuf chat
-        (unless (equal (plist-get supergroup-fi :administrator_count)
+        (unless (equal (telega-tl-get0 supergroup-fi :administrator_count)
                        (length telega-chatbuf--administrators))
           (telega-chatbuf--admins-fetch))
 
@@ -1263,11 +1263,8 @@ messages."
   (let* ((option (intern (concat ":" (plist-get event :name))))
          (opt-val (plist-get event :value))
          (value (plist-get opt-val :value)))
-    ;; TDLib 1.6.9 has `optionValueInteger' as int64, represented as
-    ;; string
-    (when (and (eq 'optionValueInteger (telega--tl-type opt-val))
-               (stringp value))
-      (setq value (string-to-number value)))
+    (when (eq 'optionValueInteger (telega--tl-type opt-val))
+      (setq value (string-to-number (or value "0"))))
 
     (setq telega--options
           (plist-put telega--options option value))
@@ -1511,14 +1508,14 @@ Please downgrade TDLib and recompile `telega-server'"
 
   (cl-assert chat)
   (plist-put chat :unread_reaction_count
-             (plist-get event :unread_reaction_count))
+             (telega-tl-get0 event :unread_reaction_count))
 
   (telega-chat--mark-dirty chat event))
 
 (defun telega--on-updateChatUnreadPollVoteCount (event)
   (when-let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (plist-put chat :unread_poll_vote_count
-               (plist-get event :unread_poll_vote_count))
+               (telega-tl-get0 event :unread_poll_vote_count))
 
     (telega-chat--mark-dirty chat event)))
 
@@ -1527,7 +1524,8 @@ Please downgrade TDLib and recompile `telega-server'"
     (cl-assert chat)
     (telega--on-updateChatUnreadReactionCount event chat)
 
-    (plist-put msg :unread_reactions (plist-get event :unread_reactions))
+    (plist-put msg :unread_reactions
+               (telega-tl-get0 event :unread_reactions))
     (when node
       (with-telega-chatbuf chat
         (telega-chatbuf--redisplay-node node)))
@@ -1560,7 +1558,7 @@ Please downgrade TDLib and recompile `telega-server'"
 (defun telega--on-updateStoryListChatCount (event)
   "Number of chats in a story list has changed."
   (let ((story-list (plist-get event :story_list))
-        (chat-count (plist-get event :chat_count)))
+        (chat-count (telega-tl-get0 event :chat_count)))
 
     (setq telega--story-list-chat-count
           (plist-put telega--story-list-chat-count
@@ -1702,21 +1700,21 @@ Please downgrade TDLib and recompile `telega-server'"
          (new-draft-msg
           (plist-get event :draft_message))
          (old-last-read-msg-id
-          (plist-get forum-topic :last_read_inbox_message_id))
+          (telega-tl-get0 forum-topic :last_read_inbox_message_id))
          (new-last-read-msg-id
-          (plist-get event :last_read_inbox_message_id)))
+          (telega-tl-get0 event :last_read_inbox_message_id)))
     (plist-put forum-topic :is_pinned
                (plist-get event :is_pinned))
     (plist-put forum-topic :last_read_inbox_message_id
                new-last-read-msg-id)
     (plist-put forum-topic :last_read_outbox_message_id
-               (plist-get event :last_read_outbox_message_id))
+               (telega-tl-get0 event :last_read_outbox_message_id))
     (plist-put forum-topic :unread_mention_count
-               (plist-get event :unread_mention_count))
+               (telega-tl-get0 event :unread_mention_count))
     (plist-put forum-topic :unread_reaction_count
-               (plist-get event :unread_reaction_count))
+               (telega-tl-get0 event :unread_reaction_count))
     (plist-put forum-topic :unread_poll_vote_count
-               (plist-get event :unread_poll_vote_count))
+               (telega-tl-get0 event :unread_poll_vote_count))
     (plist-put forum-topic :notification_settings
                (plist-get event :notification_settings))
     (plist-put forum-topic :draft_message
@@ -1754,7 +1752,7 @@ Please downgrade TDLib and recompile `telega-server'"
 
             (message "here, updateForumTopic: last-read-diff=%d" last-read-diff)
             (when (and (not (zerop last-read-diff))
-                       (>= (plist-get forum-topic :unread_count)
+                       (>= (telega-tl-get0 forum-topic :unread_count)
                            last-read-diff))
               (cl-decf (plist-get forum-topic :unread_count) last-read-diff)
 
@@ -1793,7 +1791,7 @@ For Saved Messages and channel direct messages chat topics only."
          (topic (telega-topic-get chat (telega--MessageTopic-id msg-topic))))
 
     (plist-put topic :telega_message_count
-               (plist-get event :message_count))
+               (telega-tl-get0 event :message_count))
 
     ;; TODO: update chat/topic
     ))
@@ -1869,7 +1867,7 @@ For Saved Messages and channel direct messages chat topics only."
     (plist-put msg :contains_unread_poll_votes
                (plist-get event :contains_unread_poll_votes))
     (plist-put msg :unread_poll_vote_count
-               (plist-get event :unread_poll_vote_count))
+               (telega-tl-get0 event :unread_poll_vote_count))
 
     (when node
       (with-telega-chatbuf chat
@@ -1883,6 +1881,12 @@ For Saved Messages and channel direct messages chat topics only."
                      telega--communities-alist)
           community)
     ))
+
+(defun telega--on-updateTrustedMiniAppBots (event)
+  "List of trusted mini app bots."
+  (setq telega--trusted-miniapp-bots-ids
+        (append (plist-get event :bot_user_ids) nil))
+  )
 
 (provide 'telega-tdlib-events)
 

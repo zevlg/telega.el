@@ -106,9 +106,8 @@ If TOPIC is specified, return notification setting for the given topic."
   "Insert notification scope of SCOPE-TYPE.
 SCOPE-TYPE is same an in `telega-chat-notification-scope'."
   (let* ((sconf (telega-chat-notification-scope scope-type))
-         (mute-for (plist-get sconf :mute_for))
+         (mute-for (telega-tl-get0 sconf :mute_for))
          (unmuted-p (zerop mute-for))
-         (sound-id (plist-get sconf :sound_id))
          (preview-p (plist-get sconf :show_preview)))
     (telega-ins--text-button (if unmuted-p
                                  (telega-symbol 'checkbox-on)
@@ -177,8 +176,9 @@ SCOPE-TYPE is same an in `telega-chat-notification-scope'."
       (telega-ins " " "Disable Mention Notification")
       (telega-ins "\n"))
 
-    (telega-ins-describe-item (telega-i18n "lng_notification_sound")
-      (telega-ins sound-id))
+    (let ((sound-id (telega-tl-get0 sconf :sound_id)))
+      (telega-ins-describe-item (telega-i18n "lng_notification_sound")
+        (telega-ins sound-id)))
 
     ;; Exceptions
     (when-let ((exception-chats

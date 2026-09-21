@@ -187,7 +187,7 @@ overwriting currently active one."
 ;;   {{{fundoc(telega--sort-unread-count, 2)}}}
 (define-telega-sorter unread-count ("updateChatReadInbox") (chat)
   "Sort chats by number of unread messages in chat."
-  (plist-get chat :unread_count))
+  (telega-tl-get0 chat :unread_count))
 
 ;;; ellit-org: chat-sorting-criteria
 ;; - ~title~, {{{where-is(telega-sort-by-title,telega-root-mode-map)}}} ::
@@ -206,7 +206,7 @@ overwriting currently active one."
 ;;   {{{fundoc(telega--sort-member-count, 2)}}}
 (define-telega-sorter member-count ("updateBasicGroup" "updateSupergroup") (chat)
   "Sort chats by number of members in the chat."
-  (plist-get (telega-chat--info chat) :member_count))
+  (telega-tl-get0 (telega-chat--info chat) :member_count))
 
 ;;; ellit-org: chat-sorting-criteria
 ;; - ~online-members~, {{{where-is(telega-sort-by-online-members,telega-root-mode-map)}}} ::
@@ -270,7 +270,7 @@ See https://github.com/zevlg/telega.el/issues/165"
   "Sort by number of chats in common.
 See https://github.com/zevlg/telega.el/issues/218"
   (if-let ((user (telega-chat-user chat)))
-      (plist-get (telega--full-info user) :group_in_common_count)
+      (telega-tl-get0 (telega--full-info user) :group_in_common_count)
     -10))
 
 ;;; ellit-org: chat-sorting-criteria

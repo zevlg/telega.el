@@ -141,9 +141,9 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
          ;; NOTE: sum in place, `mapcar' allocated a list per button per
          ;; redisplay.  See https://github.com/zevlg/telega.el/pull/599
          (unread (cl-loop for chat in chats
-                          sum (plist-get chat :unread_count)))
+                          sum (telega-tl-get0 chat :unread_count)))
          (mentions (cl-loop for chat in chats
-                            sum (plist-get chat :unread_mention_count)))
+                            sum (telega-tl-get0 chat :unread_mention_count)))
          (umstring
           (telega-ins--as-string
            (telega-ins--with-attrs (list :max 7

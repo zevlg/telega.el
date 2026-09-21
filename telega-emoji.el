@@ -492,7 +492,7 @@ Do not fetch custom emojis for ignored messages."
       (when-let* ((es-type (plist-get es :type))
                   (ce-id (when (telega-match-p es-type
                                  '(tl-type emojiStatusTypeCustomEmoji))
-                           (plist-get es-type :custom_emoji_id))))
+                           (telega-tl-get0 es-type :custom_emoji_id 'int64))))
         (if-let ((ce-sticker (telega-custom-emoji-get ce-id)))
             (setq known-stickers (cons ce-sticker known-stickers))
           (setq unknown-ids (cons ce-id unknown-ids)))))

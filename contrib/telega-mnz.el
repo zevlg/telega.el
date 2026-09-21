@@ -293,8 +293,8 @@ language-detection is used in this case, used for
              telega-msg--current
              (with-telega-chatbuf (telega-msg-chat telega-msg--current 'offline)
                telega-mnz-mode))
-    (when-let* ((beg (plist-get ent :offset))
-                (end (+ (plist-get ent :offset) (plist-get ent :length)))
+    (when-let* ((beg (telega-tl-get0 ent :offset))
+                (end (+ beg (telega-tl-get0 ent :length)))
                 (text (telega--desurrogate-apply (substring object beg end)))
                 (mode (telega-mnz--mode-for-language
                        (telega-tl-str (plist-get ent :type) :language) text)))
@@ -376,8 +376,8 @@ To cancel, hit %s.")
       (if-let* ((telega-inhibit-telega-display-by t)
                 (msg-fmt-text (or (telega--tl-get msg :content :text)
                                   (telega--tl-get msg :content :caption)))
-                (cb-start (plist-get cb-ent :offset))
-                (cb-stop (+ cb-start (plist-get cb-ent :length)))
+                (cb-start (telega-tl-get0 cb-ent :offset))
+                (cb-stop (+ cb-start (telega-tl-get0 cb-ent :length)))
                 (new-code (telega-mnz--recursive-edit-code
                            (telega-mnz--mode-for-language
                             (telega-tl-str (plist-get cb-ent :type) :language))

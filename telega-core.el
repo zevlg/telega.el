@@ -547,6 +547,9 @@ display the list.")
 (defvar telega--recent-inline-bots nil
   "List of usernames for recently used inline bots.")
 
+(defvar telega--trusted-miniapp-bots-ids nil
+  "List of bot ids with trusted mini apps.")
+
 (defvar telega--notification-messages-ring (make-ring 1)
   "Ring of messages triggered notification.
 Use \\[execute-extended-command] telega-notifications-history RET to
@@ -846,6 +849,7 @@ Done when telega server is ready to receive queries."
   (setq telega--group-calls (make-hash-table :test 'eq))
   (setq telega-docker--container-id nil)
   (setq telega--recent-inline-bots nil)
+  (setq telega--trusted-miniapp-bots-ids nil)
 
   (setq telega--favorite-messages-storage-message 'not-yet-fetched)
   (setq telega--favorite-messages nil)
@@ -1130,6 +1134,11 @@ For example:
       (setq ret (list 'plist-get ret prop)))
     ret))
 
+(defmacro telega-tl-get0 (obj prop &optional string-p)
+  "Get OBJ's property PROP which might have zero value.
+Use this to make telega-server's OPTIMIZE_ZERO_VALUES optimization to work."
+  `(or (plist-get ,obj ,prop) ,(if string-p "0" 0)))
+
 (defmacro telega--tl-prop (prop1 &rest props)
   "Generate function to get property by PROP1 and PROPS.
 Uses `telega--tl-get' to obtain the property."
@@ -1156,15 +1165,15 @@ If TL-TYPES is nil, then return first TL entity from the TL-ENTITIES list."
 
 (defun telega--tl-star-amount-as-float (tl-star-amount)
   "Return starAmount TL-STAR-AMOUNT as float number."
-  (+ (plist-get tl-star-amount :star_count)
-     (/ (plist-get tl-star-amount :nanostar_count) 1000000000.0)))
+  (+ (telega-tl-get0 tl-star-amount :star_count)
+     (/ (telega-tl-get0 tl-star-amount :nanostar_count) 1000000000.0)))
 
 (defsubst telega-file--size (file)
   "Return FILE size."
   ;; NOTE: fsize is 0 if unknown, in this case esize is approximate
   ;; size
-  (let ((fsize (plist-get file :size))
-        (esize (plist-get file :expected_size)))
+  (let ((fsize (telega-tl-get0 file :size))
+        (esize (telega-tl-get0 file :expected_size)))
     (if (zerop fsize) esize fsize)))
 
 (defmacro telega-file--path (file)
@@ -1190,7 +1199,7 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
        (not (telega-file--downloaded-p file))))
 
 (defmacro telega-file--downloaded-size (file)
-  `(telega--tl-get ,file :local :downloaded_size))
+  `(telega-tl-get0 (plist-get ,file :local) :downloaded_size))
 
 (defun telega-file--downloading-progress (file)
   "Return progress of FILE downloading as float from 0 to 1."
@@ -1214,8 +1223,9 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
 
 (defun telega-file--uploading-progress (file)
   "Return progress of FILE uploading as float from 0 to 1."
-  (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
-                  (telega-file--size file))))
+  (color-clamp
+   (/ (float (telega-tl-get0 (plist-get file :remote) :uploaded_size))
+      (telega-file--size file))))
 
 (defun telega-file--partially-uploaded-p (file)
   "Return non-nil if FILE is partially uploaded."
@@ -1874,11 +1884,11 @@ Draft input is the input that have `:draft-input-p' property on both sides."
 Return nil if location message is not live.
 Return list of two values - (LIVE-FOR UPDATED-AGO)."
   (let* ((content (plist-get msg :content))
-         (live-period (plist-get content :live_period))
-         (expires-in (plist-get content :expires_in)))
-    (unless (or (telega-zerop live-period) (telega-zerop expires-in))
+         (live-period (telega-tl-get0 content :live_period))
+         (expires-in (telega-tl-get0 content :expires_in)))
+    (unless (or (zerop live-period) (zerop expires-in))
       (let ((current-ts (telega-time-seconds))
-            (since (if (zerop (plist-get msg :edit_date))
+            (since (if (zerop (telega-tl-get0 msg :edit_date))
                        (plist-get msg :date)
                      (plist-get msg :edit_date))))
         (list (- (+ since expires-in) current-ts)

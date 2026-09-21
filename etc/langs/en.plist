@@ -633,7 +633,7 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_rights_group_manage_ranks"
   :value "Edit member tags")
  ("lng_rights_edit_admin"
-  :value "Edit permissions")
+  :value "Admin rights")
  ("telega_rights_restrict_members"
   :value "Restrict Members")
  ("telega_rights_promote_members"
@@ -2521,4 +2521,15 @@ this channel?")
   :value "{name} created!")
  ("lng_action_community_added"
   :value "{from} added this group to the {community} community.")
+
+ ("lng_community_manage"
+  :value "Manage Community")
+ ("lng_community_manage_name"
+  :value "Community Name")
+ ("lng_rights_community_info"
+  :value "Edit Community Name")
+ ("lng_rights_community_linked"
+  :value "Edit Chat List")
+ ("lng_rights_community_ban"
+  :value "Ban Members")
  )

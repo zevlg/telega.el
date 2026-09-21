@@ -157,12 +157,9 @@
 If MESSAGES-P is non-nil then use number of unread unmuted messages."
   (let ((uu-count
          (if messages-p
-             (plist-get telega--unread-message-count :unread_unmuted_count)
-           (plist-get telega--unread-chat-count :unread_unmuted_count))))
-    ;; NOTE: `telega--unread-chat-count' or
-    ;; `telega--unread-message-count' might not be yet updated, so
-    ;; `uu-count' can be nil
-    (unless (zerop (or uu-count 0))
+             (telega-tl-get0 telega--unread-message-count :unread_unmuted_count)
+           (telega-tl-get0 telega--unread-chat-count :unread_unmuted_count))))
+    (unless (zerop uu-count)
       (concat
        " "
        (propertize (number-to-string uu-count)
@@ -180,7 +177,8 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
   (let* ((m-chats (telega-filter-chats (telega-chats-list)
                     '(mention)))
          (m-count (if messages-p
-                      (apply '+ (mapcar (telega--tl-prop :unread_mention_count)
+                      (apply '+ (mapcar (lambda (c)
+                                          (telega-tl-get0 c :unread_mention_count))
                                         m-chats))
                     (length m-chats))))
     (unless (zerop m-count)
@@ -425,8 +423,7 @@ Return filename of the generated icon."
                        telega-appindicator-show-account-name)
               (car (telega-account-current))))
            (uu-chats-num
-            (or (plist-get telega--unread-chat-count :unread_unmuted_count)
-                0))
+            (telega-tl-get0 telega--unread-chat-count :unread_unmuted_count))
            (uu-chats-str
             (unless (zerop uu-chats-num)
               (or (nth (1- uu-chats-num) telega-appindicator-labels)
@@ -686,11 +683,11 @@ squashing is not applied."
                (not options)
                (eq (telega--tl-type imc) 'inputMessageText))
       (let ((last-msg (plist-get chat :last_message))
-            (last-read-id (plist-get chat :last_read_outbox_message_id)))
+            (last-read-id (telega-tl-get0 chat :last_read_outbox_message_id)))
         (when (and last-msg
                    ;; Checking for 1. 2. 3. 4. and 5.
                    (telega-msg-by-me-p last-msg)
-                   (< last-read-id (plist-get last-msg :id))
+                   (< last-read-id (telega-tl-get0 last-msg :id))
                    (telega-msg-match-p last-msg
                      '(and (not is-reply-to-msg)
                            (not is-reply-to-story)
@@ -700,9 +697,9 @@ squashing is not applied."
                    ;; TODO: Check for 7.0
                    ;; Check for 8.
                    (< (- (telega-time-seconds)
-                         (if (zerop (plist-get last-msg :edit_date))
-                             (plist-get last-msg :date)
-                           (plist-get last-msg :edit_date)))
+                         (if (zerop (telega-tl-get0 last-msg :edit_date))
+                             (telega-tl-get0 last-msg :date)
+                           (telega-tl-get0 last-msg :edit_date)))
                       telega-squash-message-within-seconds)
                    ;; Last check which makes TDLib request
                    (telega-msg-match-p last-msg
@@ -1600,7 +1597,7 @@ Set to nil to disable active video chats in the modeline."
                          (plist-get video-chat :group_call_id))))
     (cond ((and has-participants-p
                 group-call
-                (not (zerop (plist-get group-call :participant_count))))
+                (not (zerop (telega-tl-get0 group-call :participant_count))))
            (telega-ins (telega-symbol 'video-chat-active))
            (telega-ins-prefix " "
              (when (telega-ins (telega-tl-str group-call :title))
@@ -1611,7 +1608,7 @@ Set to nil to disable active video chats in the modeline."
            (telega-ins--with-face 'telega-shadow
              (telega-ins "/")
              (telega-ins-i18n "lng_group_call_members"
-               :count (plist-get group-call :participant_count))))
+               :count (telega-tl-get0 group-call :participant_count))))
           ((not has-participants-p)
            (telega-ins (telega-symbol 'video-chat-passive))))
     (telega-ins " ")

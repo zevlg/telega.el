@@ -458,10 +458,10 @@ PROGRESSIVE-SIZES specifies list of jpeg's progressive file sizes."
          (partial-size
           (when (and (not (seq-empty-p progressive-sizes))
                      (telega-file--downloading-p file)
-                     (zerop (plist-get local-file :download_offset))
-                     (>= (plist-get local-file :downloaded_prefix_size)
+                     (zerop (telega-tl-get0 local-file :download_offset))
+                     (>= (telega-tl-get0 local-file :downloaded_prefix_size)
                          (seq-first progressive-sizes)))
-            (cl-find (plist-get local-file :downloaded_prefix_size)
+            (cl-find (telega-tl-get0 local-file :downloaded_prefix_size)
                      (seq-reverse progressive-sizes) :test #'>=)))
          (image-filename
           (cond ((telega-file--downloaded-p file)
@@ -1100,7 +1100,7 @@ SENDER can be a nil, meaning venue location is to be displayed."
                        :fill-color (face-foreground 'telega-blue))
 
            ;; User's direction heading 1-360, 0 if unknown
-           (let ((heading (or (plist-get map :user-heading) 0)))
+           (let ((heading (telega-tl-get0 map :user-heading)))
              (unless (zerop heading)
                (let* ((w2 user-x)
                       (h2 user-y)
@@ -1131,7 +1131,7 @@ SENDER can be a nil, meaning venue location is to be displayed."
                  )))
 
            ;; Proximity Alert Radius
-           (let* ((alert-radius (or (plist-get map :user-alert-radius) 0))
+           (let* ((alert-radius (telega-tl-get0 map :user-alert-radius))
                   (radius-px (unless (zerop alert-radius)
                                (telega-map--distance-pixels
                                 alert-radius

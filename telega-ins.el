@@ -349,11 +349,11 @@ FMT-TYPE can be a string, directly specifying time format string."
 (defun telega-ins--birthdate (birthdate &optional with-years-old-p)
   "Inserter for the BIRTHDATE tl struct.
 If WITH-YEARS-OLD-P is specified, insert years old as well."
-  (let ((bd-day (plist-get birthdate :day))
-        (bd-month (plist-get birthdate :month))
-        (bd-year (plist-get birthdate :year)))
+  (let ((bd-day (telega-tl-get0 birthdate :day))
+        (bd-month (telega-tl-get0 birthdate :month))
+        (bd-year (telega-tl-get0 birthdate :year)))
     ;; NOTE: Birthday year might not be specified
-    (if (and with-years-old-p (not (telega-zerop bd-year)))
+    (if (and with-years-old-p (not (zerop bd-year)))
         (let ((nowdate (decode-time (telega-time-seconds))))
           (telega-ins-i18n "lng_info_birthday_years"
             :date (telega-ins--as-string
@@ -369,7 +369,7 @@ If WITH-YEARS-OLD-P is specified, insert years old as well."
       (let* ((bd-decoded (list 0 0 0 bd-day bd-month bd-year))
              (bd-timestamp
               (round (time-to-seconds (apply #'encode-time bd-decoded)))))
-        (telega-ins--date bd-timestamp (if (telega-zerop bd-year)
+        (telega-ins--date bd-timestamp (if (zerop bd-year)
                                            "%d %B"
                                          'date-long))))))
 
@@ -615,13 +615,13 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
       (telega-ins " "))
     (telega-ins--user-status user)
 
-    (when-let ((join-date (plist-get member :joined_chat_date)))
+    (when-let ((join-date (telega-tl-get0 member :joined_chat_date)))
       (unless (zerop join-date)
         (telega-ins ", " (telega-i18n "lng_group_invite_joined_status"
                            :date ""))
         (telega-ins--date join-date)))
 
-    (when-let* ((inviter-id (plist-get member :inviter_user_id))
+    (when-let* ((inviter-id (telega-tl-get0 member :inviter_user_id))
                 (inviter-user (unless (zerop inviter-id)
                                 (telega-user-get inviter-id 'local))))
       (telega-ins "\n")
@@ -747,7 +747,7 @@ E-CHAR - empty char, default is non-break space."
              ((and (stringp sending-state)
                    (string= sending-state "messageSendingStateFailed"))
               (telega-symbol 'failed))
-             ((>= (plist-get chat :last_read_outbox_message_id)
+             ((>= (telega-tl-get0 chat :last_read_outbox_message_id)
                   (plist-get msg :id))
               (telega-symbol 'heavy-checkmark))
              (t
@@ -799,7 +799,7 @@ SHOW-DETAILS - non-nil to show photo details."
       (when-let ((tl-ttl (plist-get msg :self_destruct_type)))
         (telega-ins ", ")
         (telega-ins--self-destruct-type tl-ttl 'short))
-      (let ((album-id (plist-get msg :media_album_id)))
+      (let ((album-id (telega-tl-get0 msg :media_album_id 'int64)))
         (unless (telega-zerop album-id)
           (telega-ins--with-face 'telega-shadow
             (telega-ins " " "album-id: " album-id))))
@@ -811,8 +811,8 @@ SHOW-DETAILS - non-nil to show photo details."
     (let ((msg-content (plist-get msg :content)))
       (cond ((and (plist-get msg-content :is_secret)
                   (plist-get photo :minithumbnail))
-             (let ((ttl-in (plist-get msg :self_destruct_in)))
-               (unless (telega-zerop ttl-in)
+             (let ((ttl-in (telega-tl-get0 msg :self_destruct_in)))
+               (unless (zerop ttl-in)
                  (telega-ins--with-face 'telega-shadow
                    (telega-ins "Self-descruct in "))
                  (telega-ins " " (telega-duration-human-readable ttl-in) "\n"))
@@ -858,7 +858,7 @@ If MUSIC-SYMBOL is specified, use it instead of play/pause."
     (setq audio (telega--tl-get msg :content :audio)))
   (let (ret)
     (unless (eq how 'thumbnail)
-      (let* ((dur (plist-get audio :duration))
+      (let* ((dur (telega-tl-get0 audio :duration))
              (proc (plist-get msg :telega-ffplay-proc))
              (playing-p (telega-ffplay-playing-p proc))
              (played (if (telega-ffplay-playing-p proc)
@@ -908,7 +908,7 @@ If MUSIC-SYMBOL is specified, use it instead of play/pause."
             (telega-ins " --" performer)))
 
         (telega-ins-prefix "\n"
-          (let ((album-id (plist-get msg :media_album_id)))
+          (let ((album-id (telega-tl-get0 msg :media_album_id 'int64)))
             (unless (telega-zerop album-id)
               (telega-ins--with-face 'telega-shadow
                 (telega-ins "album-id: " album-id)))))
@@ -951,8 +951,8 @@ and thumbnail are shown."
                (plist-get video :width) (plist-get video :height))
        " "
        (file-size-human-readable (telega-file--size video-file))
-       (let ((dur (plist-get video :duration)))
-         (unless (telega-zerop dur)
+       (let ((dur (telega-tl-get0 video :duration)))
+         (unless (zerop dur)
            (concat " " (telega-duration-human-readable dur))))
        ")")
 
@@ -962,7 +962,7 @@ and thumbnail are shown."
       (telega-ins-prefix " "
         (telega-ins--file-progress msg video-file))
       (telega-ins-prefix " "
-        (let ((album-id (plist-get msg :media_album_id)))
+        (let ((album-id (telega-tl-get0 msg :media_album_id 'int64)))
           (unless (telega-zerop album-id)
             (telega-ins--with-face 'telega-shadow
               (telega-ins "album-id: " album-id)))))
@@ -974,8 +974,8 @@ and thumbnail are shown."
        (cond ((and (plist-get content :is_secret)
                    (plist-get video :minithumbnail))
               ;; Secret video
-              (let ((ttl-in (plist-get msg :self_destruct_in)))
-                (unless (telega-zerop ttl-in)
+              (let ((ttl-in (telega-tl-get0 msg :self_destruct_in)))
+                (unless (zerop ttl-in)
                   (telega-ins--with-face 'telega-shadow
                     (telega-ins "Self-descruct in "))
                   (telega-ins (telega-duration-human-readable ttl-in))
@@ -1066,7 +1066,7 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
   "Return non-nil if speech recognition is available."
   (or (telega-user-match-p (telega-user-me) 'is-premium)
       (and telega--speech-recognition-trial
-           (> (plist-get telega--speech-recognition-trial :left_count) 0)
+           (> (telega-tl-get0 telega--speech-recognition-trial :left_count) 0)
            (or (null duration)
                (< duration (plist-get telega--speech-recognition-trial
                                       :max_media_duration))))))
@@ -1412,8 +1412,8 @@ and thumbnail are shown."
          (telega-ins "\n")
          (telega-ins--with-face 'telega-shadow
            (telega-ins--video msg video 'metainfo)
-           (let ((start-timestamp (plist-get lp-type :start_timestamp)))
-             (unless (telega-zerop start-timestamp)
+           (let ((start-timestamp (telega-tl-get0 lp-type :start_timestamp)))
+             (unless (zerop start-timestamp)
                (telega-ins-fmt " start: %ds" start-timestamp))))
          (telega-ins "\n")))
       ('linkPreviewTypeVideoNote
@@ -1488,8 +1488,7 @@ and thumbnail are shown."
   ;;  (telega-i18n "lng_view_button_giftcode"))
   (let* ((lp-type (plist-get link-preview :type))
          (iv-button-p
-          (not (telega-zerop
-                (plist-get link-preview :instant_view_version))))
+          (not (zerop (telega-tl-get0 link-preview :instant_view_version))))
          (button-label
           (if iv-button-p
               (telega-i18n "lng_view_button_iv")
@@ -1637,7 +1636,7 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
                     (telega--editMessageLiveLocation msg nil)))
 
         (let ((proximity-radius
-               (telega--tl-get msg :content :proximity_alert_radius)))
+               (telega-tl-get0 (plist-get msg :content) :proximity_alert_radius)))
           (telega-ins "\n")
           (telega-ins "Proximity Alert Radius: ")
           (unless (zerop proximity-radius)
@@ -1700,7 +1699,7 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
   ;; Two lines for the contact
   (let* ((content (plist-get msg :content))
          (contact (plist-get content :contact))
-         (user-id (plist-get contact :user_id))
+         (user-id (telega-tl-get0 contact :user_id))
          (user (unless (zerop user-id) (telega-user-get user-id)))
          (user-ava (when (and telega-user-show-avatars user)
                      (telega-msg-sender-avatar-image-three-lines user))))
@@ -1916,7 +1915,7 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
     (telega-ins ", " (telega-i18n (if quiz-p
                                       "lng_polls_answers_count"
                                     "lng_polls_votes_count")
-                       :count (plist-get poll :total_voter_count)))
+                       :count (telega-tl-get0 poll :total_voter_count)))
     (telega-ins-prefix " "
       (seq-doseq (rv (plist-get poll :recent_voter_ids))
         (telega-ins--image (telega-msg-sender-avatar-image-one-line
@@ -2007,7 +2006,7 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
                 (telega-ins-i18n (if quiz-p
                                      "lng_polls_answers_count"
                                    "lng_polls_votes_count")
-                  :count (plist-get popt :voter_count)))))
+                  :count (telega-tl-get0 popt :voter_count)))))
           (telega-ins-prefix " "
             (seq-doseq (rv (plist-get popt :recent_voter_ids))
               (telega-ins--image (telega-msg-sender-avatar-image-one-line
@@ -2163,7 +2162,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
       (telega-ins "\n"))
     (when-let ((add-prize (telega-tl-str ga-params :prize_description)))
       (telega-ins-i18n "lng_prizes_additional"
-        :count (plist-get content :winner_count)
+        :count (telega-tl-get0 content :winner_count)
         :prize add-prize)
       (telega-ins " ")
       (telega-ins--with-face 'telega-shadow
@@ -2173,14 +2172,14 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
       (cl-ecase (telega--tl-type prize)
         (giveawayPrizePremium
          (telega-ins-i18n "lng_prizes_about"
-           :count (plist-get content :winner_count)
+           :count (telega-tl-get0 content :winner_count)
            :duration (telega-i18n "lng_premium_gift_duration_months"
-                       :count (plist-get prize :month_count))))
+                       :count (telega-tl-get0 prize :month_count))))
         (giveawayPrizeStars
          (telega-ins-i18n "lng_prizes_credits_about"
-           :count (plist-get content :winner_count)
+           :count (telega-tl-get0 content :winner_count)
            :amount (telega-i18n "lng_prize_credits_amount"
-                       :count (plist-get prize :star_count)))))
+                       :count (telega-tl-get0 prize :star_count)))))
       (telega-ins "\n"))
 
     (telega-ins--with-face 'bold
@@ -2239,7 +2238,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (telega-ins-i18n "lng_prizes_results_title"))
   (telega-ins "\n")
   (telega-ins-i18n "lng_prizes_results_about"
-    :count (plist-get content :winner_count)
+    :count (telega-tl-get0 content :winner_count)
     :link (telega-ins--as-string
            (let ((b-chat (telega-chat-get
                           (plist-get content :boosted_chat_id)))
@@ -2271,7 +2270,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
          (gift (plist-get content :gift))
          (cost (propertize
                 (telega-i18n "lng_action_gift_for_stars"
-                  :count (plist-get gift :star_count))
+                  :count (telega-tl-get0 gift :star_count))
                 'face 'bold)))
     (telega-ins--with-face 'telega-shadow
       (if (telega-msg-match-p msg 'is-outgoing)
@@ -2290,7 +2289,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                  (telega-ins-i18n "lng_action_gift_sent_text"
                    :user (telega-msg-sender-title--special
                              (telega-chat-user (telega-msg-chat msg)))
-                   :count (plist-get content :sell_star_count)))
+                   :count (telega-tl-get0 content :sell_star_count)))
                 ((plist-get content :was_converted)
                  (telega-ins--with-face 'telega-shadow
                    (telega-ins "converted")))
@@ -2306,7 +2305,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                         (telega-ins "TODO: saved to profile"))
                        (t
                         (telega-ins-i18n "lng_action_gift_got_stars_text"
-                          :count (plist-get content :sell_star_count))))
+                          :count (telega-tl-get0 content :sell_star_count))))
                  )))
       (telega-ins "\n")
       (unless (telega-msg-match-p msg 'is-outgoing)
@@ -2324,7 +2323,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
         (telega-i18n "lng_paid_price"
           :price (telega-ins--as-string
                   (telega-ins (telega-symbol 'telegram-star))
-                  (telega-ins-fmt "%d" (plist-get content :star_count))))
+                  (telega-ins-fmt "%d" (telega-tl-get0 content :star_count))))
       )
     (telega-ins "\n")
     (telega-ins "<TODO: PaidMedia>")))
@@ -2678,7 +2677,7 @@ Special messages are determined with `telega-msg-special-p'."
       (messageProximityAlertTriggered
        (let ((traveler (telega-msg-sender (plist-get content :traveler_id)))
              (watcher (telega-msg-sender (plist-get content :watcher_id)))
-             (distance (plist-get content :distance)))
+             (distance (telega-tl-get0 content :distance)))
          (telega-ins-i18n "lng_action_proximity_reached"
            :from (telega-msg-sender-title--special traveler)
            :user (telega-msg-sender-title--special watcher)
@@ -2736,7 +2735,7 @@ Special messages are determined with `telega-msg-special-p'."
                   :from sender-name)))))
       (messageChatSetMessageAutoDeleteTime
        (let* ((sender-me-p (telega-me-p sender))
-              (auto-del-time (plist-get content :message_auto_delete_time)))
+              (auto-del-time (telega-tl-get0 content :message_auto_delete_time)))
          (if (zerop auto-del-time)
              (if sender-me-p
                  (telega-ins-i18n "lng_action_ttl_removed_you")
@@ -2818,10 +2817,10 @@ Special messages are determined with `telega-msg-special-p'."
          :from sender-name))
       (messageGiveawayCompleted
        (telega-ins-i18n "lng_action_giveaway_results"
-         :count (plist-get content :winner_count)))
+         :count (telega-tl-get0 content :winner_count)))
       (messageGiftedPremium
-       (let* ((gifter-user-id (plist-get content :gifter_user_id))
-              (_gifter (unless (telega-zerop gifter-user-id)
+       (let* ((gifter-user-id (telega-tl-get0 content :gifter_user_id))
+              (_gifter (unless (zerop gifter-user-id)
                          (telega-user-get gifter-user-id)))
               (sticker (plist-get content :sticker))
               (currency (plist-get content :currency))
@@ -2875,7 +2874,7 @@ Special messages are determined with `telega-msg-special-p'."
            )))
       (messageChatBoost
        (telega-ins-i18n "lng_action_boost_apply"
-         :count (plist-get content :boost_count)
+         :count (telega-tl-get0 content :boost_count)
          :from sender-name))
       (messageUsersShared
        (let ((shared-users
@@ -2897,8 +2896,8 @@ Special messages are determined with `telega-msg-special-p'."
                     (telega-chat-user (telega-msg-chat msg))))))
       (messageDirectMessagePriceChanged
        (let ((enabled-p (plist-get content :is_enabled))
-             (star-count (plist-get content :paid_message_star_count)))
-         (cond ((and enabled-p (not (telega-zerop star-count)))
+             (star-count (telega-tl-get0 content :paid_message_star_count)))
+         (cond ((and enabled-p (not (zerop star-count)))
                 (telega-ins-i18n "lng_action_direct_messages_paid"
                   :count star-count))
                (enabled-p
@@ -3218,7 +3217,7 @@ has `replyMarkupShowKeyboard' type."
   ;; [SHOW RECEIPT] button instead of markup
   (if (let ((content (plist-get msg :content)))
         (and (eq 'messageInvoice (telega--tl-type content))
-             (not (telega-zerop (plist-get content :receipt_message_id)))))
+             (not (zerop (telega-tl-get0 content :receipt_message_id)))))
       (telega-ins--invoice-show-receipt msg)
 
     (when-let ((reply-markup (plist-get msg :reply_markup))
@@ -3302,8 +3301,8 @@ performance."
     (setq msg-chat (telega-msg-chat msg)))
 
   (let* ((msg-ii (plist-get msg :interaction_info))
-         (view-count (plist-get msg-ii :view_count))
-         (fwd-count (plist-get msg-ii :forward_count))
+         (view-count (telega-tl-get0 msg-ii :view_count))
+         (fwd-count (telega-tl-get0 msg-ii :forward_count))
          (reply-count (telega-msg-replies-count msg)))
     (when (and view-count (not (zerop view-count)))
       (telega-ins " " (telega-symbol 'eye)
@@ -3331,7 +3330,7 @@ performance."
 (defun telega-ins--msg-comments (msg)
   "Insert \"Comments\" section for the message MSG."
   (when-let ((msg-ri (telega-msg-match-p msg 'post-with-comments)))
-    (let ((reply-count (or (plist-get msg-ri :reply_count) 0))
+    (let ((reply-count (telega-tl-get0 msg-ri :reply_count))
           (recent-repliers (plist-get msg-ri :recent_replier_ids)))
       (telega-ins--box-button2
           (telega-ins--as-string
@@ -3425,21 +3424,21 @@ argument - MSG to insert additional information after header."
                   (telega-ins sender-tag)))))
 
           ;; Sender's boost count
-          (let ((boost-count (plist-get msg :sender_boost_count)))
-            (unless (telega-zerop boost-count)
+          (let ((boost-count (telega-tl-get0 msg :sender_boost_count)))
+            (unless (zerop boost-count)
               (telega-ins--with-face (assq :foreground palette)
                 (telega-ins " " (telega-symbol 'boost))
                 (when (> boost-count 1)
                   (telega-ins-fmt "%d" boost-count)))))
 
           ;; Paid stars
-          (let ((paid-stars (plist-get msg :paid_message_star_count)))
-            (unless (telega-zerop paid-stars)
+          (let ((paid-stars (telega-tl-get0 msg :paid_message_star_count)))
+            (unless (zerop paid-stars)
               (telega-ins " " (telega-symbol 'telegram-star))
               (telega-ins-fmt "%d" paid-stars)))
 
           ;; via <bot>
-          (when-let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
+          (when-let* ((via-bot-user-id (telega-tl-get0 msg :via_bot_user_id))
                       (via-bot (unless (zerop via-bot-user-id)
                                  (telega-user-get via-bot-user-id)))
                       (bot-title (telega-ins--as-string
@@ -3460,8 +3459,8 @@ argument - MSG to insert additional information after header."
                                      (telega-ins--msg-sender bot-caller)))))
 
           ;; Edited date
-          (let ((edited-date (plist-get msg :edit_date)))
-            (unless (telega-zerop edited-date)
+          (let ((edited-date (telega-tl-get0 msg :edit_date)))
+            (unless (zerop edited-date)
               (telega-ins--with-face 'telega-shadow
                 (telega-ins " " (telega-i18n "lng_edited") " ")
                 (telega-ins--date (plist-get msg :edit_date)))))
@@ -3482,8 +3481,8 @@ argument - MSG to insert additional information after header."
             (telega-ins " " (telega-symbol 'pin)))
 
           ;; message auto-deletion time
-          (let ((auto-delete-in (plist-get msg :auto_delete_in)))
-            (unless (telega-zerop auto-delete-in)
+          (let ((auto-delete-in (telega-tl-get0 msg :auto_delete_in)))
+            (unless (zerop auto-delete-in)
               (telega-ins " " (telega-symbol 'flames)
                           (telega-duration-human-readable auto-delete-in 1))))
 
@@ -3558,7 +3557,7 @@ Return user, chat or string with the sender title."
      (telega-chat-get (plist-get origin :chat_id)))))
 
 (cl-defun telega-ins--msg-sender-chat-date (sender &key from-chat-id
-                                                   topic date signature)
+                                                   topic (date 0) signature)
   "Insert SENDER --SIGNATURE → CHAT#TOPIC at DATE."
   (declare (indent 1))
 
@@ -3574,7 +3573,7 @@ Return user, chat or string with the sender title."
     (telega-ins--with-face 'telega-shadow
       (telega-ins " --" signature)))
 
-  (unless (telega-zerop from-chat-id)
+  (unless (zerop from-chat-id)
     (let ((from-chat (telega-chat-get from-chat-id)))
       (unless (or (eq sender from-chat)
                   (eq sender (telega-chat-user from-chat)))
@@ -3592,7 +3591,7 @@ Return user, chat or string with the sender title."
       (telega-ins (telega-symbol 'topic))
       (telega-ins--topic-icon topic)))
 
-  (unless (telega-zerop date)
+  (unless (zerop date)
     (telega-ins--with-face 'telega-shadow
       (telega-ins " " (telega-i18n "telega_at") " ")
       (telega-ins--date date)))
@@ -3600,22 +3599,22 @@ Return user, chat or string with the sender title."
 
 (defun telega--fwd-info-source-chat (fwd-info)
   "Return chat from forwardSource of the FWD-INFO."
-  (let ((chat-id (telega--tl-get fwd-info :source :chat_id)))
-    (unless (telega-zerop chat-id)
+  (let ((chat-id (telega-tl-get0 (plist-get fwd-info :source) :chat_id)))
+    (unless (zerop chat-id)
       (telega-chat-get chat-id))))
 
 (defun telega--fwd-info-action (fwd-info)
   "Action to take when button with FWD-INFO displayed is clicked."
   (let* ((origin (plist-get fwd-info :origin))
-         (origin-chat-id (plist-get origin :chat_id))
-         (origin-msg-id (plist-get origin :message_id))
-         (origin-sender-id (plist-get origin :sender_user_id))
-         (from-chat-id (telega--tl-get fwd-info :source :chat_id))
-         (chat-id (if (not (telega-zerop from-chat-id))
+         (origin-chat-id (telega-tl-get0 origin :chat_id))
+         (origin-msg-id (telega-tl-get0 origin :message_id))
+         (origin-sender-id (telega-tl-get0 origin :sender_user_id))
+         (from-chat-id (telega-tl-get0 (plist-get fwd-info :source) :chat_id))
+         (chat-id (if (not (zerop from-chat-id))
                       from-chat-id
                     origin-chat-id))
-         (from-msg-id (telega--tl-get fwd-info :source :message_id))
-         (msg-id (if (not (telega-zerop from-msg-id))
+         (from-msg-id (telega-tl-get0 (plist-get fwd-info :source) :message_id))
+         (msg-id (if (not (zerop from-msg-id))
                      from-msg-id
                    origin-msg-id)))
     (cond ((and chat-id msg-id (not (zerop chat-id)) (not (zerop msg-id)))
@@ -4552,7 +4551,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
         (let ((poll (plist-get content :poll)))
           (telega-ins (telega-tl-str poll :question))
           (telega-ins " (" (telega-i18n "lng_polls_votes_count"
-                             :count (plist-get poll :total_voter_count))
+                             :count (telega-tl-get0 poll :total_voter_count))
                       ")")))
        (messageDice
         (telega-ins--dice-msg-content content 'one-line))
@@ -4632,7 +4631,8 @@ If REMOVE-CAPTION is specified, then do not insert caption."
     (telega-ins--image avatar 1
                        :no-display-if (not telega-user-show-avatars))
     (telega-ins--with-face 'telega-shadow
-      (let ((user-count (telega--tl-get user :type :active_user_count)))
+      (let ((user-count (telega-tl-get0 (plist-get user :type)
+                                        :active_user_count)))
         (telega-ins-i18n "lng_bot_status_users"
           :plural-count user-count
           :count (telega-number-human-readable user-count))))
@@ -4690,15 +4690,15 @@ If REMOVE-CAPTION is specified, then do not insert caption."
                                'telega-muted-count
                              'telega-unmuted-count)
       (telega-ins (telega-number-human-readable
-                   (plist-get (telega-chat--info chat) :member_count))
+                   (telega-tl-get0 (telega-chat--info chat) :member_count))
                   (telega-symbol 'member)))))
 
 (defun telega-ins--chopic-unread-trail (chopic)
   "Insert chat or topic CHOPIC's unread status."
-  (let* ((unread (or (plist-get chopic :unread_count) 0))
-         (mentions (or (plist-get chopic :unread_mention_count) 0))
-         (reactions (or (plist-get chopic :unread_reaction_count) 0))
-         (poll-votes (plist-get chopic :unread_poll_vote_count))
+  (let* ((unread (telega-tl-get0 chopic :unread_count))
+         (mentions (telega-tl-get0 chopic :unread_mention_count))
+         (reactions (telega-tl-get0 chopic :unread_reaction_count))
+         (poll-votes (telega-tl-get0 chopic :unread_poll_vote_count))
          (chat-p (telega-chat-p chopic))
          (muted-p (if chat-p
                       (telega-chat-muted-p chopic)
@@ -4734,7 +4734,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
                     ))
       (setq ret t))
 
-    (unless (telega-zerop poll-votes)
+    (unless (zerop poll-votes)
       (telega-ins--with-face (if muted-p
                                  'telega-muted-count
                                'telega-unmuted-count)
@@ -4799,7 +4799,8 @@ If REMOVE-CAPTION is specified, then do not insert caption."
   "Insert CHAT's bot verification icon."
   (let* ((info (telega-chat--info chat 'locally))
          (v-status (plist-get info :verification_status))
-         (icon-ceid (plist-get v-status :bot_verification_icon_custom_emoji_id)))
+         (icon-ceid
+          (telega-tl-get0 v-status :bot_verification_icon_custom_emoji_id 'int64)))
     (unless (telega-zerop icon-ceid)
       (let ((custom-emoji (telega-custom-emoji-get icon-ceid)))
         (unless custom-emoji
@@ -4991,7 +4992,7 @@ Short version."
 Return non-nil if restrictions has been inserted."
   (when-let ((my-status (telega-chat-member-my-status chat)))
     (when (eq (telega--tl-type my-status) 'chatMemberStatusRestricted)
-      (let* ((until (plist-get my-status :restricted_until_date))
+      (let* ((until (telega-tl-get0 my-status :restricted_until_date))
              (until-date (unless (zerop until)
                            (telega-ins--as-string
                             (telega-ins--date until 'date))))
@@ -5049,7 +5050,7 @@ requests title as part of the button."
       (telega-ins " ")
       (telega-ins
         (telega-i18n "lng_group_requests_pending"
-          :count (plist-get jr-info :total_count))))
+          :count (telega-tl-get0 jr-info :total_count))))
     t))
 
 (defun telega-ins--chat-join-button (chat &optional bot-start-param)
@@ -5194,11 +5195,11 @@ MSG-REACTION is the `messageReaction' TDLib object."
       (telega-ins--msg-reaction-type reaction-type)
       ;; NOTE: Do not show number of reactions if less than recent
       ;; senders to resemble official client
-      (when (> (plist-get msg-reaction :total_count)
+      (when (> (telega-tl-get0 msg-reaction :total_count)
                (length (plist-get msg-reaction :recent_sender_ids)))
         (telega-ins--with-props '(face (:height 0.70) display (raise 0.15))
           (telega-ins (telega-number-human-readable
-                       (plist-get msg-reaction :total_count)))))
+                       (telega-tl-get0 msg-reaction :total_count)))))
       (seq-doseq (rs (plist-get msg-reaction :recent_sender_ids))
         (telega-ins--image
          (telega-msg-sender-avatar-image-one-line (telega-msg-sender rs))))

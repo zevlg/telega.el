@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2026-08-12 Ср 14:01 -->
+<!-- 2026-09-21 Пн 08:52 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.660)</title>
+<title>Telega Manual (v0.8.671)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -68,7 +68,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.660)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.671)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -390,7 +390,7 @@ from <a href="https://brew.sh">brew.sh</a>.  Just run:
 </div>
 
 <p>
-On Linux, you will need to build <code>TDLib</code> from source.  Use 
+On Linux, you will need to build <code>TDLib</code> from source.  Use
 <a href="https://tdlib.github.io/td/build.html">TDLib build instructions generator</a> for comprehensive build
 instructions.
 </p>
@@ -710,7 +710,7 @@ User Option: <code>telega-my-location</code>
 <p>
 Set to non-nil to use this as location of me.
 Plist in form (:latitude &lt;LAT&gt; :longitude &lt;LONG&gt;)
-To publically expose this location set <code>:is_location_visible</code> to
+To publicly expose this location set <code>:is_location_visible</code> to
 non-nil in <code>telega-options-plist</code>.
 Used to calculate distances from other peers to me. 
 </p>
@@ -879,7 +879,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgdaf0296">
+<pre class="example" id="orgc5bf9a7">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -897,7 +897,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org3f00d04">
+<pre class="example" id="org27f3aff">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -986,7 +986,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org5336ba5">
+<pre class="example" id="org6816f66">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1024,7 +1024,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org8fd6187">
+<pre class="example" id="orgae7f8b4">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1563,7 +1563,7 @@ Every chat has a type.  Type is one of:
 
 <dt>(name <code>REGEXP</code>)</dt><dd>Matches if chat's title matches <code>REGEXP</code>.</dd>
 
-<dt>(search <code>QUERY</code>), <kbd>/ s</kbd> (<code>telega-filter-by-search</code>)</dt><dd>Matches if chat maches search QUERY.</dd>
+<dt>(search <code>QUERY</code>), <kbd>/ s</kbd> (<code>telega-filter-by-search</code>)</dt><dd>Matches if chat matches search QUERY.</dd>
 
 <dt>(custom <code>NAME</code>), <kbd>/ C</kbd> (<code>telega-filter-by-custom</code>)</dt><dd>Matches if custom filter with <code>NAME</code> matches.</dd>
 
@@ -2459,7 +2459,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgb588486">
+<pre class="example" id="org4921ecb">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2661,9 +2661,9 @@ Markup syntax table:
 
 <p>
 There is also "markdown1" syntax to insert multiline code blocks of
-specified languge:
+specified language:
 </p>
-<pre class="example" id="org7e8a41b">
+<pre class="example" id="org5f91fd1">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2695,7 +2695,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org9c12924">
+<pre class="example" id="orgd937e60">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3070,7 +3070,7 @@ It is possible to complete chatbuf's input with
 </p>
 
 <p>
-You can use standard Emacs <code>capf</code> (completion at point) or advanced 
+You can use standard Emacs <code>capf</code> (completion at point) or advanced
 [BROKEN LINK: telega-company].
 </p>
 
@@ -3201,7 +3201,7 @@ Chatbuf uses next bindings for message filtering:
 <dt><kbd>C-c /</kbd> (<code>telega-chatbuf-filter</code>)</dt><dd>Enable chat message filtering <code>MSG-FILTER</code>.</dd>
 
 <dt><kbd>C-c C-c</kbd> (<code>telega-chatbuf-filter-cancel</code>)</dt><dd>Cancel current messages filtering.
-If point is at some message, then keep point on this message after reseting.
+If point is at some message, then keep point on this message after resetting.
 If <kbd>C-u</kbd> is given, then cancel topic filtering as well.</dd>
 
 <dt><kbd>C-c C-r</kbd> (<code>telega-chatbuf-inplace-search-query</code>)</dt><dd>Inplace search backward for the <code>QUERY</code>.
@@ -3432,8 +3432,8 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org94f9426">
-[⏪] [⏩] [2×] [Stop] 
+<pre class="example" id="org55c4f25">
+[⏪] [⏩] [2×] [Stop]
 </pre>
 
 <p>
@@ -4923,7 +4923,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orge45e856">
+<pre class="example" id="org3b6c818">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -5158,7 +5158,7 @@ User Option: <code>telega-mnz-edit-display-buffer-action</code>
 </p>
 
 <p>
-Action value when poping to code edit buffer.
+Action value when popping to code edit buffer.
 See docstring for <code>display-buffer</code> for the value meaning. 
 </p>
 
@@ -5577,7 +5577,7 @@ stickers, like on the screenshot:
 </p>
 
 <p>
-<b><b>A</b></b>: If your Emacs does not have bultin WEBP format
+<b><b>A</b></b>: If your Emacs does not have builtin WEBP format
 support. <code>telega</code> will use <code>dwebp</code> tool to convert stickers from WEBP
 format to the format supported by your Emacs.  See <a href="#stickers--animations">Stickers /
 Animations</a> for details.  So, make sure <code>dwebp</code> tool is available on

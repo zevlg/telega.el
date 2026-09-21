@@ -600,7 +600,7 @@ BLOCK-LIST is one of `blockListMain' or `blockListStories'.
 First element is the list is total number of blocked message senders."
   (declare (indent 2))
   (with-telega-server-reply (reply)
-      (nconc (list block-list (plist-get reply :total_count))
+      (nconc (list block-list (telega-tl-get0 reply :total_count))
             (mapcar #'telega-msg-sender (plist-get reply :senders)))
 
     (list :@type "getBlockedMessageSenders"

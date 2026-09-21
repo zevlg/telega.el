@@ -1,6 +1,6 @@
 ;;; telega-match.el --- Telega Matching Expressions  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022 by Zajcev Evgeny.
+;; Copyright (C) 2022-2026 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Mon Feb 14 13:49:33 2022
@@ -283,7 +283,7 @@ Chat is considered public if it has a username."
   "Matches if chat has at least N unread messages.
 By default N is 1.
 Also matches chats marked as unread."
-  (or (>= (plist-get chat :unread_count) (or n 1))
+  (or (>= (telega-tl-get0 chat :unread_count) (or n 1))
       (plist-get chat :is_marked_as_unread)))
 
 ;;; ellit-org: chat-temex
@@ -292,21 +292,22 @@ Also matches chats marked as unread."
 (define-telega-matcher chat mention (chat &optional n)
   "Matches if chat has least N unread mentions.
 By default N is 1."
-  (>= (plist-get chat :unread_mention_count) (or n 1)))
+  (>= (telega-tl-get0 chat :unread_mention_count) (or n 1)))
 
 ;;; ellit-org: chat-temex
 ;; - muted ::
 ;;   {{{temexdoc(chat, muted, 2)}}}
 (define-telega-matcher chat muted (chat)
   "Matches if chat has disabled notifications."
-  (> (telega-chat-notification-setting chat :mute_for) 0))
+  (when-let ((muted-for (telega-chat-notification-setting chat :mute_for)))
+    (> muted-for 0)))
 
 ;;; ellit-org: chat-temex
 ;; - temporary-muted ::
 ;;   {{{temexdoc(chat, temporary-muted, 2)}}}
 (define-telega-matcher chat temporary-muted (chat)
   "Matches if chat is temporary muted."
-  (let ((muted-for (telega-chat-notification-setting chat :mute_for)))
+  (when-let ((muted-for (telega-chat-notification-setting chat :mute_for)))
     (and (> muted-for 0)
          (< muted-for telega-mute-for-ever))))
 
@@ -409,8 +410,9 @@ Return verification status if CHAT is verified."
     (when (or (plist-get verification-status :is_verified)
               (and (not by-telegram-p)
                    (not (telega-zerop
-                         (plist-get verification-status
-                                    :bot_verification_icon_custom_emoji_id)))))
+                         (telega-tl-get0 verification-status
+                                         :bot_verification_icon_custom_emoji_id
+                                         'int64)))))
       verification-status)))
 
 ;;; ellit-org: chat-temex
@@ -507,7 +509,7 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
     (when-let ((pos (cl-find item (plist-get chat :positions)
                              :key key :test #'equal)))
       ;; NOTE: zero order means "chat has no position"
-      (not (equal "0" (plist-get pos :order))))))
+      (not (equal "0" (telega-tl-get0 pos :order 'int64))))))
 
 ;;; ellit-org: chat-temex
 ;; - main ::
@@ -556,7 +558,7 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
 ;;   {{{temexdoc(chat, has-reply-markup, 2)}}}
 (define-telega-matcher chat has-reply-markup (chat)
   "Matches if chat has reply markup message."
-  (not (eq 0 (plist-get chat :reply_markup_message_id))))
+  (not (zerop (telega-tl-get0 chat :reply_markup_message_id))))
 
 ;;; ellit-org: chat-temex
 ;; - can-get-statistics ::
@@ -571,7 +573,8 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
   "Matches if statistics available for the chat."
   (when (telega-chat-match-p chat '(type supergroup channel))
     (let ((full-info (telega--full-info (telega-chat--supergroup-locally chat))))
-      (not (telega-zerop (plist-get full-info :custom_emoji_sticker_set_id))))))
+      (not (telega-zerop
+            (telega-tl-get0 full-info :custom_emoji_sticker_set_id 'int64))))))
 
 ;;; ellit-org: chat-temex
 ;; - has-linked-chat ::
@@ -660,7 +663,7 @@ Return verification status if chat is fake or scam."
 If non-nil NON-EMPTY is specified, then match only if video chat is
 not empty."
   (when-let* ((video-chat (plist-get chat :video_chat))
-              (group-call-id (plist-get video-chat :group_call_id)))
+              (group-call-id (telega-tl-get0 video-chat :group_call_id)))
     (and (not (zerop group-call-id))
          (or (null non-empty)
              (plist-get video-chat :has_participants)))))
@@ -679,7 +682,7 @@ not empty."
 (define-telega-matcher chat has-message-ttl (chat)
   "Matches if chat has enabled message auto-delete or self-destruct timer.
 Return auto-deletion timer value."
-  (when-let ((msg-ttl (plist-get chat :message_auto_delete_time)))
+  (let ((msg-ttl (telega-tl-get0 chat :message_auto_delete_time)))
     (and (> msg-ttl 0) msg-ttl)))
 
 ;;; ellit-org: chat-temex
@@ -753,7 +756,7 @@ messages into it. Use `is-known' chat temex to check chat is known."
 (define-telega-matcher chat unread-reactions (chat &optional n)
   "Matches if chat has at least N unread reactions.
 By default N is 1."
-  (>= (or (plist-get chat :unread_reaction_count) 0) (or n 1)))
+  (>= (telega-tl-get0 chat :unread_reaction_count) (or n 1)))
 
 ;;; ellit-org: chat-temex
 ;; - (unread-polls [ ~N~ ]) ::
@@ -761,7 +764,7 @@ By default N is 1."
 (define-telega-matcher chat unread-polls (chat &optional n)
   "Matches if chat has at least N unread poll votes messages.
 By default N is 1."
-  (>= (or (plist-get chat :unread_poll_vote_count) 0) (or n 1)))
+  (>= (telega-tl-get0 chat :unread_poll_vote_count) (or n 1)))
 
 ;;; ellit-org: chat-temex
 ;; - (has-active-stories [ ~UNREAD-P~ ]) ::
@@ -818,7 +821,7 @@ By default N is 1."
   (when (telega-chat-match-p chat '(type supergroup channel))
     (let ((full-info (telega--full-info
                       (telega-chat--supergroup-locally chat))))
-      (>= (or (plist-get full-info :my_boost_count) 0) (or n 1)))))
+      (>= (telega-tl-get0 full-info :my_boost_count) (or n 1)))))
 
 ;;; ellit-org: chat-temex
 ;; - (user ~USER-TEMEX~) ::
@@ -861,7 +864,7 @@ By default `blockListMain' is used."
 By default N is 1."
   (when (telega-chat-match-p chat '(type channel))
     (let ((supergroup (telega-chat--supergroup-locally chat)))
-      (>= (or (plist-get supergroup :boost_level) 0) (or n 1)))))
+      (>= (telega-tl-get0 supergroup :boost_level) (or n 1)))))
 
 ;;; ellit-org: chat-temex
 ;; - is-pinned ::
@@ -878,8 +881,8 @@ By default N is 1."
 By default STARS is 1.
 Return number of stars to be paid for a message."
   (let* ((info (telega-chat--info chat 'local))
-         (price (plist-get info :paid_message_star_count)))
-    (when (and price (>= price (or stars 1)))
+         (price (telega-tl-get0 info :paid_message_star_count)))
+    (when (>= price (or stars 1))
       price)))
 
 ;;; ellit-org: chat-temex
@@ -907,8 +910,8 @@ Return community."
   (when (telega-chat-match-p chat '(type supergroup channel))
     (let* ((full-info (telega--full-info
                        (telega-chat--supergroup-locally chat)))
-           (community-id (plist-get full-info :community_id)))
-      (unless (telega-zerop community-id)
+           (community-id (telega-tl-get0 full-info :community_id)))
+      (unless (zerop community-id)
         (alist-get community-id telega--communities-alist)))))
 
 
@@ -979,7 +982,7 @@ If MUTUAL-P is non-nil, then mach only if contact is mutual."
 (define-telega-matcher user groups-in-common (user &optional n)
   "Matches if user has at least N groups in common with me.
 By default N is 1."
-  (>= (plist-get (telega--full-info user) :group_in_common_count)
+  (>= (telega-tl-get0 (telega--full-info user) :group_in_common_count)
       (or n 1)))
 
 ;;; ellit-org: user-temex
@@ -1024,7 +1027,7 @@ By default N is 1."
 ;;   {{{temexdoc(user, has-personal-chat, 2)}}}
 (define-telega-matcher user has-personal-chat (user)
   "Matches if user has personal chat."
-  (not (telega-zerop (plist-get (telega--full-info user) :personal_chat_id))))
+  (not (zerop (telega-tl-get0 (telega--full-info user) :personal_chat_id))))
 
 ;;; ellit-org: user-temex
 ;; - has-emoji-status ::
@@ -1078,8 +1081,8 @@ By default `blockListMain' is used."
   "Matches if user has at least STARS count to be paid for a message to user.
 By default STARS is 1.
 Return number of stars to be paid for a message."
-  (let ((price (plist-get user :paid_message_star_count)))
-    (when (and price (>= price (or stars 1)))
+  (let ((price (telega-tl-get0 user :paid_message_star_count)))
+    (when (>= price (or stars 1))
       price)))
 
 ;;; ellit-org: user-temex

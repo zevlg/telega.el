@@ -188,7 +188,7 @@ PARAMS are additional params."
                         (when (telega--tl-error-p tl-obj)
                           (error "telega: %s" (telega-tl-str tl-obj :error)))
                         tl-obj))
-         (chat-id (plist-get invite-link :chat_id))
+         (chat-id (telega-tl-get0 invite-link :chat_id))
          (chat (when invite-link
                  (if (zerop chat-id)
                      ;; Can only join (or request to join) by invite link
@@ -364,8 +364,8 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
        (when (y-or-n-p (concat (telega-i18n "lng_boost_channel_button")
                                " " title
                                (format " [%d/%d]"
-                                       (plist-get status :boost_count)
-                                       (plist-get status :next_level_boost_count))
+                                       (telega-tl-get0 status :boost_count)
+                                       (telega-tl-get0 status :next_level_boost_count))
                                "? "))
          (telega--boostChat chat)
          (message "telega: %s" (telega-i18n "lng_boost_channel_you_title"
@@ -420,6 +420,11 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
        (error "TODO: telega-describe-chat-folder-info: %S"
               folder-info)
        ))
+
+    (internalLinkTypeGiftAuction
+     ;; TODO: Support for auction results, like in the
+     ;; https://t.me/durov/465
+     (error "TODO: telega-tme-open-tdlib-link, internalLinkTypeGiftAuction"))
     ))
 
 (defun browse-url-telega (url &rest _args)

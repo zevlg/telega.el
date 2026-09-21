@@ -288,7 +288,7 @@ Keymap:
          (title (telega-tl-str pageblock :title))
          (desc (telega-tl-str pageblock :description))
          (author (plist-get pageblock :author))
-         (publish-date (plist-get pageblock :publish_date)))
+         (publish-date (telega-tl-get0 pageblock :publish_date)))
     (telega-ins--with-attrs (list :max telega-webpage-fill-column
                                   :elide t)
       (when photo-image
@@ -382,7 +382,7 @@ Keymap:
          (telega-ins-prefix "By "
            (when (telega-webpage--ins-rt (plist-get pb :author))
              (telega-ins " • ")))
-         (let ((publish-date (plist-get pb :publish_date)))
+         (let ((publish-date (telega-tl-get0 pb :publish_date)))
            (when (zerop publish-date)
              (setq publish-date (time-to-seconds)))
            (telega-ins--date publish-date 'date-long)))
@@ -595,8 +595,8 @@ instant view for the URL."
     (telega-ins-from-newline
      (telega-ins "\n")
      (telega-ins--with-face '(:inherit telega-webpage-outline :overline t)
-       (let ((view-count (plist-get telega-webpage--iv :view_count)))
-         (unless (telega-zerop view-count)
+       (let ((view-count (telega-tl-get0 telega-webpage--iv :view_count)))
+         (unless (zerop view-count)
            (telega-ins-i18n "lng_views_tooltip"
              :count view-count)))
        (when-let ((tdlib-link (plist-get telega-webpage--iv :feedback_link))

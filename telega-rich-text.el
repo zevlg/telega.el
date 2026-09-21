@@ -339,7 +339,7 @@
          (telega-ins-prefix "By "
            (when (telega-rich-text--ins-rt (plist-get pb :author))
              (telega-ins " • ")))
-         (let ((publish-date (plist-get pb :publish_date)))
+         (let ((publish-date (telega-tl-get0 pb :publish_date)))
            (when (zerop publish-date)
              (setq publish-date (time-to-seconds)))
            (telega-ins--date publish-date 'date-long))))
