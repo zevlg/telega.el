@@ -288,9 +288,17 @@
                    collect `(tr nil ,@cells)))
          (shr-use-fonts t)
          (shr-width telega-webpage-fill-column)
-         (shr-table-horizontal-line (when (plist-get pb :is_bordered) ?‒))
-         (shr-table-vertical-line ?\s)
-         (shr-table-corner ?\s)
+         (shr-table-horizontal-line
+          (when (plist-get pb :is_bordered)
+            (nth 0 telega-symbol-rich-text-table-border)))
+         (shr-table-vertical-line
+          (if (plist-get pb :is_bordered)
+              (nth 1 telega-symbol-rich-text-table-border)
+            ?\s))
+         (shr-table-corner
+          (if (plist-get pb :is_bordered)
+              (nth 2 telega-symbol-rich-text-table-border)
+            ?\s))
          (shr-external-rendering-functions
           '((telega-cell .
              (lambda (dom)

@@ -2780,6 +2780,27 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type '(choice char (cons char char))
   :group 'telega)
 
+(defcustom telega-symbol-rich-text-table-border '(?- ?| ?+)
+  "Symbols to draw rich text table border.
+First element is for the horizontal line.
+Second - for the vertical line.
+Third - for the corners."
+  :package-version '(telega . "0.8.671")
+  :type '(list (choice (const nil) character) character character)
+  :group 'telega)
+
+(defcustom telega-symbol-rich-text-table-vline ?\s
+  "Symbol for vertical border for rich text tables."
+  :package-version '(telega . "0.8.671")
+  :type 'character
+  :group 'telega)
+
+(defcustom telega-symbol-rich-text-table-corner ?\s
+  "Symbol for border corner for rich text tables."
+  :package-version '(telega . "0.8.671")
+  :type 'character
+  :group 'telega)
+
 (defcustom telega-symbol-video-chat "𐄉"
   "Symbol to use for video chats."
   :package-version '(telega . "0.8.460")
