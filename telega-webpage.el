@@ -165,8 +165,8 @@ Keymap:
 (defun telega-webpage-rticon--image (rt)
   "Return image representing rich text icon for RT."
   (let* ((doc (plist-get rt :document))
-         (width (plist-get rt :width))
-         (height (plist-get rt :height))
+         (width (telega-tl-get0 rt :width))
+         (height (telega-tl-get0 rt :height))
          (cheight (telega-media--cheight-for-limits
                    width height
                    (list 1 1 (nth 2 telega-webpage-photo-size-limits)
@@ -317,8 +317,8 @@ Keymap:
 (defun telega-webpage--animation-ffplay-callback (proc frame anim)
   "Callback for inline animation playback."
   (let ((telega-animation-height (telega-media--cheight-for-limits
-                                  (plist-get anim :width)
-                                  (plist-get anim :height)
+                                  (telega-tl-get0 anim :width)
+                                  (telega-tl-get0 anim :height)
                                   telega-webpage-photo-size-limits)))
     (telega-animation--ffplay-callback proc frame anim)))
 
@@ -341,8 +341,8 @@ Keymap:
 (defun telega-webpage--animation-inserter (anim)
   "Inserter for the animation button."
   (let ((telega-animation-height (telega-media--cheight-for-limits
-                                  (plist-get anim :width)
-                                  (plist-get anim :height)
+                                  (telega-tl-get0 anim :width)
+                                  (telega-tl-get0 anim :height)
                                   telega-webpage-photo-size-limits)))
     (telega-ins--animation-image anim 'sliced)))
 

@@ -605,8 +605,8 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
 
 (defun telega-spoiler-create-svg (minithumb &optional width height limits video-p)
   "Create svg image for MINITHUMB that has spoiler."
-  (let* ((width (or width (plist-get minithumb :width)))
-         (height (or height (plist-get minithumb :height)))
+  (let* ((width (or width (telega-tl-get0 minithumb :width)))
+         (height (or height (telega-tl-get0 minithumb :height)))
          (cheight (telega-media--cheight-for-limits width height limits))
          (svg (telega-svg-create width height)))
     (telega-svg-append-spoiler-node svg "noise")

@@ -794,7 +794,7 @@ SHOW-DETAILS - non-nil to show photo details."
 
       (telega-ins (telega-symbol 'photo) " ")
       (telega-ins-fmt "(%dx%d %s)"
-        (plist-get hr :width) (plist-get hr :height)
+        (telega-tl-get0 hr :width) (telega-tl-get0 hr :height)
         (file-size-human-readable (telega-file--size hr-file)))
       (when-let ((tl-ttl (plist-get msg :self_destruct_type)))
         (telega-ins ", ")
@@ -828,8 +828,8 @@ SHOW-DETAILS - non-nil to show photo details."
              (telega-ins--image-slices
                  (telega-spoiler-create-svg
                   (plist-get photo :minithumbnail)
-                  (plist-get hr :width)
-                  (plist-get hr :height)
+                  (telega-tl-get0 hr :width)
+                  (telega-tl-get0 hr :height)
                   telega-thumbnail-size-limits))
              (telega-ins "\n")
              (telega-ins--ui-button (telega-i18n "lng_context_disable_spoiler")
@@ -947,8 +947,8 @@ and thumbnail are shown."
 
       (telega-ins
        " ("
-       (format "%dx%d"
-               (plist-get video :width) (plist-get video :height))
+       (format "%dx%d" (telega-tl-get0 video :width)
+               (telega-tl-get0 video :height))
        " "
        (file-size-human-readable (telega-file--size video-file))
        (let ((dur (telega-tl-get0 video :duration)))
@@ -993,8 +993,8 @@ and thumbnail are shown."
               (telega-ins--image-slices
                   (telega-spoiler-create-svg
                    (plist-get video :minithumbnail)
-                   (plist-get video :width)
-                   (plist-get video :height)
+                   (telega-tl-get0 video :width)
+                   (telega-tl-get0 video :height)
                    telega-thumbnail-size-limits
                    'video))
               (telega-ins "\n")
@@ -4194,8 +4194,8 @@ If SHORT-P is non-nil then use short version."
          (plist-get input-document :document))))
      (inputMessagePhoto
       (let* ((input-photo (plist-get imc :photo))
-             (width (plist-get input-photo :width))
-             (height (plist-get input-photo :height)))
+             (width (telega-tl-get0 input-photo :width))
+             (height (telega-tl-get0 input-photo :height)))
         (telega-ins--input-file
          (plist-get input-photo :photo) (telega-symbol 'photo)
          (concat " "

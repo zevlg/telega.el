@@ -6061,13 +6061,13 @@ Uses `telega-screenshot-function' to take a screenshot."
                               :id ,(telega--tl-get sticker :sticker :id))
             ;; Use remote thumbnail and sticker files
             :thumbnail (:@type "inputThumbnail"
-                                :width ,(plist-get thumb :width)
-                                :height ,(plist-get thumb :height)
+                                :width ,(telega-tl-get0 thumb :width)
+                                :height ,(telega-tl-get0 thumb :height)
                                 :thumbnail
                                 (:@type "inputFileId"
                                         :id ,(telega--tl-get thumb :photo :id)))
-            :width ,(plist-get sticker :width)
-            :height ,(plist-get sticker :height))
+            :width ,(telega-tl-get0 sticker :width)
+            :height ,(telega-tl-get0 sticker :height))
            :emoji ,(telega-sticker-emoji sticker 'no-props)))
     ))
 

@@ -220,7 +220,7 @@
           :alt-text (telega-tl-str rt :alternative_text))))
       (richTextIcon
        (let ((cheight (telega-media--cheight-for-limits
-                       (plist-get rt :width) (plist-get rt :height)
+                       (telega-tl-get0 rt :width) (telega-tl-get0 rt :height)
                        (list 1 1 (nth 2 telega-webpage-photo-size-limits)
                              (nth 3 telega-webpage-photo-size-limits)))))
          (telega-ins--image-slices

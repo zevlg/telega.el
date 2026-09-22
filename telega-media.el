@@ -337,8 +337,8 @@ By default LIMITS is `telega-photo-size-limits'."
         ret)
     (seq-doseq (thumb (plist-get photo :sizes))
       (let* ((thumb-file (telega-file--renew thumb :photo))
-             (tw (plist-get thumb :width))
-             (th (plist-get thumb :height)))
+             (tw (telega-tl-get0 thumb :width))
+             (th (telega-tl-get0 thumb :height)))
         ;; NOTE: By default (not ret) use any downloadable file, even
         ;; if size does not fits
         ;; Select sizes larger then limits, because downscaling works
@@ -442,8 +442,8 @@ Return nil if `:telega-text' is not specified in IMG."
   "Generate svg for the PHOTO."
   (telega-media--progress-svg
    (telega-file--renew photo :photo)
-   (plist-get photo :width)
-   (plist-get photo :height)
+   (telega-tl-get0 photo :width)
+   (telega-tl-get0 photo :height)
    cheight))
 
 (defun telega-media--create-image (file width height &optional cheight
@@ -527,8 +527,8 @@ CHEIGHT is the height in chars (default=1)."
          (telega-file--renew thumb :photo)
        (cl-assert (eq thumb-tl-type 'thumbnail))
        (telega-file--renew thumb :file)))
-   (plist-get thumb :width)
-   (plist-get thumb :height)
+   (telega-tl-get0 thumb :width)
+   (telega-tl-get0 thumb :height)
    cheight
    (append (plist-get thumb :progressive_sizes) nil)))
 
@@ -555,8 +555,8 @@ CHEIGHT is the height in chars (default=1)."
   "Create image fol TL-OBJ that has :thumbnail and/or :minithumbnail prop."
   (let* ((thumb (or custom-thumb (plist-get tl-obj :thumbnail)))
          (thumb-cheight (telega-media--cheight-for-limits
-                         (plist-get thumb :width)
-                         (plist-get thumb :height)
+                         (telega-tl-get0 thumb :width)
+                         (telega-tl-get0 thumb :height)
                          telega-thumbnail-size-limits))
          (thumb-file (telega-file--renew thumb :file))
          (minithumb (or custom-minithumb (plist-get tl-obj :minithumbnail))))
@@ -598,8 +598,8 @@ Return nil if preview image is unavailable."
                          (funcall create-svg-fun
                                   (telega-file--path best-file)
                                   nil
-                                  (plist-get best :width)
-                                  (plist-get best :height))))
+                                  (telega-tl-get0 best :width)
+                                  (telega-tl-get0 best :height))))
                   (cached-preview
                    cached-preview)
                   (minithumb
@@ -608,8 +608,8 @@ Return nil if preview image is unavailable."
                                   (base64-decode-string
                                    (plist-get minithumb :data))
                                   t
-                                  (plist-get minithumb :width)
-                                  (plist-get minithumb :height)))))))
+                                  (telega-tl-get0 minithumb :width)
+                                  (telega-tl-get0 minithumb :height)))))))
       (plist-put photo :telega-preview-1 preview-new)
       (cdr preview-new))))
 
@@ -635,8 +635,8 @@ Return nil if preview image is unavailable."
                          (funcall create-svg-fun
                                   (telega-file--path thumb-file)
                                   nil
-                                  (plist-get thumb :width)
-                                  (plist-get thumb :height))))
+                                  (telega-tl-get0 thumb :width)
+                                  (telega-tl-get0 thumb :height))))
                   (cached-preview
                    cached-preview)
                   (minithumb
@@ -645,8 +645,8 @@ Return nil if preview image is unavailable."
                                   (base64-decode-string
                                    (plist-get minithumb :data))
                                   t
-                                  (plist-get minithumb :width)
-                                  (plist-get minithumb :height)))))))
+                                  (telega-tl-get0 minithumb :width)
+                                  (telega-tl-get0 minithumb :height)))))))
       (plist-put video :telega-preview-1 preview-new)
       (cdr preview-new))))
 
@@ -666,8 +666,8 @@ Return nil if preview image is unavailable."
     (let* ((thumb (plist-get video :thumbnail))
            (thumb-file (telega-file--renew thumb :file))
            (minithumb (plist-get video :minithumbnail))
-           (v-width (plist-get video :width))
-           (v-height (plist-get video :height))
+           (v-width (telega-tl-get0 video :width))
+           (v-height (telega-tl-get0 video :height))
            (cheight (telega-media--cheight-for-limits
                      v-width v-height telega-video-size-limits))
            (svg (telega-svg-create v-width v-height))
@@ -678,12 +678,14 @@ Return nil if preview image is unavailable."
              (setq base-uri-fname (telega-file--path thumb-file))
              (telega-svg-embed-image-fitting
               svg base-uri-fname nil
-              (plist-get thumb :width) (plist-get thumb :height)))
+              (telega-tl-get0 thumb :width)
+              (telega-tl-get0 thumb :height)))
 
             (minithumb
              (telega-svg-embed-image-fitting
               svg (base64-decode-string (plist-get minithumb :data)) t
-              (plist-get minithumb :width) (plist-get minithumb :height))))
+              (telega-tl-get0 minithumb :width)
+              (telega-tl-get0 minithumb :height))))
 
       (telega-svg-white-play-triangle-in-circle svg)
       (telega-svg-image svg
@@ -811,8 +813,8 @@ OBJ-SPEC is a plist."
   "Return best suitable image for the PHOTO."
   (let* ((best (telega-photo--best photo limits))
          (cheight (telega-media--cheight-for-limits
-                   (plist-get best :width)
-                   (plist-get best :height)
+                   (telega-tl-get0 best :width)
+                   (telega-tl-get0 best :height)
                    limits))
          (create-image-fun
           (progn
@@ -1045,8 +1047,8 @@ By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
   "Embed sender to the location map.
 SENDER can be a nil, meaning venue location is to be displayed."
   (let* ((base-dir (telega-directory-base-uri telega-database-dir))
-         (width (plist-get map :width))
-         (height (plist-get map :height))
+         (width (telega-tl-get0 map :width))
+         (height (telega-tl-get0 map :height))
          (map-loc (plist-get map :map-location)) ;at image center
          (raw-map-sender (plist-get map :sender_id))
          (map-sender (when raw-map-sender
@@ -1076,7 +1078,7 @@ SENDER can be a nil, meaning venue location is to be displayed."
                (img-type (telega-image-supported-file-p photofile))
                (clip-name (make-temp-name "user-clip"))
                (clip (telega-svg-clip-path svg clip-name))
-               (sz (/ (plist-get map :height) 8))
+               (sz (/ (telega-tl-get0 map :height) 8))
                (sz2 (/ sz 2)))
           (svg-circle clip (+ user-x sz2) (- user-y sz2) sz2)
           (svg-polygon clip (list (cons user-x user-y)
@@ -1164,8 +1166,8 @@ SENDER can be a nil, meaning venue location is to be displayed."
          (raw-map-sender (plist-get map :sender_id))
          (map-sender (when raw-map-sender
                        (telega-msg-sender raw-map-sender)))
-         (width (plist-get map :width))
-         (height (plist-get map :height))
+         (width (telega-tl-get0 map :width))
+         (height (telega-tl-get0 map :height))
          (svg (telega-svg-create width height)))
     (cl-assert (and (integerp width) (integerp height)))
     (if (and (telega-file--downloaded-p map-photo)
@@ -1223,8 +1225,8 @@ SENDER can be a nil, meaning venue location is to be displayed."
 Update `:svg-image' when new image is received."
   (telega--getMapThumbnailFile
       loc (plist-get map :zoom)
-      (plist-get map :width) (plist-get map :height)
-      (plist-get map :scale) (when msg (telega-msg-chat msg))
+      (telega-tl-get0 map :width) (telega-tl-get0 map :height)
+      (telega-tl-get0 map :scale) (when msg (telega-msg-chat msg))
     (lambda (map-file)
       (plist-put map :map-location loc)
       (plist-put map :photo map-file)
@@ -1295,6 +1297,7 @@ Return non-nil if zoom has been changed."
 
   )
 
+;; ref: tdesktop/Telegram/SourceFiles/ui/grouped_layout.cpp
 (defun telega-media-layout--ratio (w h)
   (/ (float w) h))
 

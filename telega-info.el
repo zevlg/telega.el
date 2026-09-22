@@ -145,13 +145,13 @@ For secret chats return nil."
                  (size1 (car (append (plist-get photo :sizes) nil))))
         (plist-put photo :telega-fake-animation
                    (list :@type "animation"
-                         :width (plist-get photo-anim :length)
-                         :height (plist-get photo-anim :length)
+                         :width (telega-tl-get0 photo-anim :length)
+                         :height (telega-tl-get0 photo-anim :length)
                          :minithumbnail (plist-get photo :minithumbnail)
                          :thumbnail (list :@type "thumbnail"
                                           :format (list :@type "thumbnailFormatJpeg")
-                                          :width (plist-get size1 :width)
-                                          :height (plist-get size1 :height)
+                                          :width (telega-tl-get0 size1 :width)
+                                          :height (telega-tl-get0 size1 :height)
                                           :file (plist-get size1 :photo))
                          :animation (plist-get photo-anim :file))))
 

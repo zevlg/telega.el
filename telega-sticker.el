@@ -250,9 +250,9 @@ CALLBACK is called without arguments"
   (declare (indent 2))
   (cl-assert (plist-get sticker :outline))
   (let ((factor (cons (/ (float (telega-svg-width svg))
-                         (plist-get sticker :width))
+                         (telega-tl-get0 sticker :width))
                       (/ (float (telega-svg-height svg))
-                         (plist-get sticker :height)))))
+                         (telega-tl-get0 sticker :height)))))
     (seq-doseq (outline-path (plist-get sticker :outline))
       (apply #'telega-sticker--svg-outline-path
              svg outline-path factor args))))
