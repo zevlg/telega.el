@@ -28,7 +28,8 @@
 (require 'shr)
 
 (declare-function telega-webpage--add-anchor "telega-webpage" (name))
-(declare-function telega-ins--keyboard-button "telega-ins" (kbd-button msg &rest args))
+(declare-function telega-ins--keyboard-button-row "telega-ins"
+                  (buttons msg &rest args))
 (declare-function telega-ins--date-time-formatting "telega-ins" (timestamp ts-fmt))
 
 
@@ -573,13 +574,9 @@
            (telega-rich-text--ins-rt (plist-get pb :credit)))))
       (pageBlockButtonRow
        ;; TODO: honor `:align'.
-       (when-let* ((buttons (append (plist-get pb :buttons) nil)))
+       (when-let ((buttons (append (plist-get pb :buttons) nil)))
          (telega-rich-text--ins-block
-          (while buttons
-            (telega-ins--keyboard-button (pop buttons) msg)
-            (when buttons
-              (telega-ins--box-button-delimiter
-               (telega-box-button-style 'keyboard-default) :col-delimiter)))
+          (telega-ins--keyboard-button-row buttons msg)
           t)))
       (pageBlockUnsupported
        (telega-ins "<TODO: pageBlockUnsupported>"))

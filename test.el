@@ -372,6 +372,56 @@ Have Stoploss 690 Satoshi." :entities []))))
                   (setq expected column))))
             (should expected)))))))
 
+(ert-deftest telega-keyboard-button-row-height ()
+  "Rich and ordinary button rows share their tallest label's height."
+  (let ((telega-use-images t)
+        (telega-emoji-use-images nil)
+        (row '(:@type "pageBlockButtonRow"
+               :buttons [(:@type "inlineButton"
+                          :text (:@type "richTextPlain" :text "取消封禁")
+                          :style (:@type "buttonStyleSuccess")
+                          :type (:@type "inlineKeyboardButtonTypeCallback"
+                                 :data "undo"))
+                         (:@type "inlineButton"
+                          :text (:@type "richTextPlain" :text "✅ 好")
+                          :style (:@type "buttonStylePrimary")
+                          :type (:@type "inlineKeyboardButtonTypeCallback"
+                                 :data "close"))]))
+        (msg '(:@type "message"
+               :content (:@type "messageText")
+               :reply_markup
+               (:@type "replyMarkupInlineKeyboard"
+                :rows [[(:@type "inlineKeyboardButton" :text "取消封禁"
+                         :type (:@type "inlineKeyboardButtonTypeCallback"
+                                :data "undo"))
+                        (:@type "inlineKeyboardButton" :text "✅ 好"
+                         :type (:@type "inlineKeyboardButtonTypeCallback"
+                                :data "close"))]]))))
+    (cl-letf (((symbol-function 'telega-ins--image)
+               (lambda (image &optional _slice-num &rest _props)
+                 (let ((start (point)))
+                   (telega-ins (plist-get (cdr image) :telega-text))
+                   (put-text-property start (point) 'display image))))
+              ((symbol-function 'telega-box-button--content-metrics)
+               (lambda (content)
+                 (if (string-match-p "✅" content) '(1.5 . 75) '(1 . 80)))))
+      (dolist (render (list (lambda () (telega-rich-text--ins-pb row))
+                            (lambda () (telega-ins--reply-markup msg))))
+        (with-temp-buffer
+          (funcall render)
+          (goto-char (point-min))
+          (dolist (label '("取消封禁" "好"))
+            (search-forward label)
+            (let ((left (get-text-property
+                         (save-excursion (search-backward "[")) 'display))
+                  (right (get-text-property
+                          (save-excursion (search-forward "]") (1- (point)))
+                          'display)))
+              (dolist (image (list left right))
+                (should (equal (plist-get (cdr image) :height)
+                               (telega-ch-height 1.5)))
+                (should (= (plist-get (cdr image) :ascent) 75))))))))))
+
 (ert-deftest telega-rich-message-open-content ()
   "Opening a rich message fetches its full content only when needed."
   (let (requested)
@@ -525,6 +575,106 @@ Have Stoploss 690 Satoshi." :entities []))))
                (draft-line '(:@type "draftMessageContentVideoNote"
                                     :file_path "/tmp/note.mp4"
                                     :duration 11 :length 240)))))))
+
+(ert-deftest telega-box-button-content-metrics ()
+  (let (line-heights expected-remapping)
+    (cl-letf (((symbol-function 'get-buffer-window)
+               (lambda (&rest _args) (selected-window)))
+              ((symbol-function 'telega-chars-xheight)
+               (lambda (n) (* n 14)))
+              ((symbol-function 'display-graphic-p)
+               (lambda (&optional _display) t))
+              ;; First call measures the line height H1, second call
+              ;; measures H1 + line descent (the baseline probe)
+              ((symbol-function 'buffer-text-pixel-size)
+               (lambda (&rest _args)
+                 (when expected-remapping
+                   (should (equal face-remapping-alist expected-remapping)))
+                 (cons 42 (pop line-heights)))))
+      ;; Plain text line: height 14, descent 2 -> ascent 12
+      (setq line-heights (list 14 16))
+      (should (equal (telega-box-button--content-metrics "A")
+                     (cons 1.0 86)))
+      (setq line-heights (list 14 16))
+      (should (equal (telega-box-button--content-metrics
+                      (propertize "A" 'read-only t))
+                     (cons 1.0 86)))
+      ;; Line with emoji: height 20, descent 5 -> ascent 15
+      (setq line-heights (list 20 25))
+      (should (equal (telega-box-button--content-metrics (string ?A #xfe0f))
+                     (cons (/ 20.0 14) 75)))
+      ;; Ascent percentage must be `ceiling'ed: 18/23 = 78.26%, and
+      ;; display truncates floor(78 * 23 / 100) = 17px < 18px, placing
+      ;; the bracket 1px too low; 79% restores exact 18px
+      (setq line-heights (list 23 28))
+      (should (equal (telega-box-button--content-metrics (string ?A #xfe0f))
+                     (cons (/ 23.0 14) 79)))
+      ;; Text scaling is buffer-local and must carry into the work buffer.
+      (with-temp-buffer
+        (face-remap-add-relative 'default :height 1.5)
+        (setq expected-remapping face-remapping-alist
+              line-heights (list 21 24))
+        (should (equal (telega-box-button--content-metrics "A")
+                       (cons 1.5 86)))))))
+
+(ert-deftest telega-box-button-content-height-inserter ()
+  (let ((telega-use-images t)
+        (measurements 0)
+        measured-content)
+    (cl-letf (((symbol-function 'telega-ins--image)
+               (lambda (image &optional _slice-num &rest _props)
+                 (let ((start (point)))
+                   (telega-ins
+                    (plist-get (cdr image) :telega-text))
+                   (put-text-property start (point) 'display image))))
+              ((symbol-function 'telega-box-button--content-metrics)
+               (lambda (content)
+                 (cl-incf measurements)
+                 (setq measured-content content)
+                 '(2 . 80))))
+      (with-temp-buffer
+        (telega-ins "prefix ")
+        (let ((button-start (point)))
+          (telega-ins--with-style (telega-box-button-style 'reaction)
+            (telega-ins "x"))
+          (let ((left (get-text-property button-start 'display))
+                (right (get-text-property (1- (point-max)) 'display)))
+            (dolist (image (list left right))
+              (should (equal (plist-get (cdr image) :height)
+                             (telega-ch-height 2)))
+              (should (= (plist-get (cdr image) :ascent) 80)))))
+        (should (= measurements 1))
+        (should (equal (substring-no-properties measured-content)
+                       "prefix x"))
+        (should (memq 'telega-reaction
+                      (get-text-property 7 'face measured-content))))
+      (setq measurements 0)
+      (with-temp-buffer
+        (telega-ins--with-style (telega-box-button-style 'reaction)
+          (telega-ins "first\nsecond"))
+        (should (zerop measurements))))))
+
+(ert-deftest telega-box-button-bracket-metrics ()
+  (cl-letf (((symbol-function 'telega-chars-xwidth)
+             (lambda (n) (* n 10)))
+            ((symbol-function 'telega-chars-xheight)
+             (lambda (n) (ceiling (* n 16))))
+            ((symbol-function 'telega-emoji--image-cache-get)
+             (lambda (&rest _args) nil))
+            ((symbol-function 'telega-emoji--image-cache-put)
+             (lambda (_key _scale image) image)))
+    (dolist (style '(default reaction telega-ui keyboard-default))
+      (let* ((image (telega-box-button--bracket-image
+                     (telega-box-button-style style)
+                     :left-bracket nil '(1.5 . 80)))
+             (scaled (not (eq style 'default))))
+        (should (equal (plist-get (cdr image) :height)
+                       (telega-ch-height (if scaled 1.5 1))))
+        (should (equal (plist-get (cdr image) :ascent)
+                       (if scaled 80 'center)))
+        (should (string-match-p
+                 "<svg width=\"[^\"]+\" height=\"16\""
+                 (plist-get (cdr image) :data)))))))
 
 (ert-deftest telega-org-formatting ()
   "Test org mode text formatting."
