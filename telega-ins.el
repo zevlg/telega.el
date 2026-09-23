@@ -3124,32 +3124,42 @@ Special messages are determined with `telega-msg-special-p'."
         (telega-ins translated-text)))
     t))
 
+(defun telega-ins--keyboard-button-label (kbd-button &optional forced-width)
+  "Return the display label of KBD-BUTTON.
+FORCED-WIDTH enlarges or shrinks it to that many characters."
+  (let ((text (or (telega--tl-get kbd-button :telega-translated :text)
+                  (if (eq (telega--tl-type kbd-button) 'inlineButton)
+                      (telega-ins--as-string
+                       (telega-rich-text--ins-rt (plist-get kbd-button :text)))
+                    (telega-tl-str kbd-button :text)))))
+    (telega-ins--as-string
+     (telega-ins--with-attrs (when forced-width
+                               (list :min forced-width
+                                     :align 'center
+                                     :max forced-width))
+       (when-let ((ce-sticker
+                   (telega-custom-emoji-get
+                    (telega-tl-get0
+                     kbd-button :icon_custom_emoji_id 'int64))))
+         (telega-ins--sticker-image ce-sticker)
+         (telega-ins " "))
+       (telega-ins text)))))
+
 (cl-defun telega-ins--keyboard-button (kbd-button msg &key
                                                   forced-style
                                                   forced-width
+                                                  forced-metrics
+                                                  label
                                                   additional-action)
   "Insert inline KBD-BUTTON for the MSG.
 If FORCED-WIDTH is used, then enlarge/shrink button to FORCED-WIDTH chars.
+FORCED-METRICS gives the brackets a shared (HEIGHT . ASCENT).
+LABEL is a precomputed display label.
 ADDITIONAL-ACTION function is called when button is pressed.
 ADDITIONAL-ACTION is called with two args kbd-button and message."
   (declare (indent 2))
-  (let* ((text (or (telega--tl-get kbd-button :telega-translated :text)
-                   (if (eq (telega--tl-type kbd-button) 'inlineButton)
-                       (telega-ins--as-string
-                        (telega-rich-text--ins-rt (plist-get kbd-button :text)))
-                     (telega-tl-str kbd-button :text))))
-         (kbdb-text
-          (telega-ins--as-string
-           (telega-ins--with-attrs (when forced-width
-                                     (list :min forced-width
-                                           :align 'center
-                                           :max forced-width))
-             (when-let ((ce-sticker
-                         (telega-custom-emoji-get
-                          (plist-get kbd-button :icon_custom_emoji_id))))
-               (telega-ins--sticker-image ce-sticker)
-               (telega-ins " "))
-             (telega-ins text))))
+  (let* ((kbdb-text (or label (telega-ins--keyboard-button-label
+                               kbd-button forced-width)))
          (kbdb-style (or (plist-get kbd-button :style)
                          '(:@type "buttonStyleDefault")))
          (bb-style (or forced-style
@@ -3160,12 +3170,14 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
                          (buttonStyleSuccess 'keyboard-success)
                          (buttonStyleLink 'keyboard-link)))))
     (telega-ins--box-button2 kbdb-text
-        (telega-box-button-style bb-style
-          ;; Additional styles for buttons of different type
-          (cl-case (telega--tl-type (plist-get kbd-button :type))
-            (inlineKeyboardButtonTypeUrl 'url-symbol)
-            (inlineKeyboardButtonTypeBuy 'buy-symbol)
-            (inlineKeyboardButtonTypeWebApp 'webapp-symbol)))
+        (append (when forced-metrics
+                  (list :telega-content-metrics forced-metrics))
+                (telega-box-button-style bb-style
+                  ;; Additional styles for buttons of different type
+                  (cl-case (telega--tl-type (plist-get kbd-button :type))
+                    (inlineKeyboardButtonTypeUrl 'url-symbol)
+                    (inlineKeyboardButtonTypeBuy 'buy-symbol)
+                    (inlineKeyboardButtonTypeWebApp 'webapp-symbol))))
 
       'action (lambda (_ignored)
                 (telega-inline--callback kbd-button msg)
@@ -3176,6 +3188,29 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
                     (telega-inline--help-echo kbd-button msg))
                    (keyboardButton
                     (substring (telega--tl-get kbd-button :type :@type) 18))))))
+
+(cl-defun telega-ins--keyboard-button-row (buttons msg &key
+                                                  forced-width
+                                                  additional-action)
+  "Insert one row of BUTTONS for MSG."
+  (let* ((buttons (append buttons nil))
+         (labels (mapcar (lambda (button)
+                           (telega-ins--keyboard-button-label
+                            button forced-width))
+                         buttons))
+         (metrics (when (cdr buttons)
+                    (telega-box-button--content-metrics
+                     (concat (buffer-substring (line-beginning-position) (point))
+                             (mapconcat #'identity labels " "))))))
+    (while buttons
+      (telega-ins--keyboard-button (pop buttons) msg
+        :forced-width forced-width
+        :forced-metrics metrics
+        :label (pop labels)
+        :additional-action additional-action)
+      (when buttons
+        (telega-ins--box-button-delimiter
+         (telega-box-button-style 'keyboard-default) :col-delimiter)))))
 
 (defun telega-ins--invoice-show-receipt (msg)
   "Insert [SHOW RECEIPT] button."
@@ -3239,20 +3274,13 @@ has `replyMarkupShowKeyboard' type."
                             ;; XXX: 3 is for brackets and space
                             (* 3 (length buttons-row)))
                          (length buttons-row)))))
-              (let ((kbd-buttons (append buttons-row nil)))
-                (while kbd-buttons
-                  (telega-ins--keyboard-button (car kbd-buttons) msg
-                    :forced-width forced-width
-                    :additional-action
-                    (when (or (eq reply-markup-type 'replyMarkupForceReply)
-                              (plist-get reply-markup :one_time))
-                      (lambda (_kbdbutton _kbdmsg)
-                        (telega--deleteChatReplyMarkup msg))))
-
-                  (when (setq kbd-buttons (cdr kbd-buttons))
-                    (telega-ins--box-button-delimiter
-                     (telega-box-button-style 'keyboard-default)
-                     :col-delimiter))))
+              (telega-ins--keyboard-button-row buttons-row msg
+                :forced-width forced-width
+                :additional-action
+                (when (or (eq reply-markup-type 'replyMarkupForceReply)
+                          (plist-get reply-markup :one_time))
+                  (lambda (_kbdbutton _kbdmsg)
+                    (telega--deleteChatReplyMarkup msg))))
 
             (when (setq rows (cdr rows))
               (telega-ins "\n")
