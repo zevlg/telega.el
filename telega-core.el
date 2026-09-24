@@ -161,6 +161,11 @@ Use FILENAME as is if resulting file does not exist."
 (defvar telega--column-offset 0
   "Additional offset for the `telega-currency-column'.")
 
+(defvar telega--line-prefix nil
+  "Line prefix `telega-ins--line-wrap-prefix' is about to apply.
+Bound while inserting the body, because the prefix is applied only
+afterwards, so inserters can measure the resulting line height.")
+
 (defconst telega-symbol-nbsp "\u00a0"
   "Non-breakable space.")
 
@@ -2199,7 +2204,8 @@ Return what BODY returns."
                (or (telega-box-button--style-get
                     ,style-sym :telega-content-metrics)
                    (telega-box-button--content-metrics
-                    (concat (buffer-substring
+                    (concat telega--line-prefix
+                            (buffer-substring
                              (line-beginning-position) ,left-start-sym)
                             (buffer-substring ,body-start-sym (point)))))))
 
@@ -2371,6 +2377,8 @@ Use `telega-box-button-style' to make a STYLE."
             (telega--column-offset (+ telega--column-offset
                                       (string-width
                                        (or ,prefix-sym ,wrap-sym ""))))
+            (telega--line-prefix (concat telega--line-prefix
+                                         (or ,prefix-sym ,wrap-sym)))
             ,region-sym)
        (prog1
            (progn ,@body)

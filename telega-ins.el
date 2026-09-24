@@ -3200,7 +3200,8 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
                          buttons))
          (metrics (when (cdr buttons)
                     (telega-box-button--content-metrics
-                     (concat (buffer-substring (line-beginning-position) (point))
+                     (concat telega--line-prefix
+                             (buffer-substring (line-beginning-position) (point))
                              (mapconcat #'identity labels " "))))))
     (while buttons
       (telega-ins--keyboard-button (pop buttons) msg
