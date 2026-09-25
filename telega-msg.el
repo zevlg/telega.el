@@ -1691,6 +1691,28 @@ favorite message."
               required-stars))))
     (telega--resendMessages (list msg) nil pay-stars)))
 
+(defun telega-msg-resend-as-file (msg)
+  "Resend failed photo message MSG as a file."
+  (let* ((photo-size (telega-thumbnail--get
+                     "i" (telega--tl-get msg :content :photo :sizes)))
+         (filename (telega-tl-str (telega--tl-get photo-size :photo :local)
+                                :path)))
+    (unless filename
+      (user-error "telega: Original photo file is unavailable"))
+    (telega--sendMessage
+     (telega-msg-chat msg)
+     `(:@type "inputMessageDocument"
+              :document (:@type "inputDocument"
+                                :document (:@type "inputFileLocal"
+                                                 :path ,filename)
+                                :disable_content_type_detection t)
+              :caption ,(telega-fmt-text-desurrogate
+                         (copy-sequence (telega--tl-get msg :content :caption))))
+     nil nil
+     :callback (lambda (new-msg)
+                 (when (telega-msg-p new-msg)
+                   (telega--deleteMessages (list msg)))))))
+
 (defun telega-msg-save (msg &optional to-saved-messages-p)
   "Save messages's MSG media content to a file.
 If MSG is an animation message, then possibly add animation to

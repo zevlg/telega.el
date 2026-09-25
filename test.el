@@ -939,6 +939,74 @@ argument would leave them holding an object the cache does not use."
       (remhash chat-id telega--chat-topics)
       (remhash bot-id users-ht)
       (remhash chat-id telega--chats))))
+
+(ert-deftest telega-msg-resend-as-file ()
+  "Resend the original photo and caption only on button activation."
+  (let* ((caption-text #("\uD83D\uDC7B caption" 0 2 (telega-display "👻")))
+         (caption (telega-fmt-text caption-text '(:@type "textEntityTypeBold")))
+         (msg `(:@type "message" :id 90001 :chat_id 1111
+                        :sending_state
+                        (:@type "messageSendingStateFailed"
+                                :error (:@type "error" :code 400
+                                               :message "PHOTO_INVALID_DIMENSIONS"))
+                        :content
+                        (:@type "messagePhoto" :caption ,caption
+                                :photo (:@type "photo"
+                                               :sizes [(:type "x" :photo (:local (:path "preview.jpg")))
+                                                       (:type "i" :photo (:local (:path "original.png")))]))))
+         request callback deleted)
+    (cl-letf (((symbol-function 'telega-server--call)
+               (lambda (query &optional cb _command)
+                 (setq request query callback cb)))
+              ((symbol-function 'telega-server--send)
+               (lambda (query &optional _command)
+                 (setq deleted query))))
+      (with-temp-buffer
+        (telega-button--insert 'telega-msg msg
+          :inserter #'telega-ins--msg-sending-state-failed)
+        (should-not request)
+        (goto-char (point-min))
+        (search-forward "RESEND")
+        (button-activate (button-at (point)))
+        (should (= (plist-get request :chat_id) 1111))
+        (should (equal (plist-get request :input_message_content)
+                       `(:@type "inputMessageDocument"
+                                :document (:@type "inputDocument"
+                                                  :document (:@type "inputFileLocal"
+                                                                   :path "original.png")
+                                                  :disable_content_type_detection t)
+                                :caption (:@type "formattedText"
+                                                 :text "👻 caption"
+                                                 :entities ,(plist-get caption :entities)))))
+        (should (eq (plist-get caption :text) caption-text))
+        (should-not deleted)
+        (funcall callback '(:@type "error" :code 400 :message "Rejected"))
+        (should-not deleted)
+        (funcall callback '(:@type "message" :id 90002 :chat_id 1111))
+        (should (equal deleted '(:@type "deleteMessages" :chat_id 1111
+                                       :message_ids [90001] :revoke :false))))
+      (setq request nil)
+      (setf (plist-get (plist-get msg :content) :photo) nil)
+      (should-error (telega-msg-resend-as-file msg) :type 'user-error)
+      (should-not request))))
+
+(ert-deftest telega-msg-resend-as-file-button ()
+  "Offer conversion only for photos that failed dimension validation."
+  (dolist (test '(("messagePhoto" "PHOTO_INVALID_DIMENSIONS" t)
+                  ("messagePhoto" "Too Many Requests" nil)
+                  ("messageDocument" "PHOTO_INVALID_DIMENSIONS" nil)))
+    (let ((msg `(:@type "message" :content (:@type ,(nth 0 test))
+                         :sending_state
+                         (:@type "messageSendingStateFailed"
+                                 :error (:@type "error" :code 400
+                                                :message ,(nth 1 test))))))
+      (with-temp-buffer
+        (telega-ins--msg-sending-state-failed msg)
+        (should (eq (not (null (text-property-any
+                               (point-min) (point-max)
+                               :action #'telega-msg-resend-as-file)))
+                    (nth 2 test)))))))
+
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:
