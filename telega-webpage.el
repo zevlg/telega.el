@@ -346,17 +346,21 @@ Keymap:
                                   telega-webpage-photo-size-limits)))
     (telega-ins--animation-image anim 'sliced)))
 
-(defun telega-webpage--animation-action (anim)
-  "Action to take when animation button in pressed."
+(defun telega-webpage--play-media (media file-property)
+  "Download and play FILE-PROPERTY of MEDIA."
   (telega-ffplay-stop)
-  (telega-file--cancel-download (plist-get anim :animation) 'sync)
+  (telega-file--cancel-download (plist-get media file-property) 'sync)
 
-  (telega-file--download (telega-file--renew anim :animation)
+  (telega-file--download (telega-file--renew media file-property)
     :priority 32
     :update-callback
-    (lambda (afile)
-      (when (telega-file--downloaded-p afile)
-        (telega-video-player-run (telega--tl-get afile :local :path))))))
+    (lambda (file)
+      (when (telega-file--downloaded-p file)
+        (telega-video-player-run (telega--tl-get file :local :path))))))
+
+(defun telega-webpage--animation-action (animation)
+  "Action to take when an animation button is pressed."
+  (telega-webpage--play-media animation :animation))
 
 (defun telega-webpage--ins-animation (animation)
   "Insert pageblock with ANIMATION."
@@ -366,6 +370,15 @@ Keymap:
     :telega-animation animation
     :telega-add-sensor-func #'telega-webpage--animation-sensor-func
     'help-echo "RET to play animation"))
+
+(defun telega-webpage--ins-video (video)
+  "Insert a button to play VIDEO."
+  (telega-button--insert 'telega video
+    :inserter (lambda (button-video)
+                (telega-ins--video nil button-video 'thumbnail))
+    :action (lambda (button-video)
+              (telega-webpage--play-media button-video :video))
+    'help-echo "RET to play video"))
 
 (defun telega-webpage--ins-pb (pb)
   "Insert PageBlock PB for the instant view."
@@ -465,7 +478,7 @@ Keymap:
        (let ((telega-webpage-strip-nl t))
          (telega-webpage--ins-pb (plist-get pb :caption))))
       (pageBlockVideo
-       (telega-ins "<TODO: pageBlockVideo>\n"))
+       (telega-rich-text--ins-pb pb))
       (pageBlockCover
        (telega-webpage--ins-pb (plist-get pb :cover)))
       (pageBlockEmbedded
