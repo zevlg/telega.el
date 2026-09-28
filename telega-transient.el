@@ -1648,7 +1648,9 @@ Return first applicable imc."
     ("d" telega-transient--infix-input-option-self-destruct)
     ]
    ["Link Preview Options"
-    ("l" telega-transient-link-preview-options)
+    ("l" telega-transient-link-preview-options
+     :description (lambda ()
+                    (telega-i18n "lng_link_options_header")))
     ]
    ]
   [("RET" telega-transient--suffix-input-option-apply)
