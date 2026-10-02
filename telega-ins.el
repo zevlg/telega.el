@@ -2473,6 +2473,7 @@ Return number of done tasks."
           messageChatAddMembers
           messageChatJoinByLink
           messageChatJoinByRequest
+          messageChatJoinFromCommunity
           messageChatDeleteMember
           messageChatChangeTitle
           messageSupergroupChatCreate
@@ -2582,6 +2583,14 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins-i18n "lng_action_user_joined_by_link" :from sender-name))
       (messageChatJoinByRequest
        (telega-ins-i18n "lng_action_user_joined_by_request" :from sender-name))
+      (messageChatJoinFromCommunity
+       (if-let* ((community
+                  (telega-community-get (plist-get content :community_id))))
+           (telega-ins-i18n "lng_action_user_joined_via_community"
+             :from sender-name
+             :community (telega-community-title--special community))
+         (telega-ins-i18n "lng_action_user_joined_via_community_unknown"
+           :from sender-name)))
       (messageChatDeleteMember
        (let ((user (telega-user-get (plist-get content :user_id))))
          (if (eq sender user)
@@ -2942,13 +2951,35 @@ Special messages are determined with `telega-msg-special-p'."
          :from sender-name
          :option (telega-tl-str content :text)))
       (messageChatAddedToCommunity
-       (telega-ins-i18n "lng_action_community_added"
-         :from sender-name
-         :community (telega-community-title--special
-                     (telega-community-get
-                      (plist-get content :community_id)))))
+       (let ((community
+              (telega-community-get (plist-get content :community_id)))
+             (from-chat-p (eq sender (telega-msg-chat msg))))
+         (cond ((and community from-chat-p)
+                (telega-ins-i18n
+                    (if (plist-get msg :is_channel_post)
+                        "lng_action_community_added_channel"
+                      "lng_action_community_added_chat")
+                  :community (telega-community-title--special community)))
+               (community
+                (telega-ins-i18n "lng_action_community_added"
+                  :from sender-name
+                  :community (telega-community-title--special community)))
+               (from-chat-p
+                (telega-ins-i18n
+                 (if (plist-get msg :is_channel_post)
+                     "lng_action_community_added_unknown_channel"
+                   "lng_action_community_added_unknown_chat")))
+               (t
+                (telega-ins-i18n "lng_action_community_added_unknown"
+                  :from sender-name)))))
       (messageChatRemovedFromCommunity
-       )
+       (if (eq sender (telega-msg-chat msg))
+           (telega-ins-i18n
+            (if (plist-get msg :is_channel_post)
+                "lng_action_community_removed_channel"
+              "lng_action_community_removed_chat"))
+         (telega-ins-i18n "lng_action_community_removed"
+           :from sender-name)))
       (messageManagedBotCreated
        (telega-ins-i18n "lng_managed_bot_created_title"
          :name (telega-msg-sender-title--special

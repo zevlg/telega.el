@@ -676,6 +676,41 @@ Have Stoploss 690 Satoshi." :entities []))))
                  "<svg width=\"[^\"]+\" height=\"16\""
                  (plist-get (cdr image) :data)))))))
 
+(ert-deftest telega-community-service-messages ()
+  (let ((telega--communities-alist
+         '((42 . (:@type "community" :id 42 :name "Emacs"))))
+        from-chat-p)
+    (cl-letf (((symbol-function 'telega-msg-sender)
+               (lambda (_msg) (if from-chat-p 'chat 'sender)))
+              ((symbol-function 'telega-msg-chat)
+               (lambda (&rest _args) 'chat))
+              ((symbol-function 'telega-msg-sender-title--special)
+               (lambda (_sender &rest _args) "Alice")))
+      (dolist (case
+               '((messageChatJoinFromCommunity 42 nil nil
+                  "Alice joined the group via the Emacs community")
+                 (messageChatJoinFromCommunity 43 nil nil
+                  "Alice joined the group via a community")
+                 (messageChatAddedToCommunity 42 nil nil
+                  "Alice added this group to the Emacs community.")
+                 (messageChatAddedToCommunity 43 t t
+                  "This channel was added to a community.")
+                 (messageChatRemovedFromCommunity nil nil nil
+                  "Alice removed this group from the community.")
+                 (messageChatRemovedFromCommunity nil t nil
+                  "This chat was removed from the community.")))
+        (setq from-chat-p (nth 2 case))
+        (let ((msg `(:@type "message"
+                     :is_channel_post ,(nth 3 case)
+                     :content (:@type ,(symbol-name (car case))
+                               :community_id ,(nth 1 case)))))
+          (should (telega-msg-special-p msg))
+          (with-temp-buffer
+            (telega-ins--special msg)
+            (should (string-match-p
+                     (regexp-quote (nth 4 case))
+                     (buffer-string)))))))))
+
 (ert-deftest telega-org-formatting ()
   "Test org mode text formatting."
   (should (equal (telega-markup-org-fmt "*bold*")

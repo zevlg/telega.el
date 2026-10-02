@@ -254,6 +254,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} joined the group via invite link")
  ("lng_action_user_joined_by_request"
   :value "{from} was accepted to the group")
+ ("lng_action_user_joined_via_community"
+  :value "{from} joined the group via the {community} community")
+ ("lng_action_user_joined_via_community_unknown"
+  :value "{from} joined the group via a community")
  ("lng_action_you_joined_by_request"
   :value "Your request to join the group was approved")
  ("lng_action_you_joined_by_request_channel"
@@ -2521,6 +2525,22 @@ this channel?")
   :value "{name} created!")
  ("lng_action_community_added"
   :value "{from} added this group to the {community} community.")
+ ("lng_action_community_added_chat"
+  :value "This chat was added to the {community} community.")
+ ("lng_action_community_added_channel"
+  :value "This channel was added to the {community} community.")
+ ("lng_action_community_added_unknown"
+  :value "{from} added this group to a community.")
+ ("lng_action_community_added_unknown_chat"
+  :value "This chat was added to a community.")
+ ("lng_action_community_added_unknown_channel"
+  :value "This channel was added to a community.")
+ ("lng_action_community_removed"
+  :value "{from} removed this group from the community.")
+ ("lng_action_community_removed_chat"
+  :value "This chat was removed from the community.")
+ ("lng_action_community_removed_channel"
+  :value "This channel was removed from the community.")
 
  ("lng_community_manage"
   :value "Manage Community")
