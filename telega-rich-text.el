@@ -28,6 +28,7 @@
 (require 'shr)
 
 (declare-function telega-webpage--add-anchor "telega-webpage" (name))
+(declare-function telega-webpage--ins-video "telega-webpage" (video))
 (declare-function telega-ins--keyboard-button-row "telega-ins"
                   (buttons msg &rest args))
 (declare-function telega-ins--date-time-formatting "telega-ins" (timestamp ts-fmt))
@@ -467,7 +468,7 @@
       (pageBlockVideo
         ;; TODO: `:need_autoplay', `:is_looped', `:has_spoiler'
        (telega-rich-text--ins-block
-        (telega-ins--video nil (plist-get pb :video) 'thumbnail)
+        (telega-webpage--ins-video (plist-get pb :video))
         (telega-ins-from-newline
          (telega-rich-text--ins-pb (plist-get pb :caption)))))
       (pageBlockVoiceNote
