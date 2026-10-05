@@ -31,6 +31,8 @@
 (require 'telega-util)
 (require 'telega-media)
 (require 'telega-ffplay)
+(require 'telega-i18n)
+(require 'telega-user)
 
 ;; shutup compiler
 (defvar ido-matches)

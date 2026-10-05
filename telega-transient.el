@@ -25,9 +25,12 @@
 
 ;;; Code:
 (require 'transient)
+(require 'ewoc)
 
 (require 'telega-core)
 (require 'telega-ins)
+(require 'telega-i18n)
+(require 'telega-util)
 
 (defvar telega-prefix-map)
 
