@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2026-09-21 Пн 08:52 -->
+<!-- 2026-10-09 Пт 00:56 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.671)</title>
+<title>Telega Manual (v0.8.680)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -68,7 +68,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.671)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.680)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -377,7 +377,7 @@ Thanks to <a href="https://t.me/zdn_y"><code>@zdn_y</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.66-022d60202.
+version equal to v1.8.68-c15d3f5a5.
 </p>
 
 <p>
@@ -879,7 +879,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgc5bf9a7">
+<pre class="example" id="org6b0115d">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -897,7 +897,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org27f3aff">
+<pre class="example" id="orgda621c7">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -986,7 +986,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org6816f66">
+<pre class="example" id="org9a4840c">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1024,7 +1024,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgae7f8b4">
+<pre class="example" id="org5cd3a14">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -2459,7 +2459,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org4921ecb">
+<pre class="example" id="org034fcbf">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2663,7 +2663,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified language:
 </p>
-<pre class="example" id="org5f91fd1">
+<pre class="example" id="org0515ad3">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2695,7 +2695,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orgd937e60">
+<pre class="example" id="orgdc71b2a">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3071,7 +3071,7 @@ It is possible to complete chatbuf's input with
 
 <p>
 You can use standard Emacs <code>capf</code> (completion at point) or advanced
-[BROKEN LINK: telega-company].
+<a href="#telega-companyel--powerful-completions-with-company">telega-company</a>.
 </p>
 
 <p>
@@ -3432,7 +3432,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org55c4f25">
+<pre class="example" id="org2f0add9">
 [⏪] [⏩] [2×] [Stop]
 </pre>
 
@@ -4724,6 +4724,87 @@ Default value: <code>t</code>
 <p>
 Enable company completions with:
 </p>
+<div class="org-src-container">
+<pre class="src src-elisp">(add-hook 'telega-chat-mode-hook 'telega-completions-setup-company)
+</pre>
+</div>
+
+<p>
+Consider also using <code>company-posframe</code> Emacs package (in MELPA), so
+chatbuf's contents remain untouched when completion menu pops above
+the chatbuf prompt.
+</p>
+
+<p>
+If you don't like <code>company-posframe</code>, consider option:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-company-tooltip-always-below</code> 
+</p>
+
+<p>
+Non-nil to show company tooltip always below the point.
+Done by recentering point in the chatbuf. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul>
+
+<p>
+User options you might want to customize:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-company-active</code> 
+</p>
+
+<p>
+Non-nil to use <code>telega-company</code> in active mode. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+<li><p>
+User Option: <code>telega-company-backends</code> 
+</p>
+
+<p>
+Company backends to use in chat buffers.
+Set to nil to disable company completions in chat buffers. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(telega-company-emoji telega-company-telegram-emoji
+                      telega-company-username telega-company-hashtag
+                      telega-company-markdown-precode
+                      telega-company-quick-reply telega-company-botcmd)
+</pre>
+</div></li>
+
+<li><p>
+User Option: <code>telega-company-tooltip-always-below</code> 
+</p>
+
+<p>
+Non-nil to show company tooltip always below the point.
+Done by recentering point in the chatbuf. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul>
+
+<p>
+Company backends provided by <code>telega-company</code>:
+</p>
 
 
 <dl class="org-dl">
@@ -4923,7 +5004,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org3b6c818">
+<pre class="example" id="orgcf75992">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

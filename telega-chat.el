@@ -979,164 +979,172 @@ Specify non-nil BAN to ban this user in this CHAT."
          (telega-ins "TODO: giftChatTheme")))))
 
   ;; NOTIFICATIONS Section
-  (telega-ins-describe-item (telega-i18n "lng_settings_section_notify")
-    (let ((notify-cfg (plist-get chat :notification_settings)))
-      ;; If any custom setting is enabled, then show [Reset] button
-      (unless (cl-every (apply-partially #'plist-get notify-cfg)
-                        '(:use_default_mute_for
-                          :use_default_sound
-                          :use_default_show_preview
-                          :use_default_mute_stories
-                          :use_default_story_sound
-                          :use_default_disable_pinned_message_notifications
-                          :use_default_disable_mention_notifications))
-        (telega-ins--with-face 'telega-shadow
-          (telega-ins "custom "))
-        (telega-ins--ui-button (telega-i18n "lng_signin_reset")
-          :value chat
-          :action (lambda (chat)
-                    (telega--setChatNotificationSettings chat
-                      :use_default_mute_for t
-                      :use_default_sound t
-                      :use_default_show_preview t
-                      :use_default_mute_stories t
-                      :use_default_story_sound t
-                      :use_default_disable_pinned_message_notifications t
-                      :use_default_disable_mention_notifications t))))
-
-      (telega-ins "\n")
-      (telega-ins--line-wrap-prefix "  "
-        (let ((muted-p (telega-chat-muted-p chat)))
-          (telega-ins--text-button (if (not muted-p)
-                                       (telega-symbol 'checkbox-on)
-                                     (telega-symbol 'checkbox-off))
-            'face 'telega-link
-            :value chat
-            :action #'telega-chat-toggle-muted)
-          (telega-ins " ")
-          (telega-ins-fmt "%s (%s)"
-            (telega-i18n "lng_settings_desktop_notify")
-            (propertize (if (plist-get notify-cfg :use_default_mute_for)
-                            "default" "custom")
-                        'face 'telega-shadow))
-          (unless muted-p
-            (telega-ins " ")
-            (telega-ins--ui-button (telega-i18n "lng_mute_menu_duration")
+  (telega-ins-describe-item (telega-i18n "lng_profile_enable_notifications")
+    (let ((muted-p (telega-chat-muted-p chat)))
+      (telega-ins--text-button (if (not muted-p)
+                                   (telega-symbol 'checkbox-on)
+                                 (telega-symbol 'checkbox-off))
+        'face 'telega-link
+        :value chat
+        :action #'telega-chat-toggle-muted)
+      (unless muted-p
+        (let ((notify-cfg (plist-get chat :notification_settings)))
+          ;; If any custom setting is enabled, then show [Reset] button
+          (unless (cl-every (apply-partially #'plist-get notify-cfg)
+                            '(:use_default_mute_for
+                              :use_default_sound
+                              :use_default_show_preview
+                              :use_default_mute_stories
+                              :use_default_story_sound
+                              :use_default_disable_pinned_message_notifications
+                              :use_default_disable_mention_notifications))
+            (telega-ins--with-face 'telega-shadow
+              (telega-ins " custom "))
+            (telega-ins--ui-button (telega-i18n "lng_signin_reset")
               :value chat
               :action (lambda (chat)
-                        (telega-chat-toggle-muted
-                         chat (telega-completing-read-mute-for
-                               (telega-i18n "lng_mute_menu_duration_any"
-                                 :duration ": "))))))
-          (telega-ins "\n"))
+                        (telega--setChatNotificationSettings chat
+                          :use_default_mute_for t
+                          :use_default_sound t
+                          :use_default_show_preview t
+                          :use_default_mute_stories t
+                          :use_default_story_sound t
+                          :use_default_disable_pinned_message_notifications t
+                          :use_default_disable_mention_notifications t))))
 
-        ;; Show Preview
-        (let ((show-preview-p (telega-chat-notification-setting
-                               chat :show_preview)))
-          (telega-ins--text-button (if show-preview-p
-                                       (telega-symbol 'checkbox-on)
-                                     (telega-symbol 'checkbox-off))
-            'face 'telega-link
-            'action (lambda (_button)
-                      (telega--setChatNotificationSettings chat
-                        :use_default_show_preview nil
-                        :show_preview (if show-preview-p :false t))))
-          (telega-ins " ")
-          (telega-ins-fmt "%s (%s)"
-            (telega-i18n "lng_settings_show_preview")
-            (propertize (if (plist-get notify-cfg :use_default_show_preview)
-                            "default" "custom")
-                        'face 'telega-shadow))
-          (telega-ins "\n"))
-
-        ;; Stories is a private/channels things
-        (let ((mute-stories-p (telega-chat-notification-setting
-                               chat :mute_stories)))
-          (telega-ins--text-button (if mute-stories-p
-                                       (telega-symbol 'checkbox-on)
-                                     (telega-symbol 'checkbox-off))
-            'face 'telega-link
-            'action (lambda (_button)
-                      (telega--setChatNotificationSettings chat
-                        :use_default_mute_stories nil
-                        :mute_stories (if mute-stories-p :false t))))
-          (telega-ins " ")
-          (telega-ins-fmt "Mute Stories (%s)"
-            (propertize (if (plist-get notify-cfg :use_default_mute_stories)
-                            "default" "custom")
-                        'face 'telega-shadow))
-          (telega-ins "\n"))
-
-        (let ((disable-pin-msg-p (telega-chat-notification-setting
-                                  chat :disable_pinned_message_notifications)))
-          (telega-ins--text-button (if disable-pin-msg-p
-                                       (telega-symbol 'checkbox-on)
-                                     (telega-symbol 'checkbox-off))
-            'face 'telega-link
-            'action (lambda (_button)
-                      (telega--setChatNotificationSettings chat
-                        :use_default_disable_pinned_message_notifications nil
-                        :disable_pinned_message_notifications
-                        (if disable-pin-msg-p :false t))))
-          (telega-ins " ")
-          (telega-ins "Disable Pinned Message Notification (")
-          (telega-ins--with-face 'telega-shadow
-            (telega-ins
-             (if (plist-get notify-cfg :use_default_disable_pinned_message_notifications)
-                 "default"
-               "custom")))
-          (telega-ins ")")
-          (telega-ins "\n"))
-
-        (let ((disable-mentions-p (telega-chat-notification-setting
-                                   chat :disable_mention_notifications)))
-          (telega-ins--text-button (if disable-mentions-p
-                                       (telega-symbol 'checkbox-on)
-                                     (telega-symbol 'checkbox-off))
-            'face 'telega-link
-            'action (lambda (_button)
-                      (telega--setChatNotificationSettings chat
-                        :use_default_disable_mention_notifications nil
-                        :disable_mention_notifications
-                        (if disable-mentions-p :false t))))
-          (telega-ins " ")
-          (telega-ins "Disable Mention Notification (")
-          (telega-ins--with-face 'telega-shadow
-            (telega-ins
-             (if (plist-get notify-cfg :use_default_disable_mention_notifications)
-                 "default"
-               "custom")))
-          (telega-ins ")"))
-
-        (when (telega-chat-match-p chat 'can-send-or-post)
           (telega-ins "\n")
-          (telega-ins--text-button
-              (if (plist-get chat :default_disable_notification)
-                  (telega-symbol 'checkbox-on)
-                (telega-symbol 'checkbox-off))
-            'face 'telega-link
-            'action (lambda (_button)
-                      (telega--toggleChatDefaultDisableNotification
-                       chat
-                       (not (plist-get chat :default_disable_notification)))))
-          (telega-ins " ")
-          (telega-ins "Disable Peer Notification")
-          (telega-ins "\n")
-          (telega-ins--help-message
-           (telega-ins "Used when you send a message to the chat.\n"
-                       "Disables message notification on receiver side.\n"
-                       "Use `C-c C-a "
-                       (if (plist-get chat :default_disable_notification)
-                           "enable-notification"
-                         "disable-notification")
-                       " RET' in chatbuf prompt to temporary "
-                       (if (plist-get chat :default_disable_notification)
-                           "enable"
-                         "disable")
-                       " notifications on receiver side at message send time.")
-           ;; NOTE: no trailing newline
-           nil)))
-      ))
+          (telega-ins--line-wrap-prefix "  "
+            (let ((muted-p (telega-chat-muted-p chat)))
+              (telega-ins--text-button (if (not muted-p)
+                                           (telega-symbol 'checkbox-on)
+                                         (telega-symbol 'checkbox-off))
+                'face 'telega-link
+                :value chat
+                :action #'telega-chat-toggle-muted)
+              (telega-ins " ")
+              (telega-ins-fmt "%s (%s)"
+                (telega-i18n "lng_settings_desktop_notify")
+                (propertize (if (plist-get notify-cfg :use_default_mute_for)
+                                "default" "custom")
+                            'face 'telega-shadow))
+              (unless muted-p
+                (telega-ins " ")
+                (telega-ins--ui-button (telega-i18n "lng_mute_menu_duration")
+                  :value chat
+                  :action (lambda (chat)
+                            (telega-chat-toggle-muted
+                             chat (telega-completing-read-mute-for
+                                   (telega-i18n "lng_mute_menu_duration_any"
+                                     :duration ": "))))))
+              (telega-ins "\n"))
+
+            ;; Show Preview
+            (let ((show-preview-p (telega-chat-notification-setting
+                                   chat :show_preview)))
+              (telega-ins--text-button (if show-preview-p
+                                           (telega-symbol 'checkbox-on)
+                                         (telega-symbol 'checkbox-off))
+                'face 'telega-link
+                'action (lambda (_button)
+                          (telega--setChatNotificationSettings chat
+                            :use_default_show_preview nil
+                            :show_preview (if show-preview-p :false t))))
+              (telega-ins " ")
+              (telega-ins-fmt "%s (%s)"
+                (telega-i18n "lng_settings_show_preview")
+                (propertize (if (plist-get notify-cfg :use_default_show_preview)
+                                "default" "custom")
+                            'face 'telega-shadow))
+              (telega-ins "\n"))
+
+            ;; Stories is a private/channels things
+            (let ((mute-stories-p (telega-chat-notification-setting
+                                   chat :mute_stories)))
+              (telega-ins--text-button (if mute-stories-p
+                                           (telega-symbol 'checkbox-on)
+                                         (telega-symbol 'checkbox-off))
+                'face 'telega-link
+                'action (lambda (_button)
+                          (telega--setChatNotificationSettings chat
+                            :use_default_mute_stories nil
+                            :mute_stories (if mute-stories-p :false t))))
+              (telega-ins " ")
+              (telega-ins-fmt "Mute Stories (%s)"
+                (propertize (if (plist-get notify-cfg :use_default_mute_stories)
+                                "default" "custom")
+                            'face 'telega-shadow))
+              (telega-ins "\n"))
+
+            (let ((disable-pin-msg-p (telega-chat-notification-setting
+                                      chat :disable_pinned_message_notifications)))
+              (telega-ins--text-button (if disable-pin-msg-p
+                                           (telega-symbol 'checkbox-on)
+                                         (telega-symbol 'checkbox-off))
+                'face 'telega-link
+                'action (lambda (_button)
+                          (telega--setChatNotificationSettings chat
+                            :use_default_disable_pinned_message_notifications nil
+                            :disable_pinned_message_notifications
+                            (if disable-pin-msg-p :false t))))
+              (telega-ins " ")
+              (telega-ins "Disable Pinned Message Notification (")
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins
+                 (if (plist-get notify-cfg :use_default_disable_pinned_message_notifications)
+                     "default"
+                   "custom")))
+              (telega-ins ")")
+              (telega-ins "\n"))
+
+            (let ((disable-mentions-p (telega-chat-notification-setting
+                                       chat :disable_mention_notifications)))
+              (telega-ins--text-button (if disable-mentions-p
+                                           (telega-symbol 'checkbox-on)
+                                         (telega-symbol 'checkbox-off))
+                'face 'telega-link
+                'action (lambda (_button)
+                          (telega--setChatNotificationSettings chat
+                            :use_default_disable_mention_notifications nil
+                            :disable_mention_notifications
+                            (if disable-mentions-p :false t))))
+              (telega-ins " ")
+              (telega-ins "Disable Mention Notification (")
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins
+                 (if (plist-get notify-cfg :use_default_disable_mention_notifications)
+                     "default"
+                   "custom")))
+              (telega-ins ")"))
+
+            (when (telega-chat-match-p chat 'can-send-or-post)
+              (telega-ins "\n")
+              (telega-ins--text-button
+                  (if (plist-get chat :default_disable_notification)
+                      (telega-symbol 'checkbox-on)
+                    (telega-symbol 'checkbox-off))
+                'face 'telega-link
+                'action (lambda (_button)
+                          (telega--toggleChatDefaultDisableNotification
+                           chat
+                           (not (plist-get chat :default_disable_notification)))))
+              (telega-ins " ")
+              (telega-ins "Disable Peer Notification")
+              (telega-ins "\n")
+              (telega-ins--help-message
+               (telega-ins "Used when you send a message to the chat.\n"
+                           "Disables message notification on receiver side.\n"
+                           "Use `C-c C-a "
+                           (if (plist-get chat :default_disable_notification)
+                               "enable-notification"
+                             "disable-notification")
+                           " RET' in chatbuf prompt to temporary "
+                           (if (plist-get chat :default_disable_notification)
+                               "enable"
+                             "disable")
+                           " notifications on receiver side at message send time.")
+               ;; NOTE: no trailing newline
+               nil)))
+          ))))
 
   ;; Permissions for basicgroup and supergroup
   (when (telega-chat-match-p chat '(type basicgroup supergroup))
@@ -4557,6 +4565,7 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's
 `:last_read_outbox_message_id'."
   (let ((node (ewoc--footer telega-chatbuf--ewoc)))
     (while (and (setq node (ewoc-prev telega-chatbuf--ewoc node))
+                old-last-read-outbox-msgid
                 (< old-last-read-outbox-msgid
                    (plist-get (ewoc-data node) :id)))
       (when (plist-get (ewoc-data node) :is_outgoing)
@@ -5032,8 +5041,8 @@ use.  For example `C-u RET' will use
         (setq send-imcs (seq-take imcs 1))
         (let ((edit-mc (plist-get editing-msg :content))
               (imc (car send-imcs)))
-          (cond ((and ;(eq (telega--tl-type imc) 'inputMessageLocation)
-                  (eq (telega--tl-type edit-mc) 'messageLocation))
+          (cond ((and ;(eq (telega--tl-type imc) 'inputMessageLiveLocation)
+                  (eq (telega--tl-type edit-mc) 'messageLiveLocation))
                  (telega--editMessageLiveLocation
                   editing-msg (plist-get imc :location)
                   :sync-p (not telega-chat-send-messages-async)))
@@ -5721,11 +5730,15 @@ If `\\[universal-argument]' is given, then attach live location."
            (telega-completing-read-duration "Live for: "
                `(60 ,(* 15 60) ,(* 60 60) ,(* 8 60 60) #x7FFFFFFF)))))
 
-  (telega-chatbuf-input-insert
-   (nconc (list :@type "inputMessageLocation"
-                :location (cons :@type (cons "location" location)))
-          (when live-secs
-            (list :live_period live-secs)))))
+  (let ((tl-loc (nconc (list :@type "location") location)))
+    (telega-chatbuf-input-insert
+     (if live-secs
+         (list :@type "inputMessageLiveLocation"
+               :location (list :@type "liveLocation"
+                               :location tl-loc
+                               :live_period live-secs))
+       (list :@type "inputMessageLocation"
+             :location tl-loc)))))
 
 (defun telega-chatbuf-attach-contact (contact)
   "Attach CONTACT user to the chatbuf input."

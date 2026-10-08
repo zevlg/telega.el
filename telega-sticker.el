@@ -440,8 +440,7 @@ Return path to png file."
             :update-callback
             (lambda (dfile)
               (when (telega-file--downloaded-p dfile)
-                (telega-media--image-updateNEW obj-spec)
-                (force-window-update))))))
+                (telega-media--image-updateNEW obj-spec))))))
 
       (telega-sticker--progress-svg sticker cheight))))
 

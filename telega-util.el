@@ -629,11 +629,34 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
    (dom-node 'filter
              `((id . ,node-id))
              (dom-node 'feGaussianBlur
-                       `((stdDeviation . ,(or std-deviation "3"))
+                       `((in . "SourceAlpha")
+                         (stdDeviation . ,(or std-deviation "3"))
                          (result . "coloredBlur")))
              (dom-node 'feMerge nil
                        (dom-node 'feMergeNode
                                  `((in . "coloredBlur")))
+                       (dom-node 'feMergeNode
+                                 `((in . "SourceGraphic"))))
+             )))
+
+(defun telega-svg-append-shadow-filter (svg node-id &optional std-deviation dx dy)
+  "Create shadow filter."
+  (svg--append
+   svg
+   (dom-node 'filter
+             `((id . ,node-id))
+             (dom-node 'feGaussianBlur
+                       `((in . "SourceAlpha")
+                         (stdDeviation . ,(or std-deviation "3"))
+                         (result . "blur")))
+             (dom-node 'feOffset
+                       `((in . "blur")
+                         (dx . ,(or dx "2"))
+                         (dy . ,(or dy "2"))
+                         (result . "offsetBlur")))
+             (dom-node 'feMerge nil
+                       (dom-node 'feMergeNode
+                                 `((in . "offsetBlur")))
                        (dom-node 'feMergeNode
                                  `((in . "SourceGraphic"))))
              )))
@@ -1291,6 +1314,14 @@ RSTART and REND specifies STR region to work on."
                              :type entity-type))
                     [])))
 
+(defun telega-fmt-text--with-tdlib (text)
+  "Use TDLib to create formatted text from TEXT.
+Makes sync call to TDLib."
+  (when-let ((text-str (telega-tl-str text)))
+    (list :@type "formattedText"
+          :text text
+          :entities (plist-get (telega--getTextEntities text-str) :entities))))
+
 (defun telega-string-as-markup (str markup-name markup-func &rest markup-args)
   "From STR create string with markup named MARKUP-NAME.
 MARKUP-NAME can be nil, in this case markup outline is not displayed,
@@ -1478,7 +1509,8 @@ Return nil if STR does not specify an org mode link."
                                  (substring text (+ beg lang-len))))
               )))))
     (telega-fmt-text-desurrogate fmt-text)))
-(put 'telega-markup-markdown2-fmt :telega-accepts-fmt-text t)
+;; NOTE: commented out, because to avoid incorrect formatting
+;; (put 'telega-markup-markdown2-fmt :telega-accepts-fmt-text t)
 
 (defun telega-string-split-by-tl-entity-type (text default-markup-func)
   "Split TEXT by `:tl-entity-type'.

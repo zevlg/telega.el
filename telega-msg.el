@@ -229,6 +229,15 @@
 
     map))
 
+(defvar telega-msg-button-location-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map telega-msg-button-map)
+    (define-key map (kbd "<wheel-down>") 'telega-msg-map-zoom-in)
+    (define-key map (kbd "<wheel-up>") 'telega-msg-map-zoom-out)
+    (define-key map (kbd "<down-mouse-1>") 'telega-msg-map-drag)
+    map)
+  "Keymap to control map thumbnail with the mouse.")
+
 (define-button-type 'telega-msg
   :supertype 'telega
   :inserter telega-inserter-for-msg-button
@@ -1397,7 +1406,7 @@ ARGS are passed directly to `telega-ins--msg-sender'."
     (let ((bg-mode (frame-parameter nil 'background-mode)))
       (or (alist-get bg-mode (plist-get msg-sender :telega-palette))
           (let ((palette (telega-palette-by-color-id
-                          (plist-get msg-sender :accent_color_id)
+                          (telega-tl-get0 msg-sender :accent_color_id)
                           bg-mode)))
             (setf (alist-get bg-mode (plist-get msg-sender :telega-palette))
                   palette)
@@ -1838,7 +1847,15 @@ recognition text if message is a VoiceNote message."
              (telega-msg-match-p msg '(type VoiceNote))
              (telega-tl-str
               (telega--tl-get content :voice_note :speech_recognition_result)
-              :text)))))
+              :text))
+        ;; Extract text from different non-text messages
+        (cond ((telega-msg-match-p msg '(type Location))
+               (let ((loc (telega--tl-get msg :content :location)))
+                 (format "%fN, %fE"
+                         (telega-tl-get0 loc :latitude)
+                         (telega-tl-get0 loc :longitude))))
+              )
+        )))
 
 (defun telega-msg-copy-text (msg &optional no-properties)
   "Copy a text of the message MSG.
@@ -2050,15 +2067,16 @@ Requires administrator rights in the chat."
         (telega-ins-describe-item "Ignored By"
           (telega-ins-fmt "%S" ignored-by)))
 
-      ;; Link to the message
-      (when-let ((link (ignore-errors
-                         ;; NOTE: we ignore any errors such as
-                         ;;   - error=6: Public message links are available
-                         ;;              only for messages in supergroups
-                         ;;   - error=6: Message is scheduled
-                         ;;   ...
-                         (telega--getMessageLink msg
-                           :for-thread-p for-thread-p))))
+      ;; Link to the message (for supergroups and channels only)
+      (when-let* (((telega-msg-match-p msg '(chat (type supergroup channel))))
+                  (link (ignore-errors
+                          ;; NOTE: we ignore any errors such as
+                          ;;   - error=6: Public message links are available
+                          ;;              only for messages in supergroups
+                          ;;   - error=6: Message is scheduled
+                          ;;   ...
+                          (telega--getMessageLink msg
+                            :for-thread-p for-thread-p))))
         (telega-ins-describe-item "Link"
           (telega-ins--raw-button (telega-link-props 'url link 'face 'link)
             (telega-ins link))))

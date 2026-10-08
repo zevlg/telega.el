@@ -51,16 +51,13 @@ LOC should be the new location."
   (setq telega-my-location (telega-live-location--geo-loc geo-loc))
 
   (when (telega-server-live-p)
-    ;; Share my location to Telegram in case `:is_location_visible'
-    ;; option is used
-    (when (plist-get telega--options :is_location_visible)
-      (telega--setLocation telega-my-location))
-
     ;; Asynchronously update all live location messages
     (let ((geo-heading (or (geo-last-heading) 0))
-          (loc (nconc (list :@type "location") telega-my-location)))
+          (live-loc (list :@type "liveLocation"
+                          :location (nconc (list :@type "location")
+                                           telega-my-location))))
     (seq-doseq (ll-msg telega--live-location-messages)
-      (telega--editMessageLiveLocation ll-msg loc
+      (telega--editMessageLiveLocation ll-msg live-loc
         ;; NOTE: Convert half-circle azimuth (used by geo.el) to
         ;; full-circle azimuth (used by TDLib)
         :heading (round (if (< geo-heading 0)

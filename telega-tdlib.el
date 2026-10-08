@@ -1880,39 +1880,33 @@ message upon message is created."
             (list :reply_markup reply-markup)))
    (or callback (unless sync-p #'ignore))))
 
-(cl-defun telega--editMessageLiveLocation (msg location
+(cl-defun telega--editMessageLiveLocation (msg live-location
                                                &key reply-markup
                                                heading proximity-alert-radius
                                                callback sync-p)
   "Edit the message content of a live location.
-Pass nil as LOCATION to stop sharing live location.
+Pass nil as LIVE-LOCATION to stop sharing live location.
 HEADING - the new direction in which the location moves, in degrees;
 1-360. Pass 0 if unknown.
 PROXIMITY-ALERT-RADIUS - the new maximum distance for proximity
 alerts, in meters (0-100000). Pass 0 if the notification is disabled."
   (declare (indent 2))
-  (let ((content (plist-get msg :content)))
-    ;; Keep heading/proximity-alert-radius values if not explicitly
-    ;; specified
-    (unless heading
-      (setq heading
-            (plist-get content :heading)))
-    (unless proximity-alert-radius
-      (setq proximity-alert-radius
-            (plist-get content :proximity_alert_radius))))
+  (let ((content (plist-get msg :content))
+        (new-live-loc (copy-sequence live-location)))
+    ;; Probably update heading and proximity alert radius
+    (when (and new-live-loc heading)
+      (plist-put new-live-loc :heading heading))
+    (when (and new-live-loc proximity-alert-radius)
+      (plist-put new-live-loc :proximity_alert_radius proximity-alert-radius))
 
-  (telega-server--call
-   (nconc (list :@type "editMessageLiveLocation"
-                :chat_id (plist-get msg :chat_id)
-                :message_id (plist-get msg :id)
-                :location location)
-          (when heading
-            (list :heading heading))
-          (when proximity-alert-radius
-            (list :proximity_alert_radius proximity-alert-radius))
-          (when reply-markup
-            (list :reply_markup reply-markup)))
-   (or callback (unless sync-p #'ignore))))
+    (telega-server--call
+     (nconc (list :@type "editMessageLiveLocation"
+                  :chat_id (plist-get msg :chat_id)
+                  :message_id (plist-get msg :id)
+                  :location new-live-loc)
+            (when reply-markup
+              (list :reply_markup reply-markup)))
+     (or callback (unless sync-p #'ignore)))))
 
 (cl-defun telega--editMessageMedia (msg imc &key reply-markup
                                         callback sync-p)
@@ -3517,7 +3511,7 @@ Saved Messages topic is specified by SM-TOPIC-ID."
     (supergroup enable-p &optional callback)
   "Toggles whether sponsored messages are shown in the channel chat."
   (telega-server--send-or-call
-   (list :@type "toggleHasSponsoredMessagesEnabled"
+   (list :@type "toggleSupergroupCanHaveSponsoredMessages"
          :supergroup_id (plist-get supergroup :id)
          :can_have_sponsored_messages (if enable-p t :false))
    callback))
@@ -3601,6 +3595,7 @@ Saved Messages topic is specified by SM-TOPIC-ID."
 
 (defun telega--getCurrentWeather (location &optional callback)
   "Return the current weather in the given LOCATION."
+  (declare (indent 1))
   (telega-server--call
    (list :@type "getCurrentWeather"
          :location location)
@@ -3841,6 +3836,13 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
   (telega-server--call
    (list :@type "fixTextWithAi"
          :text fmt-text)
+   callback))
+
+(defun telega--getTextEntities (text &optional callback)
+  "Return all entities found in the TEXT string."
+  (telega-server--call
+   (list :@type "getTextEntities"
+         :text text)
    callback))
 
 (provide 'telega-tdlib)

@@ -833,7 +833,7 @@ It is possible to complete chatbuf's input with
 {{{where-is(telega-chatbuf-complete-or-next-link,telega-chat-mode-map)}}}.
 
 You can use standard Emacs ~capf~ (completion at point) or advanced
-[[#telega-company][telega-company]].
+[[#telega-companyel--powerful-completions-with-company][telega-company]].
 
 To enable ~capf~ completions use:
 #+begin_src elisp

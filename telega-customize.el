@@ -326,8 +326,13 @@ performance might suffer."
      :passive-face telega-box-button-ui-passive
      :active-face telega-box-button-ui-active
      :outline-width 0.1
-     :outline-color (face-foreground 'telega-box-button-ui-passive)
-     )
+     :outline-color (face-foreground 'telega-box-button-ui-passive))
+    (disabled
+     ;; For disabled UI buttons
+     :passive-face telega-shadow
+     :active-face telega-shadow
+     :outline-color (face-foreground 'telega-shadow))
+
     (checkbox
      :left-bracket ""
      :right-bracket ""
@@ -384,9 +389,9 @@ performance might suffer."
     )
   "Alist of box button styles.
 Supported style properties are:
-`:passive-face', `:active-face', `:x-margin', `:round-corner',
+`:passive-face', `:active-face', `:margin', `:round-corner',
 `:icon-symbol', `:outline-width', `:outline-color', `:h-offset',
-`:brackets', `:left-edge-image-func', `:right-edge-image-func'.
+`:brackets'.
 
 `:outline-width' might be integer, specifying width in pixels.  Or
 float, relative value to char width."
@@ -509,6 +514,14 @@ running."
                                    (substring (plist-get (cdr nt) :@type) 11)
                                    (car nt)))
                            telega-tdlib-network-type-alist))
+  :group 'telega)
+
+(defcustom telega-rich-text-math-image-messages t
+  "Non-nil to display messages at start and end of math expr image generation.
+Image generation for math expressions blocks Emacs, thats why messages
+might be helpful."
+  :package-version '(telega . "0.8.671")
+  :type 'boolean
   :group 'telega)
 
 
@@ -820,7 +833,7 @@ In pixels height and width should be in range [16..1024]."
   :type '(cons integer integer)
   :group 'telega)
 
-(defcustom telega-location-zoom 15
+(defcustom telega-location-zoom 16
   "*Zoom for location image.
 In range [13..20]"
   :type 'integer
@@ -840,6 +853,16 @@ In range [1..3].  Use 1."
 
 (defcustom telega-location-live-tracks t
   "*Non-nil to draw live location tracks."
+  :type 'boolean
+  :group 'telega)
+
+(defcustom telega-location-show-scale-ruler t
+  "*Non-nil to show scale ruler on the location map images."
+  :type 'boolean
+  :group 'telega)
+
+(defcustom telega-location-show-weather (when telega-emoji-font-family t)
+  "*Non-nil to show weather on the location map images."
   :type 'boolean
   :group 'telega)
 
@@ -3515,6 +3538,11 @@ non-nil if symbol gets emojification."
   "Face for all rich text."
   :group 'telega-faces)
 
+(defface telega-rich-text-table-header
+  '((t :inherit bold))
+  "Face for rich text table header."
+  :group 'telega-faces)
+
 (defface telega-rich-text-section-heading
   '((t :inherit fixed-pitch-serif :weight bold))
   "Face for section header."
@@ -3758,6 +3786,11 @@ non-nil if symbol gets emojification."
 (defface telega-box-button-success-active
   '((t :background "#4da15b"))
   "Face for active button of TL buttonStyleSuccess style."
+  :group 'telega-faces)
+
+(defface telega-location-pin
+  `((t :background "RoyalBlue3" :foreground "white"))
+  "Face to display location pins in the location map images."
   :group 'telega-faces)
 
 

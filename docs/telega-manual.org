@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.671)
+#+title: Telega Manual (v0.8.680)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -244,7 +244,7 @@ Thanks to [[https://t.me/zdn_y][=@zdn_y=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.66-022d60202.
+version equal to v1.8.68-c15d3f5a5.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -2348,7 +2348,7 @@ It is possible to complete chatbuf's input with
 @@html:<kbd>@@TAB@@html:</kbd>@@ (~telega-chatbuf-complete-or-next-link~).
 
 You can use standard Emacs ~capf~ (completion at point) or advanced
-[[#telega-company][telega-company]].
+[[#telega-companyel--powerful-completions-with-company][telega-company]].
 
 To enable ~capf~ completions use:
 #+begin_src elisp
@@ -3396,6 +3396,49 @@ customized with:
   Default value: ~t~
 
 Enable company completions with:
+#+begin_src elisp
+  (add-hook 'telega-chat-mode-hook 'telega-completions-setup-company)
+#+end_src
+
+Consider also using =company-posframe= Emacs package (in MELPA), so
+chatbuf's contents remain untouched when completion menu pops above
+the chatbuf prompt.
+
+If you don't like =company-posframe=, consider option:
+- User Option: ~telega-company-tooltip-always-below~ 
+
+  Non-nil to show company tooltip always below the point.
+  Done by recentering point in the chatbuf. 
+
+  Default value: ~t~
+
+User options you might want to customize:
+- User Option: ~telega-company-active~ 
+
+  Non-nil to use ~telega-company~ in active mode. 
+
+  Default value: ~t~
+- User Option: ~telega-company-backends~ 
+
+  Company backends to use in chat buffers.
+  Set to nil to disable company completions in chat buffers. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    (telega-company-emoji telega-company-telegram-emoji
+                          telega-company-username telega-company-hashtag
+                          telega-company-markdown-precode
+                          telega-company-quick-reply telega-company-botcmd)
+  #+end_src
+
+- User Option: ~telega-company-tooltip-always-below~ 
+
+  Non-nil to show company tooltip always below the point.
+  Done by recentering point in the chatbuf. 
+
+  Default value: ~t~
+
+Company backends provided by =telega-company=:
 
 
 - telega-company-emoji :: Complete emojis via ~:<emoji>:~

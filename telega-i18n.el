@@ -49,20 +49,24 @@
   :group 'telega)
 
 (defconst telega-i18n--alias-alist
-  '(("telega_show" . "lng_usernames_activate_confirm")
-    ("telega_hide" . "lng_sponsored_hide_ads")
-    ("telega_loading" . "lng_profile_loading")
-    ("telega_for_n_hours" . "lng_mute_duration_hours")
-    ("telega_stop" . "lng_export_stop")
-    ("telega_at" . "lng_schedule_at")
-    ("telega_comment" . "lng_photos_comment")
-    ("telega_status" . "lng_proxy_box_status")
+  '(("telega_show" . "lng_usernames_activate_confirm") ; Show
+    ("telega_hide" . "lng_sponsored_hide_ads")         ; Hide
+    ("telega_loading" . "lng_profile_loading")         ; Loading..
+    ("telega_for_n_hours" . "lng_mute_duration_hours") ; For <n> hours
+    ("telega_stop" . "lng_export_stop")        ; Stop
+    ("telega_at" . "lng_schedule_at")          ; at
+    ("telega_comment" . "lng_photos_comment")  ; Comment
+    ("telega_status" . "lng_proxy_box_status") ; Status
+    ;; **This action cannot be undone.**
     ("telega_action_cant_undone" . "lng_context_mark_read_all_sure_2")
-    ("telega_default" . "lng_font_default")
-    ("telega_edit" . "lng_settings_edit")
-    ("telega_none" . "lng_settings_empty_bio")
-    ("telega_show_more" . "lng_stories_show_more")
-    ("telega_change" . "lng_auction_change_button")
+    ("telega_default" . "lng_font_default")         ; Default
+    ("telega_edit" . "lng_settings_edit")           ; Edit
+    ("telega_none" . "lng_settings_empty_bio")      ; None
+    ("telega_show_more" . "lng_stories_show_more")  ; Show more
+    ("telega_change" . "lng_auction_change_button") ; Change
+    ("telega_restore" . "lng_restore_window") ; Restore
+    ("telega_reset" . "lng_export_from_beginning") ; Reset
+    ("telega_time_left" . "lng_auction_join_time_left") ; {time} left
     )
   "i18n names aliases alist.")
 

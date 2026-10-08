@@ -1274,37 +1274,41 @@ and thumbnail are shown."
 (defun telega-ins--link-preview-description (_msg link-preview palette
                                                   &optional small-image-2slices)
   "Insert LINK-PREVIEW description part."
-  (when-let ((sitename (telega-tl-str link-preview :site_name)))
-    (when small-image-2slices
-      (telega-ins--image small-image-2slices 0)
-      (telega-ins " "))
-    (telega-ins--with-face (list (assq :foreground palette)
-                                 'telega-link-preview-sitename)
-      (telega-ins sitename))
-    (when telega-link-preview-show-author
-      (when-let ((author (telega-tl-str link-preview :author)))
-        (unless (equal sitename author)
-          (telega-ins--with-face 'telega-shadow
-            (telega-ins " --" author)))))
-    (telega-ins "\n"))
+  (let ((slice-idx 0))
+    (when-let ((sitename (telega-tl-str link-preview :site_name)))
+      (when small-image-2slices
+        (telega-ins--image small-image-2slices (1- (cl-incf slice-idx)))
+        (telega-ins " "))
+      (telega-ins--with-face (list (assq :foreground palette)
+                                   'telega-link-preview-sitename)
+        (telega-ins sitename))
+      (when telega-link-preview-show-author
+        (when-let ((author (telega-tl-str link-preview :author)))
+          (unless (equal sitename author)
+            (telega-ins--with-face 'telega-shadow
+              (telega-ins " --" author)))))
+      (telega-ins "\n"))
 
-  (when-let ((title (telega-tl-str link-preview :title)))
-    (when small-image-2slices
-      (telega-ins--image small-image-2slices 1)
-      (telega-ins " "))
-    (telega-ins--with-face 'telega-link-preview-title
-      (telega-ins title))
-    (telega-ins "\n"))
-  (when-let ((desc (telega-tl-str link-preview :description)))
-    (when (and telega-link-preview-description-limit
-               (> (length desc) telega-link-preview-description-limit))
-      (setq desc (truncate-string-to-width
-                  desc telega-link-preview-description-limit nil nil
-                  (when (> telega-link-preview-description-limit 0)
-                    telega-symbol-eliding))))
-    (when (telega-ins desc)
-      (telega-ins "\n")))
-  t)
+    (when-let ((title (telega-tl-str link-preview :title)))
+      (when small-image-2slices
+        (telega-ins--image small-image-2slices (1- (cl-incf slice-idx)))
+        (telega-ins " "))
+      (telega-ins--with-face 'telega-link-preview-title
+        (telega-ins title))
+      (telega-ins "\n"))
+    (when-let ((desc (telega-tl-str link-preview :description)))
+      (when (and telega-link-preview-description-limit
+                 (> (length desc) telega-link-preview-description-limit))
+        (setq desc (truncate-string-to-width
+                    desc telega-link-preview-description-limit nil nil
+                    (when (> telega-link-preview-description-limit 0)
+                      telega-symbol-eliding))))
+      (when (and small-image-2slices (< slice-idx 2))
+        (telega-ins--image small-image-2slices (1- (cl-incf slice-idx)))
+        (telega-ins " "))
+      (when (telega-ins desc)
+        (telega-ins "\n")))
+    t))
 
 (defun telega-ins--link-preview-media (msg link-preview)
   "Insert LINK-PREVIEW media part."
@@ -1605,53 +1609,6 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
   (telega-ins-fmt "%fN, %fE"
     (plist-get location :latitude) (plist-get location :longitude)))
 
-(defun telega-ins--location-live-header (live-for updated-ago)
-  "Insert live location header."
-  (telega-ins--with-face 'telega-shadow
-    (telega-ins "Live"))
-  (when (> live-for 0)
-    (telega-ins " " (telega-time-ago-human-readable updated-ago)
-                ", " (telega-symbol 'timer-clock)
-                (telega-duration-human-readable
-                 live-for (if (> live-for 3600) 2 1)
-                 (unless (> live-for 3600) 'long))))
-  t)
-
-(defun telega-ins--location-live (msg)
-  "Insert live location description for location message MSG."
-  ;; NOTE: in case of unexpired live location show last update
-  ;; time and expiration period
-  (when-let ((live-for-spec (telega-msg-location-live-for msg)))
-    (seq-let (live-for updated-ago) live-for-spec
-      (telega-ins " ")
-      (telega-ins--location-live-header live-for updated-ago)
-
-      ;; NOTE: To avoid fetching `:can_be_edited' message property, we
-      ;; consider message is editable if it is outgoing and live
-      (when (and (telega-msg-match-p msg 'is-outgoing)
-                 (> live-for 0))
-        (telega-ins " ")
-        (telega-ins--ui-button (telega-i18n "telega_stop")
-          'action (lambda (_button)
-                    (telega--editMessageLiveLocation msg nil)))
-
-        (let ((proximity-radius
-               (telega-tl-get0 (plist-get msg :content) :proximity_alert_radius)))
-          (telega-ins "\n")
-          (telega-ins "Proximity Alert Radius: ")
-          (unless (zerop proximity-radius)
-            (telega-ins (telega-distance-human-readable proximity-radius)
-                        " "))
-          (telega-ins--ui-button (if (zerop proximity-radius)
-                                     "Set"
-                                   (telega-i18n "telega_change"))
-            'action (lambda (_ignored)
-                      (telega--editMessageLiveLocation
-                       msg (telega--tl-get msg :content :location)
-                       :proximity-alert-radius
-                       (read-number "Proximity Alert Radius (meters): "))))))
-      )))
-
 (cl-defun telega-ins--contact (contact &key
                                        (with-avatar-p t)
                                        (with-title-faces-p t)
@@ -1715,7 +1672,7 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
     (telega-ins "\n")
     (when user-ava
       (telega-ins--image user-ava 2))
-    (telega-ins--box-button2 "VIEW CONTACT"
+    (telega-ins--box-button2 (telega-i18n "lng_contact_details_button")
         (telega-box-button-style 'iv)
       'action 'telega-msg-button--action)))
 
@@ -2046,21 +2003,46 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
 
     (telega-ins--animation-image animation 'sliced)))
 
-(defun telega-ins--location-msg (msg &optional venue-p)
+(defun telega-ins--location-live-header (sender live-for updated-ago)
+  "Insert live location header for the sender."
+  (let* ((palette (telega-msg-sender-palette sender))
+         (pface (assq :foreground palette)))
+    (telega-ins--with-face pface
+      (cond ((< updated-ago 60)
+             (telega-ins-i18n "lng_live_location_now"))
+            ((< updated-ago 3600)
+             (telega-ins-i18n "lng_live_location_minutes"
+               :count (/ updated-ago 60)))
+            ((< updated-ago (* 24 3600))
+             (telega-ins-i18n "lng_live_location_hours"
+               :count (/ updated-ago 3600)))
+            (t
+             (let ((utimestamp (- (telega-time-seconds) updated-ago)))
+               (telega-ins-i18n "lng_live_location_date_time"
+                 :date (telega-ins--as-string
+                        (telega-ins--date utimestamp 'date-long))
+                 :time (let ((utime (decode-time utimestamp)))
+                         (format "%02d:%02d" (nth 2 utime) (nth 1 utime))))
+               ))))
+    (telega-ins--with-face 'telega-shadow
+      (telega-ins " • "))
+    (telega-ins--with-face pface
+      (telega-ins-i18n "telega_time_left"
+        :time (telega-duration-human-readable live-for)))))
+
+(defun telega-ins--location-msg (msg loc)
   "Insert content for location message MSG."
-  (let* ((venue (when venue-p
-                  (telega--tl-get msg :content :venue)))
-         (loc (if venue-p
-                  (plist-get venue :location)
-                (telega--tl-get msg :content :location)))
-         (map (plist-get msg :telega-map)))
+  (let ((map (plist-get msg :telega-map)))
     (telega-ins--location loc)
-    (unless venue-p
-      (telega-ins--location-live msg))
-    (when telega-my-location
-      (telega-ins "\n" "Distance From Me: "
-                  (telega-distance-human-readable
-                   (telega-location-distance loc telega-my-location))))
+    (telega-ins--with-face 'telega-shadow
+      ;; Distance from me
+      (when (and telega-my-location
+                 (telega-msg-match-p msg '(or (type Venue Location)
+                                              (not is-outgoing))))
+        (telega-ins " • "
+                    (telega-distance-human-readable
+                     (telega-location-distance loc telega-my-location))
+                    " away")))
 
     (unless map
       ;; Initial location map creation
@@ -2069,86 +2051,58 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                   :height (telega-chars-xheight (car telega-location-size))
                   :zoom telega-location-zoom
                   :scale telega-location-scale
-                  :sender_id (unless venue-p
-                               (plist-get msg :sender_id))))
+                  :location loc
+                  ;; :sender (unless (eq loc-type 'venue)
+                  ;;           (telega-msg-sender (plist-get msg :sender_id)))
+                  :msg msg))
       (plist-put msg :telega-map map))
 
-    ;; NOTE: if location or heading changes (or initial request), then
-    ;; redraw map thumbnail.
-    (let* ((heading (unless venue-p
-                      (telega--tl-get msg :content :heading)))
-           (heading-changed-p (not (equal heading (plist-get map :user-heading))))
-           (loc-changed-p (not (equal loc (plist-get map :user-location))))
-           (need-map-photo-p
-            (telega-map--need-new-map-photo-p map (plist-get map :user-location)))
-           (alert-radius
-            (telega--tl-get msg :content :proximity_alert_radius))
-           (alert-radius-changed-p
-            (not (equal alert-radius (plist-get map :user-alert-radius)))))
-      (when (or heading-changed-p loc-changed-p alert-radius-changed-p
-                need-map-photo-p)
-        ;; ARGUABLE: Cancel previously pending request?
-        ;;   (telega-server--callback-rm (plist-get map :get-map-extra))
-        ;;   (telega--cancelDownloadFile (plist-get map :photo))
-        ;; TODO: what if some other user shown in map image moved?
-
-        (unless (plist-get map :user-location)
-          ;; Inilial map load or zoom has been changed
-          (plist-put map :photo nil)
-          (cl-assert need-map-photo-p))
-
-        ;; Save location tracks if location moved more then 50 meters
-        ;; from last track location
-        (when loc-changed-p
-          (let ((user-tracks (plist-get map :user-tracks)))
-            (when (or (not user-tracks)
-                      (> (telega-location-distance (car user-tracks) loc) 50))
-              (plist-put map :user-tracks (cons loc user-tracks)))))
-
-        (plist-put map :user-location loc)
-        (plist-put map :user-heading heading)
-        (plist-put map :user-alert-radius alert-radius)
-        (unless (plist-get map :svg-image)
-          ;; For initial image creation
-          (plist-put map :map-location loc))
-
-        (when need-map-photo-p
-          (plist-put map :get-map-extra
-                     (telega-map--get-thumbnail-file map loc)))
-
-        (plist-put map :svg-image (telega-map--create-image map))))
-
     (telega-ins "\n")
-    (telega-ins--image-slices
-        (plist-get map :svg-image) nil
-      ;; Map controls
-      (lambda (slice-num)
-        (cond ((= slice-num 0)
-               (telega-ins-fmt " zoom: %d" (- (plist-get map :zoom) 12)))
-              ((= slice-num 1)
-               (telega-ins " ")
-               (telega-ins--ui-button "+"
-                 'action (lambda (_ignore)
-                           (when (telega-map--zoom map 1)
-                             (plist-put msg :telega-map
-                                        (plist-put map :user-location nil))
-                             (telega-msg-redisplay msg))))
-               (telega-ins " ")
-               (telega-ins--ui-button "-"
-                 'action (lambda (_ignore)
-                           (when (telega-map--zoom map -1)
-                             (plist-put msg :telega-map
-                                        (plist-put map :user-location nil))
-                             (telega-msg-redisplay msg))))))))
+    (telega-ins--with-props (list 'local-map telega-msg-button-location-map)
+      (telega-ins--image-slices (telega-map--image map)
+          '(pointer hand)
+        ;; Map controls
+        (lambda (slice-num)
+          (cond ((= slice-num 0)
+                 (telega-ins-fmt " zoom: %d" (- (plist-get map :zoom) 12)))
+                ((= slice-num 1)
+                 (telega-ins " ")
+                 (telega-ins--ui-button "+"
+                   :action #'telega-msg-map-zoom-in
+                   :inactive (>= (plist-get map :zoom) 20))
+                 (telega-ins " ")
+                 (telega-ins--ui-button "-"
+                   :action #'telega-msg-map-zoom-out
+                   :inactive (<= (plist-get map :zoom) 13))))))
 
-    (when venue-p
-      (telega-ins "\n")
-      (telega-ins--with-face 'bold
-        (telega-ins (telega-tl-str venue :title)))
-      (telega-ins "\n")
-      (telega-ins--with-face 'telega-shadow
-        (telega-ins (telega-tl-str venue :address))))
-    ))
+      ;; Live Location headings
+      (when-let* ((loc-live-for
+                   (and (telega-msg-match-p msg '(type LiveLocation))
+                        (telega-msg-location-live-for msg)))
+                  (live-for (nth 0 loc-live-for))
+                  ((> live-for 0))
+                  (updated-ago (nth 1 loc-live-for)))
+        (telega-ins "\n")
+        (telega-ins--with-face 'bold
+          (telega-ins-i18n "lng_live_location"))
+
+        ;; NOTE: To avoid fetching `:can_be_edited' message property, we
+        ;; consider message is editable if it is outgoing and live
+        (when (telega-msg-match-p msg 'is-outgoing)
+          (telega-ins " ")
+          (telega-ins--ui-button (telega-i18n "telega_stop")
+            'action (lambda (_button)
+                      (telega--editMessageLiveLocation msg nil))))
+
+        (telega-ins "\n")
+        (telega-ins--location-live-header (telega-msg-sender msg)
+                                          live-for updated-ago))
+
+      ;; Save the time when location message has been displayed.  Used
+      ;; by `telega-active-locations-mode' to update messages when Emacs
+      ;; is idle
+      (plist-put map :map-time (telega-time-seconds))
+      )))
 
 (defun telega-ins--giveaway-msg-content (content)
   "Insert CONTENT for the premium giveaway message."
@@ -2521,6 +2475,7 @@ Return number of done tasks."
           messagePollOptionDeleted
           messageChatAddedToCommunity
           messageChatRemovedFromCommunity
+          messageChatJoinFromCommunity
           messageManagedBotCreated
           telegaInternal)))
 
@@ -3100,9 +3055,21 @@ Special messages are determined with `telega-msg-special-p'."
       ('messageAnimation
        (telega-ins--animation-msg msg))
       ('messageLocation
-       (telega-ins--location-msg msg))
+       (telega-ins--location-msg
+        msg (plist-get content :location)))
+      ('messageLiveLocation
+       (telega-ins--location-msg
+        msg (telega--tl-get content :location :location)))
       ('messageVenue
-       (telega-ins--location-msg msg 'venue))
+       (telega-ins--location-msg
+        msg (telega--tl-get content :venue :location))
+       (let ((venue (plist-get content :venue)))
+         (telega-ins-prefix "\n"
+           (telega-ins--with-face 'bold
+             (telega-ins (telega-tl-str venue :title))))
+         (telega-ins-prefix "\n"
+           (telega-ins--with-face 'telega-shadow
+             (telega-ins (telega-tl-str venue :address))))))
       ('messageContact
        (telega-ins--contact-msg msg))
       ('messageCall
@@ -4240,11 +4207,13 @@ If SHORT-P is non-nil then use short version."
      (inputMessageText
       (telega-ins--fmt-text (plist-get imc :text)))
      (inputMessageLocation
-      (telega-ins--location (plist-get imc :location))
-      (when (> (or (plist-get imc :live_period) 0) 0)
-        (telega-ins " Live for: "
+      (telega-ins--location (plist-get imc :location)))
+     (inputMessageLiveLocation
+      (let ((live-loc (plist-get imc :location)))
+        (telega-ins--location (plist-get live-loc :location))
+        (telega-ins " " (telega-i18n "lng_live_location") ": "
                     (telega-duration-human-readable
-                     (plist-get imc :live_period)))))
+                     (plist-get live-loc :live_period)))))
      (inputMessageContact
       (telega-ins--contact (plist-get imc :contact)
         :with-avatar-p telega-user-show-avatars))
@@ -4513,10 +4482,20 @@ If REMOVE-CAPTION is specified, then do not insert caption."
             (telega-ins--with-face 'telega-shadow
               (telega-ins-i18n "lng_in_dlg_file"))))
        (messageLocation
-        (telega-ins--location (plist-get content :location))
-        (telega-ins--location-live msg))
+        (telega-ins--location (plist-get content :location)))
+        (telega-ins--with-face 'telega-shadow
+          (telega-ins " • ")
+          (telega-ins-i18n "lng_location_title"))
+       (messageLiveLocation
+        (telega-ins--location (telega--tl-get content :location :location))
+        (telega-ins--with-face 'telega-shadow
+          (telega-ins " • ")
+          (telega-ins-i18n "lng_live_location")))
        (messageVenue
-        (telega-ins--location (telega--tl-get content :venue :location)))
+        (telega-ins--location (telega--tl-get content :venue :location))
+        (telega-ins--with-face 'telega-shadow
+          (telega-ins " • ")
+          (telega-ins "Venue")))
        (messageAnimation
         (telega-ins--content-media-thumbnail-one-line msg content)
         (telega-ins-prefix " "
@@ -5196,7 +5175,7 @@ requests title as part of the button."
   "Inserter for the SPONSORED-MSG."
   (let* ((telega-palette-context 'sponsored)
          (palette (telega-palette-by-color-id
-                   (plist-get sponsored-msg :accent_color_id))))
+                   (telega-tl-get0 sponsored-msg :accent_color_id))))
     (telega-ins--with-outline-palette palette
       (let* ((sponsor (plist-get sponsored-msg :sponsor))
              (sponsor-photo (plist-get sponsor :photo)))

@@ -1885,18 +1885,19 @@ Draft input is the input that have `:draft-input-p' property on both sides."
            telega--cached-messages))
 
 (defun telega-msg-location-live-for (msg)
-  "For live location message MSG return number of seconds it will last live.
-Return nil if location message is not live.
+  "For messageLiveLocation message MSG return number of seconds it will last live.
+Return nil if location message is expired.
 Return list of two values - (LIVE-FOR UPDATED-AGO)."
   (let* ((content (plist-get msg :content))
-         (live-period (telega-tl-get0 content :live_period))
+         (live-loc (plist-get content :location))
+         (live-period (telega-tl-get0 live-loc :live_period))
          (expires-in (telega-tl-get0 content :expires_in)))
     (unless (or (zerop live-period) (zerop expires-in))
       (let ((current-ts (telega-time-seconds))
             (since (if (zerop (telega-tl-get0 msg :edit_date))
                        (plist-get msg :date)
                      (plist-get msg :edit_date))))
-        (list (- (+ since expires-in) current-ts)
+        (list (- (+ (plist-get msg :date) live-period) current-ts)
               (- current-ts since))))))
 
 
@@ -2093,11 +2094,14 @@ If help message has been inserted, insert newline at the end."
 (defun telega-box-button-style (style-sym &rest style-sym-mixins)
   "Create a box button style from STYLE-SYM and STYLE-SYM-MIXINS."
   (declare (indent 1))
-  (apply #'append
-         (alist-get style-sym telega-box-button-styles)
-         (mapcar (lambda (ssym)
-                    (alist-get ssym telega-box-button-styles))
-                 style-sym-mixins)))
+  (let ((style (alist-get style-sym telega-box-button-styles)))
+    (when style-sym-mixins
+      (setq style (copy-sequence style))
+      (dolist (ssym style-sym-mixins)
+        (telega--tl-dolist ((prop-name value)
+                            (alist-get ssym telega-box-button-styles))
+          (plist-put style prop-name value))))
+    style))
 
 (defun telega-box-button--style-get (style attr)
   "Return STYLE's value for the attribute ATTR."

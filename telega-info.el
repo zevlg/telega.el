@@ -163,7 +163,7 @@ For secret chats return nil."
         :telega-add-sensor-func
         (when-let ((fake-anim (plist-get photo :telega-fake-animation)))
           (telega-animation--gen-sensor-func fake-anim))
-        'local-keymap
+        'local-map
         (when (telega-me-p user)
           (let ((pp-del (lambda (profile-photo)
                           (interactive (list (button-get
@@ -573,10 +573,11 @@ For secret chats return nil."
 
     (telega-info--insert-invite-link chat (plist-get full-info :invite_link))
 
-    (when-let ((descr (telega-tl-str full-info :description)))
+    (when-let* ((fmt-description (telega-fmt-text--with-tdlib
+                                  (plist-get full-info :description))))
       (telega-ins-describe-item (telega-i18n "lng_info_about_label")
         (telega-ins--line-wrap-prefix "  "
-          (telega-ins "\n" descr))))
+          (telega-ins "\n" (telega-tl-str fmt-description)))))
 
     (telega-ins-describe-item (telega-i18n "lng_profile_participants_section")
       (telega-ins-fmt "%s%s (%d %s, %d %s)"
@@ -932,10 +933,12 @@ and chat permission restrictions"
     ;; Creator and admins can [re]generate invite link
     (telega-info--insert-invite-link chat (plist-get full-info :invite_link))
 
-    (when-let ((descr (telega-tl-str full-info :description)))
+    (when-let* ((fmt-description (telega-fmt-text--with-tdlib
+                                  (plist-get full-info :description))))
       (telega-ins-describe-item (telega-i18n "lng_info_about_label")
         (telega-ins--line-wrap-prefix "  "
-          (telega-ins "\n" descr))))
+          (telega-ins "\n" (telega-tl-str fmt-description)))))
+
     (when-let ((restr-reason
                 (telega-tl-str (plist-get supergroup :restriction_info)
                                :restriction_reason)))

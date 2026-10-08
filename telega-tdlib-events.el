@@ -683,14 +683,14 @@ NOTE: we store the number as custom chat property, to use it later."
 
     (run-hook-with-args 'telega-chat-pre-message-hook new-msg)
 
-    (with-telega-chatbuf chat
-      ;; TDLib docs: pending message to be deleted whenever any
-      ;; incoming message from the bot in the message thread is
-      ;; received
-      (when (plist-get chat :pending-message)
-        (plist-put chat :pending-message nil)
-        (telega-chat--mark-dirty chat "updatePendingTextMessage"))
+    ;; TDLib docs: pending message to be deleted whenever any
+    ;; incoming message from the bot in the message thread is
+    ;; received
+    (when (plist-get chat :pending-message)
+      (plist-put chat :pending-message nil)
+      (telega-chat--mark-dirty chat "updatePendingTextMessage"))
 
+    (with-telega-chatbuf chat
       (telega-msg-cache new-msg)
 
       ;; NOTE: `:last_message' could be already updated in the chat
@@ -1601,13 +1601,13 @@ Please downgrade TDLib and recompile `telega-server'"
   "Chat accent colors have changed."
   (let ((chat (telega-chat-get (plist-get event :chat_id))))
     (plist-put chat :accent_color_id
-               (plist-get event :accent_color_id))
+               (telega-tl-get0 event :accent_color_id))
     (plist-put chat :background_custom_emoji_id
-               (plist-get event :background_custom_emoji_id))
+               (telega-tl-get0 event :background_custom_emoji_id 'int64))
     (plist-put chat :profile_accent_color_id
-               (plist-get event :profile_accent_color_id))
+               (telega-tl-get0 event :profile_accent_color_id))
     (plist-put chat :profile_background_custom_emoji_id
-               (plist-get event :profile_background_custom_emoji_id))
+               (telega-tl-get0 event :profile_background_custom_emoji_id 'int64))
 
     ;; TODO: regenerate chat's colors
 

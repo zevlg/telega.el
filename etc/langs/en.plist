@@ -361,6 +361,8 @@ Example: 23 y.o. designer from San Francisco")
  ("telega_query_reset_notifications"
   :value "Reset all notifications settings? ")
 
+ ("lng_profile_enable_notifications"
+  :value "Notifications")
  ("lng_profile_delete_channel"
   :value "Delete channel")
  ("lng_profile_delete_group"
@@ -466,8 +468,24 @@ Example: 23 y.o. designer from San Francisco")
   :value "Location")
  ("lng_info_location_label"
   :value "Location")
+ ("lng_location_title"
+  :value "Location")
  ("lng_live_location"
   :value "Live Location")
+ ("lng_live_location_now"
+  :value "updated just now")
+ ("lng_live_location_minutes"
+  :one_value "updated {count} minute ago"
+  :other_value "updated {count} minutes ago")
+ ("lng_live_location_hours"
+  :one_value "updated {count} hour ago"
+  :other_value "updated {count} hours ago")
+ ("lng_live_location_date_time"
+  :value "updated {date} at {time}")
+ ("lng_live_location_yesterday"
+  :value "updated yesterday at {time}")
+ ("lng_reaction_live_location"
+  :value "{reaction} to your live location")
 
  ("lng_manage_linked_channel"
   :value "Linked channel")
@@ -1411,6 +1429,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "View Style")
  ("lng_auction_preview_view_results"
   :value "View Results")
+ ("lng_contact_details_button"
+  :value "View Contact")
 
  ("lng_unblock_button"
   :value "Unblock")
@@ -2552,4 +2572,12 @@ this channel?")
   :value "Edit Chat List")
  ("lng_rights_community_ban"
   :value "Ban Members")
+
+ ("lng_restore_window"
+  :value "Restore")
+ ("lng_export_from_beginning"
+  :value "Reset")
+
+ ("lng_auction_join_time_left"
+  :value "{time} left")
  )

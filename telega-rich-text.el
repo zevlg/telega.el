@@ -73,6 +73,8 @@
   "Create image function for richTextIcon OBJ-SPEC."
   (let* ((rt (plist-get obj-spec :object))
          (cheight (plist-get obj-spec :cheight))
+         (width (telega-tl-get0 rt :width))
+         (height (telega-tl-get0 rt :height))
          (doc (plist-get rt :document))
          (doc-file (telega-file--renew doc :document))
          (thumb (plist-get doc :thumbnail))
@@ -90,8 +92,7 @@
              :update-callback
              (lambda (_dfile)
                ;; Update progress
-               (telega-media--image-updateNEW obj-spec)
-               (force-window-update)))
+               (telega-media--image-updateNEW obj-spec)))
            (telega-media--progress-svg doc-file width height cheight)))))
 
 (defun telega-rich-text--math-exp-create-image (string &optional cheight)
@@ -103,15 +104,23 @@
                                         (plist-get (cdr backend) :programs)))
                          org-preview-latex-process-alist))
               (f-ext (plist-get (cdr preview-backend) :image-output-type))
-              (f-name (telega-temp-name "rich-text-math" (concat "." f-ext))))
-  (with-temp-buffer
-    (org-create-formula-image string f-name nil nil (car preview-backend))
+              (f-name (concat (expand-file-name
+                               (format "m%S" (sxhash string))
+                               (expand-file-name "rt-math" telega-temp-dir))
+                              "." f-ext)))
+    (unless (file-exists-p f-name)
+      (with-temp-buffer
+        (when telega-rich-text-math-image-messages
+          (message "telega: Generating image for math expression.."))
+        (org-create-formula-image string f-name nil nil (car preview-backend))
+        (when telega-rich-text-math-image-messages
+          (message "telega: Generating image for math expression..DONE"))))
     (telega-create-image f-name nil nil
       :height (telega-ch-height cheight)
-      :telega-nslices cheight
+      :telega-nslices (ceiling cheight)
       :scale 1.0
       :mask 'heuristic
-      :ascent 'center))))
+      :ascent 'center)))
 
 (defun telega-rich-text--ins-rt (rt)
   (when rt
@@ -305,7 +314,8 @@
           '((telega-cell .
              (lambda (dom)
                (let ((cell (dom-attr dom 'cell)))
-                 (telega-ins--with-face (when (plist-get cell :is_header) 'bold)
+                 (telega-ins--with-face (when (plist-get cell :is_header)
+                                          'telega-rich-text-table-header)
                    (telega-rich-text--ins-rt (plist-get cell :text)))))))))
     (telega-ins
      (with-temp-buffer
@@ -558,7 +568,21 @@
          (telega-ins "\n")))
       (pageBlockMap
        (telega-ins-from-newline
-        (telega-ins "<TODO: pageBlockMap>")
+        (let* ((map (plist-get pb :telega-map))
+               (orig-width (telega-tl-get0 pb :width))
+               (orig-height (telega-tl-get0 pb :height))
+               (wh-frac (/ (float orig-width) orig-height))
+               (h (telega-chars-xheight
+                   (telega-chars-in-height orig-height)))
+               (w (round (* h wh-frac))))
+          (unless map
+            (setq map (list :width w :height h
+                            :zoom (telega-tl-get0 pb :zoom)
+                            :location (plist-get pb :location)))
+            (plist-put pb :telega-map map))
+          (telega-ins--with-props (list 'local-map telega-msg-button-location-map)
+            (telega-ins--image-slices (telega-map--image map)
+                '(pointer hand))))
         (telega-ins-from-newline
          (telega-rich-text--ins-pb (plist-get pb :caption)))))
 
@@ -607,13 +631,18 @@
         (telega-ins-prefix " "
           (or (telega-rich-text--ins-pb (plist-get pb :caption))
               (telega-ins--with-face 'telega-shadow
-                (telega-ins-i18n "lng_in_dlg_photo")))))
+                (telega-ins-i18n "lng_in_dlg_photo"))))
+        t)
+
+       (pageBlockSlideshow
+        (or (telega-rich-text--ins-pb (plist-get pb :caption))
+            (telega-ins--with-face 'telega-shadow
+              (telega-ins "SlideShow"))))
 
        ;; TODO: other media types
 
        (t
-        (telega-rich-text--ins-pb pb msg)))
-     t)))
+        (telega-rich-text--ins-pb pb msg))))))
 
 (provide 'telega-rich-text)
 

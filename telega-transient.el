@@ -149,6 +149,9 @@ If DEFAULT-VALUE is not specified, then nil is used."
   :description (lambda () (telega-i18n "lng_forward_action_hide_sender"))
   :class 'telega-transient--checkbox-switch
   :variable :fwd-remove-sender
+  :init-value (lambda (obj)
+                (oset obj value
+                      (and current-prefix-arg t)))
   :global-p nil
   :deps-list '((nil nil :fwd-remove-caption))
   )
@@ -162,6 +165,9 @@ If DEFAULT-VALUE is not specified, then nil is used."
                     (telega--tl-get msg :content :caption))
                   (oref (transient-prefix-object) scope)))
   :variable :fwd-remove-caption
+  :init-value (lambda (obj)
+                (oset obj value
+                      (> (prefix-numeric-value current-prefix-arg) 4)))
   :global-p nil
   :deps-list '((t t :fwd-remove-sender)))
 
@@ -252,6 +258,8 @@ If DEFAULT-VALUE is not specified, then nil is used."
               :with-brackets-p t)))
   :if (lambda ()
         (and telega-msg-forward--last-chat
+             (not (eq telega-msg-forward--last-chat
+                      telega-chatbuf--chat))
              (not (eq telega-msg-forward--last-chat
                       (telega-chat-me)))))
 
@@ -1307,7 +1315,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
                                   (plist-get il-info :verification_status))
                                  (telega-tl-str il-info :title))
              :with-palette (telega-palette-by-color-id
-                            (plist-get il-info :accent_color_id))))
+                            (telega-tl-get0 il-info :accent_color_id))))
          (telega-ins--with-face 'telega-shadow
            (telega-ins-i18n (if (telega-chat-match-p fake-chat '(type channel))
                                 "lng_chat_status_subscribers"

@@ -1533,7 +1533,7 @@ Return TOPIC."
   (when-let* ((chat (telega-story-chat story))
               (active-stories (telega-chat--active-stories chat)))
     (<= (plist-get story :id)
-        (plist-get active-stories :max_read_story_id))))
+        (telega-tl-get0 active-stories :max_read_story_id))))
 
 ;;; ellit-org: story-temex
 ;; - is-video ::

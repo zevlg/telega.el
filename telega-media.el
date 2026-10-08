@@ -757,9 +757,21 @@ Default is `:telega-image'."
                 (force-window-update)))))))
     cached-image))
 
-(cl-defun telega-media--image-updateNEW (obj-spec)
+(defun telega-media--obj-spec (obj create-image-fun &rest obj-plist)
+  "Return media object spec for the object OBJ."
+  (declare (indent 2))
+  (let ((obj-spec (nconc (list :object obj :create-image-fun create-image-fun)
+                         obj-plist)))
+    (unless (plist-get obj-spec :cache-prop)
+      (plist-put obj-spec :cache-prop
+                 (intern (format ":telega-image-%S"
+                                 (plist-get obj-spec :cheight)))))
+    obj-spec))
+
+(cl-defun telega-media--image-updateNEW (obj-spec &optional no-window-update)
   "Update media image for the OBJ-SPEC.
-OBJ-SPEC is a plist."
+OBJ-SPEC is a plist.
+Pass non-nil NO-WINDOW-UPDATE to ommit call to `force-window-update'."
   (let* ((obj (plist-get obj-spec :object))
          (cache-prop (plist-get obj-spec :cache-prop))
          (cached-image (plist-get obj cache-prop))
@@ -789,25 +801,22 @@ OBJ-SPEC is a plist."
           (setcdr cached-image (cdr simage))
         (setq cached-image simage))
 
-      (plist-put obj cache-prop cached-image))
+      (plist-put obj cache-prop cached-image)
+
+      (unless no-window-update
+        (force-window-update)))
     cached-image))
 
 (defun telega-media--imageNEW (obj create-image-fun &rest obj-plist)
   "Create cached image for the OBJ."
   (declare (indent 2))
-  (let ((obj-spec (append (list :object obj :create-image-fun create-image-fun)
-                          obj-plist)))
-    (unless (plist-get obj-spec :cache-prop)
-      (plist-put obj-spec :cache-prop
-                 (intern (format ":telega-image-%S"
-                                 (plist-get obj-spec :cheight)))))
-
-    (let ((cached-image (plist-get obj (plist-get obj-spec :cache-prop))))
-      (when (not cached-image)
-        (setq cached-image
-              (telega-media--image-updateNEW obj-spec)))
-
-      cached-image)))
+  (let* ((obj-spec (apply #'telega-media--obj-spec obj create-image-fun
+                          obj-plist))
+         (cached-image (plist-get obj (plist-get obj-spec :cache-prop))))
+    (when (not cached-image)
+      (setq cached-image
+            (telega-media--image-updateNEW obj-spec 'no-window-update)))
+    cached-image))
 
 (defun telega-photo--image (photo limits)
   "Return best suitable image for the PHOTO."
@@ -999,8 +1008,7 @@ By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
           :update-callback
           (lambda (dfile)
             (when (telega-file--downloaded-p dfile)
-              (telega-media--image-updateNEW obj-spec)
-              (force-window-update))))))
+              (telega-media--image-updateNEW obj-spec))))))
 
     (cond ((telega-file--downloaded-p big-file)
            (telega-media--create-image small-file 640 640 cheight))
@@ -1042,161 +1050,584 @@ By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
   (telega-chat-photo-info--image chat-photo-info 1 force-update))
 
 
-;; Location
-(defun telega-map--embed-sender (svg map sender sender-loc)
-  "Embed sender to the location map.
-SENDER can be a nil, meaning venue location is to be displayed."
+;; Venue/Map support
+(defvar telega-venue-colors-alist
+  '(("building/medical"    . "#43b3f4")  ; light blue?
+    ("building/gym"        . "#43b3f4")  ; light blue?
+    ("arts_entertainment"  . "#af52de")  ; purple
+    ("travel/bedandbreakfast" . "#9987ff")
+    ("travel/hotel"        . "#9987ff")
+    ("travel/hostel"       . "#9987ff")
+    ("travel/resort"       . "#9987ff")
+    ("building"            . "#6e81b2")
+    ("education"           . "#a57348")
+    ("event"               . "#959595")
+    ("food"                . "#ff9500")  ; orange
+    ("education/cafeteria" . "#ff9500")  ; orange
+    ("nightlife"           . "#af52de")  ; purple
+    ("travel/hotel_bar"    . "#af52de")  ; purple
+    ("parks_outdoors"      . "#6cc138")  ; green
+    ("shops"               . "#ffb300")
+    ("travel"              . "#1c9fff")
+    ("work"                . "#ad7854")
+    ("home"                . "#00aeef")))
+
+(defun telega-venue--type-color (venue)
+  "Return color for VENUE."
+  (when (equal "foursquare" (plist-get venue :provider))
+    (let ((venue-type (plist-get venue :type)))
+      (or (alist-get venue-type telega-venue-colors-alist nil nil #'equal)
+          (alist-get (string-trim-right (file-name-directory venue-type) "/")
+                     telega-venue-colors-alist nil nil #'equal)
+          ;; Return random color
+          (nth 0 (alist-get :background (telega-palette-by-color-id
+                                         (mod (sxhash venue-type) 7))))
+          ))))
+
+(defun telega-venue--type-image-filename (venue)
+  "Return filename for the VENUE type."
+  (when (equal "foursquare" (plist-get venue :provider))
+    (concat (expand-file-name (plist-get venue :type)
+                              (expand-file-name "4sq" telega-temp-dir))
+            ".png")))
+
+(defun telega-venue--type-image-download (venue &optional callback)
+  "Asynchronously download file for VENUE's type.
+CALLBACK is called with two args - venue itself and downloaded filename."
+  (declare (indent 1))
+  (when (equal "foursquare" (plist-get venue :provider))
+    (url-retrieve (format "https://ss3.4sqi.net/img/categories_v2/%s_88.png"
+                          (plist-get venue :type))
+                  (lambda (status &optional _cbargs)
+                    (unless (plist-get status :error)
+                      (let ((img-filename
+                             (telega-venue--type-image-filename venue))
+                            (coding-system-for-write 'binary)
+                            (buf (current-buffer)))
+                        (mkdir (file-name-directory img-filename) t)
+                        (with-temp-buffer
+                          (url-insert buf)
+                          (write-region nil nil img-filename nil 'quiet))
+                        (kill-buffer buf)
+                        (when callback
+                          (funcall callback venue img-filename))))))
+    ))
+
+;; map - plist with props
+;; Input props:
+;;  `:width', `:height' - size of the map image
+;;  `:location'         - Location for the map to display
+;;  `:zoom'             - Zoom for the map to display
+;;  `:scale'            - Scale for the map to display
+;;  `:my-location'      - My location, to display me on the map
+;;  `:sender'           - Map sender for which location is displayed
+;;  `:user-locations'   - List of users locations. Each element is cons, where car is a user/chat and cdr is its location
+;;  `:msg'              - Message where map is displayed
+;; Runtime props:
+;;  `:map-get-extra'    - Extra param for TDLib request.
+;;  `:map-photo'        - Map's thumbnail photo
+;;  `:map-location'     - Location of the map's thumbnail
+;;  `:map-zoom'         - Zoom of the map's thumbnail
+;;  `:map-scale'        - Scale of the map's thumbnail
+;;  `:map-my-location'  - My location displayed on the map's thumbnail
+;;  `:map-sender'       - Sender displayed on the map's thumbnail
+;;  `:map-user-locations' - Other user locations on map's thumbnail
+(defvar telega-map--update-distance-pixels 2)
+(defconst telega-map--download-priority 32
+  "Download priority for the map thumbnail files.")
+
+(defun telega-map--sender-photo-file (sender)
+  "Return small profile photo for the message SENDER."
+  (if (telega-user-p sender)
+      (telega--tl-get sender :profile_photo :small)
+    (cl-assert (telega-chat-p sender))
+    (telega--tl-get sender :photo :small)))
+
+(defun telega-map--loc-close-enough-p (map loc1 loc2 &optional distance-px)
+  "Return non-nil if LOC1 and LOC2 is close enough on MAP."
+  (unless distance-px
+    (setq distance-px telega-map--update-distance-pixels))
+
+  (< (telega-map--distance-pixels
+      (telega-location-distance loc1 loc2)
+      (or (plist-get map :map-location) (plist-get map :location))
+      (or (plist-get map :map-zoom) (plist-get map :zoom)))
+     distance-px))
+
+(defun telega-map--user-loc-close-enough-p (map ul1 ul2 &optional distance-px)
+  "Return non-nil if user locations are close enough on MAP."
+  (and (eq (car ul1) (car ul2))
+       (telega-map--loc-close-enough-p map (cdr ul1) (cdr ul2) distance-px)))
+
+(defun telega-map--need-update-map-p (map)
+  "Return non-nil if MAP's photo need to be updated."
+  (cl-assert (plist-get map :location))
+  ;; NOTE: map image is too complex, always update it
+  t)
+  ;; (or (and (not (plist-get map :map-photo))
+  ;;          (not (plist-get map :get-map-extra)))
+  ;;     (not (plist-get map :map-location))
+  ;;     (not (eq (plist-get map :scale) (plist-get map :map-scale)))
+  ;;     (not (eq (plist-get map :zoom) (plist-get map :map-zoom)))
+  ;;     (not (eq (plist-get map :sender) (plist-get map :map-sender)))
+  ;;     ;; Location moved?
+  ;;     (not (telega-map--loc-close-enough-p
+  ;;           map (plist-get map :location) (plist-get map :map-location)
+  ;;           ;; If displaying user's location, then update map
+  ;;           ;; thumbnail only if user moves significantly
+  ;;           (when (plist-get map :sender)
+  ;;             (/ (plist-get map :height) 4))
+  ;;           ))
+  ;;     ;; Me moved?
+  ;;     (let ((my-loc (plist-get map :my-location))
+  ;;           (map-my-loc (plist-get map :map-my-location)))
+  ;;       (or (and my-loc (not map-my-loc))
+  ;;           (and (not my-loc) map-my-loc)
+  ;;           (and my-loc map-my-loc
+  ;;                (not (telega-map--loc-close-enough-p map my-loc map-my-loc)))))
+  ;;     ;; Some other user moved?
+  ;;     (not (eq (length (plist-get map :user-locations))
+  ;;              (length (plist-get map :map-user-locations))))
+  ;;     (memq t (cl-mapcar (lambda (ul1 ul2)
+  ;;                          (not (telega-map--user-loc-close-enough-p
+  ;;                                map ul1 ul2)))
+  ;;                        (plist-get map :user-locations)
+  ;;                        (plist-get map :map-user-locations)))
+  ;;     ))
+
+(defun telega-map--location-coords (map width height loc)
+  "Return x and y coordinates as cons cell for the location LOC."
+  (let* ((map-loc (plist-get map :map-location))
+         (loc-off
+          (telega-location-distance map-loc loc 'components))
+         (x (+ (/ width 2)
+               (telega-map--distance-pixels
+                (cdr loc-off) loc (plist-get map :map-zoom))))
+         (y (+ (/ height 2)
+               (telega-map--distance-pixels
+                (car loc-off) loc (plist-get map :map-zoom)))))
+    (cons x y)))
+
+(defun telega-map--svg-draw-scale-ruler (map svg)
+  "Draw scale ruler for the MAP."
+  (let* ((zoom (plist-get map :map-zoom))
+         ;; Use 100 meters on zoom=17 as ruler size
+         (ruler-meters
+          (cond ((> zoom 17)
+                 (/ 100.0 (ash 1 (- zoom 17))))
+                ((< zoom 17)
+                 (* 100 (ash 1 (- 17 zoom))))
+                (t 100.0)))
+         (ruler-w
+          (telega-map--distance-pixels
+           ruler-meters (or (plist-get map :map-location)
+                            (plist-get map :location))
+           zoom))
+         (h (telega-svg-height svg))
+         (font-size 26))
+    (svg-text svg (if (> ruler-meters 1000)
+                      (telega-i18n "lng_action_proximity_distance_km"
+                        :count (/ ruler-meters 1000.0))
+                    (telega-i18n "lng_action_proximity_distance_m"
+                      :count (round ruler-meters)))
+              :font-size font-size
+              :fill-color "currentColor"
+              :opacity "0.75"
+              :x 10 :y (- h font-size))
+    (svg-line svg 10 (- h 10) (+ 10 ruler-w) (- h 10)
+              :opacity "0.75"
+              :stroke-width 4
+              :stroke-color "currentColor")))
+
+(defun telega-map--svg-draw-weather (svg weather)
+  "Draw weather on the map."
+  (let ((emoji (telega-tl-str weather :emoji))
+        (font-size 26))
+    (svg-text svg (format "%s\ufe0f %d°"
+                          emoji (telega-tl-get0 weather :temperature))
+              :font-weight "bold"
+              :font-size font-size
+              :fill-color "currentColor"
+              :opacity "0.75"
+              :x 10 :y (+ 10 font-size))))
+
+(defun telega-map--svg-draw-pin (svg x y w h &optional fg-color bg-color)
+  "Draw a location pin pointing into X, Y point."
+  (let ((w2 (/ w 2.0))
+        (w4 (/ w 4.0))
+        (fg-color (or fg-color "black"))
+        (bg-color (or bg-color "white"))
+        (head-radius (+ w w)))
+    (svg-circle svg x (- y (- h head-radius)) head-radius
+                :fill-color fg-color)
+    (svg-circle svg (- x (/ head-radius 4.0)) (- y (- h (/ head-radius 2.0)))
+                (/ head-radius 4.0) :fill-color bg-color)
+    (svg-rectangle svg (- x w2) (- y (- h head-radius head-radius w2))
+                   w (- h head-radius head-radius w)
+                   :fill-color fg-color :rx w4)
+    (svg-polygon svg (list (cons (- x w2) (- y w w))
+                           (cons (+ x w2) (- y w w))
+                           (cons (+ x w2) (- y w2))
+                           (cons x        y)
+                           (cons (- x w2) (- y w2)))
+                 :fill-color fg-color)
+    ))
+
+(cl-defun telega-map--svg-draw-circle-pin (svg x y r color
+                                               &key point-width with-shadow-p
+                                               (opacity "0.75"))
+  "Draw circle pointing into x, y.
+Return center of the circle.
+Return nil if circle is not visible inside SVG."
+  (let ((width (telega-svg-width svg))
+        (height (telega-svg-height svg))
+        (r4 (or point-width (/ r 4.0))))
+    (when (and (< (- r) x (+ r width))
+               (< (- r) y (+ r height)))
+      (when with-shadow-p
+        ;; (telega-svg-append-shadow-filter svg "shadow" "5" "0")
+        (telega-svg-append-glow-filter svg "glow"))
+      (apply #'svg-polygon svg (list (cons x y)
+                             (cons (+ x r4 1) (- y r4 1))
+                             (cons (- x r4 1) (- y r4 1)))
+                   :opacity opacity
+                   :fill-color color
+                   (when with-shadow-p
+                     (list :filter "url(#glow)")))
+      (apply #'svg-circle svg x (- y r r4) r
+             :fill-color color
+             :opacity opacity
+             (when with-shadow-p
+               (list :filter "url(#glow)")))
+      (cons x (- y r r4)))))
+
+(cl-defun telega-map--svg-draw-image-pin (svg x y color image-filename
+                                              &key r border with-shadow-p
+                                              opacity)
+  "Into SVG draw circle pin pointing to X and Y with IMAGE-FILENAME inside."
   (let* ((base-dir (telega-directory-base-uri telega-database-dir))
-         (width (telega-tl-get0 map :width))
-         (height (telega-tl-get0 map :height))
-         (map-loc (plist-get map :map-location)) ;at image center
-         (raw-map-sender (plist-get map :sender_id))
-         (map-sender (when raw-map-sender
-                       (telega-msg-sender raw-map-sender)))
-         (user-loc sender-loc)
-         (user-loc-off
-          (telega-location-distance map-loc user-loc 'components))
-         (user-y (+ (/ height 2)
-                    (telega-map--distance-pixels
-                     (car user-loc-off) user-loc (plist-get map :zoom))))
-         (user-x (+ (/ width 2)
-                    (telega-map--distance-pixels
-                     (cdr user-loc-off) user-loc (plist-get map :zoom))))
-         (sender-shown-p nil))
-    ;; NOTE: Always show map sender, otherwise show sender only if it
-    ;; fits into map image
-    (when-let* ((show-sender-p (and sender
-                                    (or (eq sender map-sender)
-                                        (and (< 0 user-x width)
-                                             (< 0 user-y height)))))
-                (sender-photo (if (telega-user-p sender)
-                                  (telega--tl-get sender :profile_photo :small)
-                                (cl-assert (telega-chat-p sender))
-                                (telega--tl-get sender :photo :small))))
-      (when (telega-file--downloaded-p sender-photo)
-        (let* ((photofile (telega-file--path sender-photo))
-               (img-type (telega-image-supported-file-p photofile))
-               (clip-name (make-temp-name "user-clip"))
-               (clip (telega-svg-clip-path svg clip-name))
-               (sz (/ (telega-tl-get0 map :height) 8))
-               (sz2 (/ sz 2)))
-          (svg-circle clip (+ user-x sz2) (- user-y sz2) sz2)
-          (svg-polygon clip (list (cons user-x user-y)
-                                  (cons (+ user-x (/ sz2 4))
-                                        (- user-y sz2))
-                                  (cons (+ user-x sz2)
-                                        (- user-y (/ sz2 4)))))
-          (telega-svg-embed svg (list (file-relative-name photofile base-dir)
-                                      base-dir)
-                            (format "image/%S" img-type) nil
-                            :x user-x :y (- user-y sz)
-                            :width sz :height sz
-                            :clip-path (format "url(#%s)" clip-name)))
-        (setq sender-shown-p t)))
+         (r (or r (telega-chars-xheight 0.75)))
+         (point-w (/ r 4.0))
+         (border (or border 0))
+         (cxy (telega-map--svg-draw-circle-pin
+               svg x y r color
+               :point-width point-w
+               :with-shadow-p with-shadow-p
+               :opacity opacity)))
+    (when cxy
+      (cl-assert (< border r))
+      (let* ((cx (car cxy))
+             (cy (cdr cxy))
+             (img-type (telega-image-supported-file-p image-filename))
+             (clip-name (make-temp-name "user-clip"))
+             (clip (telega-svg-clip-path svg clip-name)))
+        (svg-circle clip cx cy (- r border))
+        (telega-svg-embed svg (list (file-relative-name image-filename base-dir)
+                                    base-dir)
+                          (format "image/%S" img-type) nil
+                          :x (- cx r) :y (- cy r)
+                          :width (+ r r) :height (+ r r)
+                          :clip-path (format "url(#%s)" clip-name)
+                          :opacity (or opacity "1.0")))
+      t)))
 
-    (cond ((or (null sender) (eq sender map-sender))
-           ;; Always show dot for map sender
-           (svg-circle svg user-x user-y 8
-                       :stroke-width 4
-                       :stroke-color "white"
-                       :fill-color (face-foreground 'telega-blue))
+(cl-defun telega-map--svg-draw-sender-pin (map svg sender &key loc live-loc)
+  "Embed SENDER to the map svg image.
+LOC or LIVE-LOC must be specified unless SENDER is a map sender."
+  (let* ((width (telega-svg-width svg))
+         (height (telega-svg-height svg))
+         (msg (plist-get map :msg))
+         (map-sender-p (eq sender (and msg (telega-msg-sender msg))))
+         (inactive-p (when map-sender-p
+                       (let ((live-for (telega-msg-location-live-for msg)))
+                         (or (not live-for) (< (car live-for) 0)))))
+         (live-loc (or live-loc
+                       (unless loc
+                         (cl-assert map-sender-p)
+                         (telega--tl-get msg :content :location))))
+         (loc (or loc (plist-get live-loc :location)))
+         (xy (telega-map--location-coords map width height loc))
+         (x (car xy))
+         (y (cdr xy))
+         (y-off (if map-sender-p
+                    (telega-chars-xheight 0.1)
+                  0))
+         (palette
+          (telega-msg-sender-palette sender))
+         (color
+          (telega-color-name-as-hex-2digits
+           (or (telega-palette-attr palette :foreground) "white"))))
 
-           ;; User's direction heading 1-360, 0 if unknown
-           (let ((heading (telega-tl-get0 map :user-heading)))
-             (unless (zerop heading)
-               (let* ((w2 user-x)
-                      (h2 user-y)
-                      (angle1 (* float-pi (/ (- (+ heading 200)) 180.0)))
-                      (angle2 (* float-pi (/ (- (+ heading 160)) 180.0)))
-                      (h-dx1 (* 100 (sin angle1)))
-                      (h-dy1 (* 100 (cos angle1)))
-                      (h-dx2 (* 100 (sin angle2)))
-                      (h-dy2 (* 100 (cos angle2)))
-                      (hclip (telega-svg-clip-path svg "headclip")))
-                 (telega-svg-path hclip (format "M %d %d L %f %f L %f %f Z"
-                                                w2 h2 (+ w2 h-dx1) (+ h2 h-dy1)
-                                                (+ w2 h-dx2) (+ h2 h-dy2)))
-                 (telega-svg-gradient
-                  svg "headgrad" 'radial
-                  (list (list 0 (telega-color-name-as-hex-2digits
-                                 (face-foreground 'telega-blue))
-                              :opacity 0.9)
-                        ;; (list 50 (telega-color-name-as-hex-2digits
-                        ;;           (face-foreground 'telega-blue))
-                        ;;       :opacity 0.5)
-                        (list 100 (telega-color-name-as-hex-2digits
-                                   (face-foreground 'telega-blue))
-                              :opacity 0.0)))
-                 (svg-circle svg w2 h2 50
-                             :gradient "headgrad"
-                             :clip-path "url(#headclip)")
-                 )))
+    ;; Emphasize horizontal accuracy
+    (let ((hacc-meters (telega-tl-get0 loc :horizontal_accuracy)))
+      (unless (or inactive-p (zerop hacc-meters))
+        (let ((hacc-w (telega-map--distance-pixels
+                       hacc-meters loc (plist-get map :map-zoom))))
+          (when (> hacc-w 4)
+            (telega-svg-gradient
+             svg "haccgrad" 'radial
+             (list (list 0 color :opacity 0.0)
+                   (list 90 color :opacity 0.05)
+                   (list 100 color :opacity 0.25)))
+            (svg-circle svg x y hacc-w
+                        :gradient "haccgrad")))))
 
-           ;; Proximity Alert Radius
-           (let* ((alert-radius (telega-tl-get0 map :user-alert-radius))
-                  (radius-px (unless (zerop alert-radius)
-                               (telega-map--distance-pixels
-                                alert-radius
-                                (plist-get map :user-location)
-                                (plist-get map :zoom)))))
-             (when radius-px
-               (svg-circle svg user-x user-y radius-px
-                           :fill "none"
-                           :stroke-dasharray "4 6"
-                           :stroke-width 4
-                           :stroke-opacity "0.6"
-                           :stroke-color "black")))
-           )
+    ;; User's direction heading 1-360, 0 if unknown
+    (let ((heading (telega-tl-get0 live-loc :heading)))
+      (unless (zerop heading)
+        (let* ((w2 x)
+               (h2 y)
+               (angle1 (* float-pi (/ (- (+ heading 200)) 180.0)))
+               (angle2 (* float-pi (/ (- (+ heading 160)) 180.0)))
+               (h-dx1 (* 100 (sin angle1)))
+               (h-dy1 (* 100 (cos angle1)))
+               (h-dx2 (* 100 (sin angle2)))
+               (h-dy2 (* 100 (cos angle2)))
+               (hclip (telega-svg-clip-path svg "headclip")))
+          (telega-svg-path hclip (format "M %d %d L %f %f L %f %f Z"
+                                         w2 h2 (+ w2 h-dx1) (+ h2 h-dy1)
+                                         (+ w2 h-dx2) (+ h2 h-dy2)))
+          (telega-svg-gradient
+           svg "headgrad" 'radial
+           (list (list 0 (telega-color-name-as-hex-2digits
+                          (face-foreground 'telega-blue))
+                       :opacity 0.9)
+                 ;; (list 50 (telega-color-name-as-hex-2digits
+                 ;;           (face-foreground 'telega-blue))
+                 ;;       :opacity 0.5)
+                 (list 100 (telega-color-name-as-hex-2digits
+                            (face-foreground 'telega-blue))
+                       :opacity 0.0)))
+          (svg-circle svg w2 h2 (telega-chars-xheight 1.25)
+                      :gradient "headgrad"
+                      :clip-path "url(#headclip)")
+          )))
 
-          (sender-shown-p
-           (svg-circle svg user-x user-y 4
-                       :stroke-width 2
-                       :stroke-color "white"
-                       :fill-color "black")))
+    (when map-sender-p
+      ;; Always show dot for map sender
+      (when (< y-off 3) (setq y-off 4))
+      (svg-circle svg x y (+ 2 y-off)
+                  :stroke-width 4
+                  :stroke-color "white"
+                  :fill-color color))
 
-    (or (eq sender map-sender) sender-shown-p)))
+    (when-let* ((sender-photo (telega-map--sender-photo-file sender))
+                ((telega-file--downloaded-p sender-photo)))
+      (telega-map--svg-draw-image-pin svg x (- y y-off 4) (or "white" color)
+                                      (telega-file--path sender-photo)
+                                      :border y-off
+                                      :with-shadow-p map-sender-p
+                                      :opacity (when inactive-p
+                                                 "0.6")))
+    ))
 
-(defun telega-map--create-image (map &optional _file)
+(defun telega-map--svg-draw-venue (map svg venue)
+  "Embed VENUE to the MAP's SVG.
+Return non-nil if VENUE has been embeded."
+  (let* ((bg-color (or (telega-venue--type-color venue) "#999999"))
+         (map-loc (plist-get map :map-location))
+         (v-loc (plist-get venue :location))
+         (loc-off
+          (telega-location-distance map-loc v-loc 'components))
+         (width (telega-svg-width svg))
+         (height (telega-svg-height svg))
+         (v-x (+ (/ width 2)
+                 (telega-map--distance-pixels
+                  (cdr loc-off) v-loc (plist-get map :zoom))))
+         (v-y (+ (/ height 2)
+                 (telega-map--distance-pixels
+                  (car loc-off) v-loc (plist-get map :zoom))))
+         (y-off (telega-chars-xheight 0.1))
+         (v-filename (telega-venue--type-image-filename venue)))
+    (svg-circle svg v-x v-y y-off :fill-color bg-color)
+    (when (file-exists-p v-filename)
+      (telega-map--svg-draw-image-pin svg v-x (- v-y y-off 2)
+                                      bg-color v-filename
+                                      :with-shadow-p t
+                                      :opacity "1.0"))
+    t))
+
+(cl-defun telega-map--svg-draw-location-pin (map svg loc &key r with-shadow-p)
+  "Draw a location pin."
+  (let* ((width (telega-svg-width svg))
+         (height (telega-svg-height svg))
+         (r (or r (telega-chars-xheight 0.75)))
+         (point-w (/ r 4.0))
+         (bg-color (telega-color-name-as-hex-2digits
+                    (or (face-background 'telega-location-pin)
+                        "RoyalBlue2")))
+         (fg-color (telega-color-name-as-hex-2digits
+                    (or (face-foreground 'telega-location-pin)
+                        "white")))
+         (xy (telega-map--location-coords map width height loc))
+         (x (car xy))
+         (y (cdr xy))
+         (y-off (telega-chars-xheight 0.1)))
+    (svg-circle svg x y y-off :fill-color bg-color)
+    (telega-map--svg-draw-circle-pin
+     svg x (- y y-off 2) r bg-color
+     :point-width point-w
+     :with-shadow-p with-shadow-p
+     :opacity "1.0")
+    (telega-map--svg-draw-pin svg x (- y y-off (* 2 y-off) point-w 2)
+                              y-off (- (* 2 r) (* 4 y-off))
+                              fg-color bg-color)
+    ))
+
+(defun telega-map--create-image-func (obj-spec)
   "Create map image for location MAP."
   (let* ((base-dir (telega-directory-base-uri telega-database-dir))
-         (map-photo (telega-file--renew map :photo))
-         (map-photofile (when map-photo
-                          (telega-file--path map-photo)))
-         ;; NOTE: `raw-map-sender' is nil for `venue' locations
-         (raw-map-sender (plist-get map :sender_id))
-         (map-sender (when raw-map-sender
-                       (telega-msg-sender raw-map-sender)))
-         (width (telega-tl-get0 map :width))
-         (height (telega-tl-get0 map :height))
+         (map (plist-get obj-spec :object))
+         (map-photo (telega-file--renew map :map-photo))
+         (map-sender (when-let ((msg (plist-get map :msg)))
+                       (telega-msg-sender msg)))
+         (width (or (plist-get map :width) 800))
+         (height (or (plist-get map :height) 400))
          (svg (telega-svg-create width height)))
     (cl-assert (and (integerp width) (integerp height)))
+    ;; NOTE: If location moved significantly, then fetch new map thumbnail
+    (when (and (not (plist-get map :get-map-extra))
+               (or (not map-photo)
+                   (not (plist-get map :map-location))
+                   (not (plist-get map :map-zoom))
+                   (not (eq (plist-get map :zoom) (plist-get map :map-zoom)))
+                   (> (telega-map--distance-pixels
+                       (telega-location-distance (plist-get map :location)
+                                                 (plist-get map :map-location))
+                       (plist-get map :map-location) (plist-get map :map-zoom))
+                      (/ width 6))))
+      (plist-put map :map-zoom (plist-get map :zoom))
+      (plist-put map :map-scale (plist-get map :scale))
+      (plist-put map :map-location (plist-get map :location))
+      (plist-put map :get-map-extra t)
+      (telega--getMapThumbnailFile
+          (plist-get map :location)
+          (or (plist-get map :zoom) telega-location-zoom)
+          width height
+          (or (plist-get map :scale) telega-location-scale)
+          (when-let ((msg (plist-get map :msg)))
+            (telega-msg-chat msg))
+        (lambda (map-file)
+          (plist-put map :map-photo map-file)
+          (telega-file--download map-file
+            :priority telega-map--download-priority
+            :update-callback
+            (lambda (mfile)
+              (when (telega-file--downloaded-p mfile)
+                (plist-put map :get-map-extra nil)
+                (telega-media--image-updateNEW obj-spec))
+
+              ;; ARGUABLE: redisplay message?
+              ;; (when-let ((msg (plist-get map :msg)))
+              ;;   (telega-msg-redisplay msg))
+              )
+            )))
+      ;; Update weather info as well
+      (when telega-location-show-weather
+        (telega--getCurrentWeather (plist-get map :location)
+          (lambda (weather)
+            (plist-put map :map-weather weather)
+            (telega-media--image-updateNEW obj-spec))))
+      )
+
     (if (and (telega-file--downloaded-p map-photo)
-             (telega-file-exists-p map-photofile))
-        (telega-svg-embed svg (list (file-relative-name map-photofile base-dir)
+             (telega-file-exists-p (telega-file--path map-photo)) )
+        (telega-svg-embed svg (list (file-relative-name
+                                     (telega-file--path map-photo) base-dir)
                                     base-dir)
                           "image/png" nil
                           :x 0 :y 0 :width width :height height)
       (svg-rectangle svg 0 0 width height
                      :fill-color (telega-color-name-as-hex-2digits
-                                  (or (face-foreground 'telega-shadow) "gray50"))))
+                                  (or (face-foreground 'telega-shadow)
+                                      "gray50"))))
 
-    ;; TODO: show other users close enough to `:sender_id'
+    ;; Display live locations for other users
+    (plist-put map :map-user-locations (plist-get map :user-locations))
+    (seq-doseq (ul (plist-get map :user-locations))
+      (unless (or (eq (car ul) map-sender)
+                  (and telega-location-show-me
+                       telega-my-location
+                       (not (telega-me-p map-sender))))
+        (telega-map--svg-draw-sender-pin map svg (car ul) (cdr ul))))
 
-    ;; NOTE: First draw other users
+    ;; Display me
     (when (and telega-location-show-me
                telega-my-location
                (not (telega-me-p map-sender)))
-      (telega-map--embed-sender svg map (telega-user-me) telega-my-location))
+      (telega-map--svg-draw-sender-pin map svg (telega-user-me)
+                                       :loc telega-my-location))
 
-    ;; Show map sender with heading and proximity alert zone
-    ;; NOTE: map sender can be nil for venue messages
-    (telega-map--embed-sender svg map map-sender (plist-get map :user-location))
+    (let ((msg (plist-get map :msg)))
+      (cond ((and msg (telega-msg-match-p msg '(type LiveLocation)))
+             (telega-map--svg-draw-sender-pin map svg map-sender))
+
+            ((and msg (telega-msg-match-p msg '(type Venue)))
+             ;; Display Venue label
+             (when-let* ((venue (telega--tl-get msg :content :venue))
+                         (vt-filename (telega-venue--type-image-filename venue)))
+               (when (and (not (file-exists-p vt-filename))
+                          (not (plist-get map :get-venue-type)))
+                 ;; Need to download
+                 (plist-put map :get-venue-type
+                            (telega-venue--type-image-download venue
+                              (lambda (_venue _imgfile)
+                                (plist-put map :get-venue-type nil)
+                                (telega-media--image-updateNEW obj-spec)))))
+               (telega-map--svg-draw-venue map svg venue)))
+
+            (t
+             ;; Location and pageBlockMap
+             (telega-map--svg-draw-location-pin
+              map svg (plist-get map :location)))
+            ))
+
+    ;; Display "Loading..." if updating map thumbnail
+    (when (plist-get map :get-map-extra)
+      (let ((font-size (telega-chars-xheight 1)))
+        (svg-text svg (telega-i18n "telega_loading")
+                  :font-size font-size
+;                  :font-family "monospace"
+                  :fill-color "currentColor"
+                  :opacity "0.5"
+                  :x "50%" :y font-size
+                  :text-anchor "middle")))
+
+    ;; Finally display scale ruler and weather
+    (when telega-location-show-scale-ruler
+      (telega-map--svg-draw-scale-ruler map svg))
+    (when-let ((map-weather (plist-get map :map-weather)))
+      (telega-map--svg-draw-weather svg map-weather))
 
     (telega-svg-image svg
       :scale 1.0
-      :width width :height height
+      :max-height (telega-ch-height (plist-get obj-spec :cheight))
+      :width width
       :ascent 'center
       :base-uri (expand-file-name "dummy" base-dir))))
+
+(defun telega-map--image-obj-spec (map &optional cheight)
+  "Return image object spec for the MAP."
+  (cl-assert (and (integerp (plist-get map :width))
+                  (integerp (plist-get map :height))))
+  (unless cheight
+    (setq cheight
+          (telega-media--cheight-for-limits
+           (plist-get map :width)
+           (plist-get map :height)
+           (list (cdr telega-location-size) (car telega-location-size)
+                 (cdr telega-location-size) (car telega-location-size)))))
+
+  (telega-media--obj-spec map #'telega-map--create-image-func
+    :cheight cheight))
+
+(cl-defun telega-map--image (map &key cheight)
+  "Return image for the MAP object."
+  (declare (indent 1))
+  (let ((obj-spec (telega-map--image-obj-spec map cheight)))
+    (or (unless (telega-map--need-update-map-p map)
+          (plist-get map (plist-get obj-spec :cache-prop)))
+        (telega-media--image-updateNEW obj-spec))))
 
 ;; See
 ;; https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Resolution_and_Scale
@@ -1206,43 +1637,6 @@ SENDER can be a nil, meaning venue location is to be displayed."
     (round (/ meters
               (/ (* 156543.03 (cos (degrees-to-radians lat)))
                  (expt 2 zoom))))))
-
-(defun telega-map--need-new-map-photo-p (map loc)
-  "Return non-nil if need to fetch new map photo for new user location LOC."
-  (or (and (not (plist-get map :photo))
-           (not (plist-get map :get-map-extra)))
-      (not loc)
-      (not (plist-get map :map-location))
-      (let* ((map-xh (telega-chars-xheight (car telega-location-size)))
-             (distance
-              (telega-location-distance (plist-get map :map-location) loc))
-             (distance-px (telega-map--distance-pixels
-                           distance loc (plist-get map :zoom))))
-        (> distance-px (/ map-xh 4)))))
-
-(defun telega-map--get-thumbnail-file (map loc &optional msg)
-  "Request MAP image at LOC location for MSG.
-Update `:svg-image' when new image is received."
-  (telega--getMapThumbnailFile
-      loc (plist-get map :zoom)
-      (telega-tl-get0 map :width) (telega-tl-get0 map :height)
-      (telega-tl-get0 map :scale) (when msg (telega-msg-chat msg))
-    (lambda (map-file)
-      (plist-put map :map-location loc)
-      (plist-put map :photo map-file)
-
-      (telega-file--download map-file
-        :priority 24
-        :update-callback
-        (lambda (mfile)
-          (when (telega-file--downloaded-p mfile)
-            (let ((svg-image (plist-get map :svg-image))
-                  (new-image (telega-map--create-image map mfile)))
-              (setcdr svg-image (cdr new-image))
-              (force-window-update)))
-          (when msg
-            (telega-msg-redisplay msg))
-          )))))
 
 (defun telega-map--zoom (map step)
   "Change zoom for the MAP by STEP.
@@ -1254,7 +1648,53 @@ Return non-nil if zoom has been changed."
           ((> new-zoom 20)
            (setq new-zoom 20)))
     (plist-put map :zoom new-zoom)
-    (not (= old-zoom new-zoom))))
+
+    (let ((ret (not (= old-zoom new-zoom))))
+      (when ret
+        (plist-put map :get-map-extra nil)
+        (telega-media--image-updateNEW (telega-map--image-obj-spec map)))
+      ret)))
+
+(defun telega-msg-for-map-interactive ()
+  (when-let* ((mevents (append (this-command-keys) nil))
+              (ev-key (or (assq 'wheel-up mevents)
+                          (assq 'wheel-down mevents)
+                          (assq 'down-mouse-1 mevents)))
+              (ev-start (cadr ev-key))
+              (ev-point (posn-point ev-start)))
+    (telega-msg-at ev-point)))
+
+(defun telega-msg-map-zoom-in (msg)
+  "Zoom in map location for the message MSG."
+  (interactive (list (telega-msg-for-map-interactive)))
+  (when-let* ((map (plist-get msg :telega-map))
+              ((telega-map--zoom map 1)))
+    (telega-msg-redisplay msg)))
+
+(defun telega-msg-map-zoom-out (msg)
+  "Zoom in map location for the message MSG."
+  (interactive (list (telega-msg-at
+                      (posn-point (event-start last-command-event)))))
+  (when-let* ((map (plist-get msg :telega-map))
+              ((telega-map--zoom map -1)))
+    (telega-msg-redisplay msg)))
+
+(defun telega-map--button-release-event-p (event)
+  (and (consp event) (symbolp (car event))
+       (or (memq 'click (get (car event) 'event-symbol-elements))
+           (memq 'drag (get (car event) 'event-symbol-elements)))))
+
+(defun telega-msg-map-drag (msg event)
+  "Handle last drag event."
+  (interactive (list (telega-msg-at
+                      (posn-point (event-start last-command-event)))
+                     last-command-event))
+
+  (track-mouse
+    (while (not (telega-map--button-release-event-p (setq event (read-event))))
+      ;; TODO: Read drag events until mouse button is released
+      (message "telega: TODO, drag map %S" (posn-object-x-y (event-start event)))
+      )))
 
 
 ;;; TODO: Chat Themes
