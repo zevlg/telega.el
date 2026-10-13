@@ -1953,11 +1953,11 @@ Return `non-nil' if LINK-PREVIEW has been inserted."
             (telega-ins "\n")
             (telega-ins--line-wrap-prefix "  "
               (telega-ins--with-face 'telega-shadow
-                (telega-ins-fmt "%3d%% " (plist-get popt :vote_percentage)))
+                (telega-ins-fmt "%3d%% " (telega-tl-get0 popt :vote_percentage)))
               (telega-ins--with-face 'telega-link
                 (telega-ins--image
                  (telega-poll-create-svg (/ telega-chat-fill-column 8)
-                                         (plist-get popt :vote_percentage))))
+                                         (telega-tl-get0 popt :vote_percentage))))
               (telega-ins " ")
               (telega-ins--with-face 'telega-shadow
                 (telega-ins-i18n (if quiz-p
