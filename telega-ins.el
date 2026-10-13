@@ -39,6 +39,13 @@
 (require 'telega-topic)
 (require 'telega-community)
 (require 'telega-customize)
+(require 'telega-ffplay)
+(require 'telega-i18n)
+(require 'telega-media)
+(require 'telega-sticker)
+(require 'telega-story)
+(require 'telega-user)
+(require 'telega-util)
 
 ;; telega-chat.el depends on telega-ins.el
 (declare-function telega-msg-delete0 "telega-chat" (msg &optional revoke))

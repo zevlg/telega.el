@@ -29,6 +29,12 @@
 (require 'telega-tdlib)
 (require 'telega-customize)
 (require 'telega-ffplay)
+(require 'telega-i18n)
+(require 'telega-ins)
+(require 'telega-media)
+(require 'telega-msg)
+(require 'telega-user)
+(require 'telega-util)
 
 (declare-function telega-status--set "telega-root"
                   (conn-status &optional aux-status raw))

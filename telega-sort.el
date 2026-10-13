@@ -28,6 +28,10 @@
 ;; ~define-telega-sorter~ instead.
 
 (require 'telega-core)
+(require 'telega-filter)
+(require 'telega-msg)
+(require 'telega-user)
+(require 'telega-util)
 
 
 (declare-function telega-root-view--redisplay "telega-root")
