@@ -40,8 +40,9 @@ jobs:
   docker-arm64:
     # enabled due to https://t.me/emacs_telega/47280
     # Disabled due to build failure, see https://t.me/emacs_telega/47396
-    if: false
-    runs-on: ubuntu-latest
+    # Enabled on github's arm runner
+    # if: false
+    runs-on: ubuntu-24.04-arm
     steps:
       -
         name: Checkout

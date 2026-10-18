@@ -1,6 +1,7 @@
 ### Latest image
 # docker pull zevlg/telega-server:latest
 # docker build -f etc/Dockerfile -t zevlg/telega-server:latest .
+# docker build buildx --platform linux/arm64 -f etc/Dockerfile -t zevlg/telega-server:latest .
 # docker tag $(docker images -q zevlg/telega-server:latest) zevlg/telega-server:latest
 # docker push zevlg/telega-server:latest
 # docker run -v $HOME/.telega:$HOME/.telega zevlg/telega-server:latest /usr/bin/telega-server
