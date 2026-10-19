@@ -3243,7 +3243,8 @@ Global chat bindings:
 
   ;; Yank clipboard with `M-x yank-media RET'
   (when (fboundp 'yank-media-handler)
-    (funcall #'yank-media-handler '(image/png image/jpeg)
+    (funcall #'yank-media-handler
+             '("image/" "audio/" "video/" "application/")
              #'telega-chatbuf--yank-media))
   )
 
@@ -5984,16 +5985,87 @@ voice-note.  Otherwise record voice note inplace.
                  :duration (round (telega-ffplay-get-duration i-filename))
                  :waveform (telega-vvnote--waveform-for-file i-filename))))))
 
-(defun telega-chatbuf--yank-media (mime-type data &optional doc-p)
-  "Handler for the `yank-media' command."
-  (let* ((temporary-file-directory telega-temp-dir)
-         (tmpfile (telega-temp-name "clipboard"
-                                    (cl-ecase mime-type
-                                      (image/png ".png")
-                                      (image/jpeg ".jpg"))))
+(defun telega-chatbuf--clipboard-mime-name (mime-type)
+  "Return MIME type name (a string) for MIME-TYPE.
+MIME-TYPE could be either a string or a symbol such as `image/png'."
+  (if (symbolp mime-type)
+      (symbol-name mime-type)
+    mime-type))
+
+(defconst telega-chatbuf--clipboard-supported-majors
+  '("image" "audio" "video" "application")
+  "Major MIME types telega is able to attach from the CLIPBOARD.")
+
+(defun telega-chatbuf--clipboard-mime-type-p (mime-type)
+  "Return non-nil if data of MIME-TYPE can be attached by telega.
+MIME-TYPE could be either a string or a symbol such as `image/png'."
+  (let ((mime-name (telega-chatbuf--clipboard-mime-name mime-type)))
+    (and (stringp mime-name)
+         (member (car (split-string mime-name "/"))
+                 telega-chatbuf--clipboard-supported-majors))))
+
+(defun telega-chatbuf--clipboard-file-extension (mime-type)
+  "Return file name extension (with leading dot) for MIME-TYPE.
+The extension is used only for the temporary file name, so TDLib
+could detect the content type of the resulting document.  Prefer an
+extension known to `mailcap-mime-extensions', fallback to the MIME
+subtype.  Return nil if no sensible extension could be derived."
+  (let ((mime-name (telega-chatbuf--clipboard-mime-name mime-type)))
+    (or (car (cl-rassoc mime-name mailcap-mime-extensions
+                        :test #'string-equal))
+        (let ((subtype (cadr (split-string (or mime-name "") "/"))))
+          (and subtype
+               (string-match-p "\\`[[:alnum:]]+\\'" subtype)
+               (concat "." subtype))))))
+
+(defun telega-chatbuf--clipboard-targets ()
+  "Return the list of data types available on the CLIPBOARD.
+Return a list of symbols, such as `image/png'."
+  (let ((targets (gui-get-selection 'CLIPBOARD 'TARGETS)))
+    (delq nil
+          (mapcar (lambda (target)
+                    (cond ((symbolp target) target)
+                          ((stringp target) (intern target))))
+                  (cond ((vectorp targets) (append targets nil))
+                        ((listp targets) targets))))))
+
+(defun telega-chatbuf--clipboard-attach-data (mime-type data &optional as-file-p)
+  "Attach raw clipboard DATA of MIME-TYPE to the chatbuf.
+DATA is a unibyte string with the raw clipboard contents.  The
+attachment type is derived from MIME-TYPE directly, without going
+through the file extension.  If AS-FILE-P is non-nil, then attach
+DATA as a document, using a preview when MIME-TYPE is an image type."
+  (let* ((mime-name (telega-chatbuf--clipboard-mime-name mime-type))
+         (image-p (string-prefix-p "image/" mime-name))
+         ;; NOTE: The extension is used only for the temporary file
+         ;; name, so TDLib could detect the content type of the
+         ;; resulting document (content type detection is disabled by
+         ;; `telega-chatbuf-attach-file')
+         (temporary-file-directory telega-temp-dir)
+         (tmpfile (telega-temp-name
+                   "clipboard"
+                   (or (telega-chatbuf--clipboard-file-extension mime-name)
+                       ".bin")))
          (coding-system-for-write 'binary))
     (write-region data nil tmpfile nil 'quiet)
-    (telega-chatbuf-attach-media tmpfile (when doc-p 'preview))))
+    (cond ((and as-file-p image-p)
+           (telega-chatbuf-attach-file tmpfile 'preview))
+          (as-file-p
+           (telega-chatbuf-attach-file tmpfile))
+          ((string= "image/gif" mime-name)
+           (telega-chatbuf-attach-animation tmpfile))
+          (image-p
+           (telega-chatbuf-attach-photo tmpfile))
+          ((string-prefix-p "audio/" mime-name)
+           (telega-chatbuf-attach-audio tmpfile))
+          ((string-prefix-p "video/" mime-name)
+           (telega-chatbuf-attach-video tmpfile))
+          (t
+           (telega-chatbuf-attach-file tmpfile)))))
+
+(defun telega-chatbuf--yank-media (mime-type data &optional as-file-p)
+  "Handler for the `yank-media' command."
+  (telega-chatbuf--clipboard-attach-data mime-type data as-file-p))
 
 (defun telega-chatbuf-attach-clipboard (as-file-p)
   "Attach clipboard files to the chatbuf as photos.
@@ -6009,19 +6081,37 @@ If `\\[universal-argument]' is given, then attach clipboard as document."
           (error "No image in CLIPBOARD"))
         (telega-chatbuf-attach-media tmpfile (when as-file-p 'preview)))
 
-    (if-let* ((urls (and (cl-position "text/plain"
-                                      (gui-get-selection 'CLIPBOARD 'TARGETS)
-                                      :test #'string-equal)
-                         (gui-get-selection 'CLIPBOARD 'text/uri-list))))
-        (dolist (uri (split-string urls "[\r\n\0]" t))
-          (telega-chatbuf-dnd-attach uri nil as-file-p))
-      (apply #'telega-chatbuf--yank-media
-             (or (catch 'found
-                   (dolist (mime-type '(image/png image/jpeg))
-                     (when-let* ((selection-coding-system 'no-conversion) ;raw data
-                                 (data (gui-get-selection 'CLIPBOARD mime-type)))
-                       (throw 'found (list mime-type data (when as-file-p 'preview))))))
-                 (error "No files in CLIPBOARD"))))))
+    (let ((targets (telega-chatbuf--clipboard-targets))
+          (attached-p nil))
+
+      ;; 1. Attach files/URLs referenced by the CLIPBOARD
+      (when (and (memq 'text/plain targets)
+                 (gui-get-selection 'CLIPBOARD 'text/uri-list))
+        (dolist (uri (split-string (gui-get-selection 'CLIPBOARD 'text/uri-list)
+                                   "[\r\n\0]" t))
+          (telega-chatbuf-dnd-attach uri nil as-file-p)
+          (setq attached-p t)))
+
+      ;; 2. Attach raw data available on the CLIPBOARD.  All the MIME
+      ;; types telega is able to attach are considered.  Multiple
+      ;; representations of the same kind of data (e.g. `image/png'
+      ;; and `image/bmp' for a copied image) are attached only once.
+      (unless attached-p
+        (let ((attached-kinds nil))
+          (dolist (mime-type targets)
+            (let ((kind (car (split-string (symbol-name mime-type) "/"))))
+              (when (and (not (member kind attached-kinds))
+                         (telega-chatbuf--clipboard-mime-type-p mime-type))
+                (let ((data (let ((selection-coding-system 'no-conversion))
+                              (gui-get-selection 'CLIPBOARD mime-type))))
+                  (when (and (stringp data) (not (string-empty-p data)))
+                    (telega-chatbuf--clipboard-attach-data
+                     mime-type data as-file-p)
+                    (push kind attached-kinds)
+                    (setq attached-p t))))))))
+
+      (unless attached-p
+        (error "No supported contents in CLIPBOARD")))))
 
 (defun telega-chatbuf-attach-screenshot (&optional n chat)
   "Attach screenshot to the chatbuf input.
