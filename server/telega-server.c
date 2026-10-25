@@ -72,7 +72,7 @@ void pngext_main(int ac, char** av);
 char* logfile = NULL;
 size_t logfile_size = 4 * 1024 * 1024;
 int verbosity = 5;
-const char* version = "1.2.1";
+const char* version = "1.2.2";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
