@@ -17,7 +17,8 @@ extern int optimize;
 #define OPTIMIZE_EMPTY_STRINGS 0x8
 /* Remove "ok" replies without extra */
 #define OPTIMIZE_EMPTY_OK      0x10
-/* Remove 0, 0.0 and "0" from resulting values */
+/* Remove 0 from resulting values.
+ * "0" strings are kept, they might be a text, such as message text */
 #define OPTIMIZE_ZERO_VALUES   0x20
 
 struct telega_dat {

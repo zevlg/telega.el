@@ -919,7 +919,7 @@ Optimization flags:
 4 - Remove [] values from resulting values.
 8 - Remove empty strings from resulting values.
 16 - Remove empty \"ok\" replies without extra data.
-32 - Remove 0 and \"0\" values from resulting values.
+32 - Remove 0 values from resulting values.
 
 Flags are combined with logical or."
   :type 'integer

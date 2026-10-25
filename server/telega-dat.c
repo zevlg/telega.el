@@ -268,10 +268,6 @@ tdat_json_object(struct telega_dat* json, struct telega_dat* plist)
                              && !strncmp("\"\"", &plist->data[val_pos], 2))
                             ||
                             ((optimize & OPTIMIZE_ZERO_VALUES)
-                             && ((plist->end - val_pos) == 3)
-                             && !strncmp("\"0\"", &plist->data[val_pos], 3))
-                            ||
-                            ((optimize & OPTIMIZE_ZERO_VALUES)
                              && ((plist->end - val_pos) == 1)
                              && !strncmp("0", &plist->data[val_pos], 1))
                             )
