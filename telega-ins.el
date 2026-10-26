@@ -162,8 +162,12 @@ margin.  In this case SLICE-NUM is ignored."
 
     ;; NOTE: do not check SLICE-NUM
     (let ((slice (cond ((numberp slice-num)
-                        (list 0 (telega-chars-xheight slice-num)
-                              1.0 (telega-chars-xheight 1)))
+                        (let ((lines
+                               (or (plist-get (cdr img) :telega-nslices)
+                                   (/ (cdr (image-size img t (telega-x-frame)))
+                                      (float (telega-chars-xheight 1))))))
+                          (list 0 (/ (+ slice-num 1e-4) lines)
+                                1.0 (/ (+ 1 1e-4) lines))))
                        ((listp slice-num)
                         (prog1
                             (list 0 (nth 1 slice-num)
@@ -214,7 +218,7 @@ single argument - slice number, starting from 0."
     ;; be read anyway, and `image-size' puts image to the image cache
     (let ((nslices (or (plist-get (cdr image) :telega-nslices)
                        (round (cdr (image-size image nil (telega-x-frame)))))))
-      (dotimes (slice-num nslices)
+      (dotimes (slice-num (ceiling nslices))
         (apply #'telega-ins--image image slice-num props)
         (when slice-func
           (funcall slice-func slice-num))
@@ -235,7 +239,7 @@ DELIM is the delimiter char between images."
     (let ((nslices (or (plist-get (cdr (car images)) :telega-nslices)
                        (round (cdr (image-size (car images)
                                                nil (telega-x-frame)))))))
-      (dotimes (slice-num nslices)
+      (dotimes (slice-num (ceiling nslices))
         (seq-doseq (image images)
           (apply #'telega-ins--image image slice-num)
           (telega-ins (or delim " ")))

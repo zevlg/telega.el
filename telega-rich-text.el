@@ -117,7 +117,7 @@
           (message "telega: Generating image for math expression..DONE"))))
     (telega-create-image f-name nil nil
       :height (telega-ch-height cheight)
-      :telega-nslices (ceiling cheight)
+      :telega-nslices cheight
       :scale 1.0
       :mask 'heuristic
       :ascent 'center)))
