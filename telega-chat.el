@@ -3197,7 +3197,8 @@ Global chat bindings:
   (goto-char (point-max))
 
   (setq telega-chatbuf--prompt-button
-        (telega-button--insert 'telega-prompt '(telega-ins ">>> ")))
+        (with-telega-buffer-modify
+         (telega-button--insert 'telega-prompt '(telega-ins ">>> "))))
 
   ;; user's input starts just after the prompt
   (setq telega-chatbuf--input-marker (point-marker))
@@ -4326,17 +4327,18 @@ Always return ewoc node, even if discussion bar is not inserted."
   (when-let ((thread-msg (telega-chatbuf--topic-thread-msg))
              (node-msg (ewoc--node-data node)))
     (when (telega-msg-id= thread-msg node-msg)
-      (setq node (ewoc-enter-after
-                  telega-chatbuf--ewoc node
-                  (telega-msg-create-internal
-                      telega-chatbuf--chat
-                    (telega-fmt-text
-                     (if (zerop (telega-tl-get0
-                                 (plist-get telega-chatbuf--topic :reply_info)
-                                 :reply_count))
-                         (telega-i18n "lng_replies_no_comments")
-                       (telega-i18n "lng_replies_discussion_started"))
-                     '(:@type "textEntityTypeBold")))))))
+      (with-telega-buffer-modify
+       (setq node (ewoc-enter-after
+                   telega-chatbuf--ewoc node
+                   (telega-msg-create-internal
+                       telega-chatbuf--chat
+                     (telega-fmt-text
+                      (if (zerop (telega-tl-get0
+                                  (plist-get telega-chatbuf--topic :reply_info)
+                                  :reply_count))
+                          (telega-i18n "lng_replies_no_comments")
+                        (telega-i18n "lng_replies_discussion_started"))
+                      '(:@type "textEntityTypeBold"))))))))
   node)
 
 (defun telega-chatbuf--manage-date-break-bar (node msg)
@@ -5358,9 +5360,10 @@ If NO-CHAT-UPDATE-P, do not trigger chatbuf's headers update."
   "Remove all messages displayed in the chatbuf.
 If KEEP-PREDICATE is specified, then keep messages for which
 KEEP-PREDICATE return non-nil."
-  (if keep-predicate
-      (ewoc-filter telega-chatbuf--ewoc keep-predicate)
-    (telega-ewoc--clean telega-chatbuf--ewoc))
+  (with-telega-buffer-modify
+   (if keep-predicate
+       (ewoc-filter telega-chatbuf--ewoc keep-predicate)
+     (telega-ewoc--clean telega-chatbuf--ewoc)))
   (setq telega-chatbuf--history-state-plist nil))
 
 (defun telega-chatbuf-history-beginning ()
