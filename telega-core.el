@@ -987,10 +987,65 @@ END."
        (telega-save-excursion
          ,@body))))
 
+(defun telega-chatbuf--undo-list-shift (shift)
+  "Shift positions in `buffer-undo-list' by SHIFT.
+Done the same way as `erc-update-undo-list'."
+  (unless (or (zerop shift) (atom buffer-undo-list))
+    (let ((list buffer-undo-list) elt)
+      (while list
+        (setq elt (car list))
+        (cond ((integerp elt)           ; POSITION
+               (cl-incf (car list) shift))
+              ((or (atom elt)           ; nil, EXTENT
+                   (markerp (car elt))) ; (MARKER . DISTANCE)
+               nil)
+              ((integerp (car elt))     ; (BEGIN . END)
+               (cl-incf (car elt) shift)
+               (cl-incf (cdr elt) shift))
+              ((stringp (car elt))      ; (TEXT . POSITION)
+               (cl-incf (cdr elt) (* (if (natnump (cdr elt)) 1 -1) shift)))
+              ((null (car elt))         ; (nil PROPERTY VALUE BEG . END)
+               (let ((cons (nthcdr 3 elt)))
+                 (cl-incf (car cons) shift)
+                 (cl-incf (cdr cons) shift))))
+        (setq list (cdr list))))))
+
+(defun telega-chatbuf--undo-state ()
+  "Return chatbuf input state for `telega-chatbuf--undo-adjust'.
+Return nil if current buffer is not a chatbuf."
+  (when telega-chatbuf--input-marker
+    (list (current-buffer)
+          (marker-position telega-chatbuf--input-marker)
+          (buffer-substring-no-properties
+           telega-chatbuf--input-marker (point-max)))))
+
+(defun telega-chatbuf--undo-adjust (state)
+  "Adjust `buffer-undo-list' after modifications not recorded into it.
+STATE is the value of `telega-chatbuf--undo-state' before the
+modifications.  If the input is moved, positions in `buffer-undo-list'
+are shifted, so undo still applies to the input.  If the input text is
+changed, undo history is discarded, since it no longer matches the
+input."
+  ;; NOTE: chatbuf might be killed by the modifications
+  (when (eq (car state) (current-buffer))
+    (if (equal (nth 2 state) (buffer-substring-no-properties
+                              telega-chatbuf--input-marker (point-max)))
+        (telega-chatbuf--undo-list-shift
+         (- telega-chatbuf--input-marker (nth 1 state)))
+      (when (listp buffer-undo-list)
+        (setq buffer-undo-list nil)))))
+
 (defmacro with-telega-buffer-modify (&rest body)
-  "Run BODY inhibiting `buffer-read-only' variable."
-  `(with-silent-modifications
-     ,@body))
+  "Run BODY inhibiting `buffer-read-only' variable.
+Modifications made by BODY are not recorded into `buffer-undo-list'.
+In the chatbuf, `buffer-undo-list' is adjusted by
+`telega-chatbuf--undo-adjust'."
+  (let ((state-sym (gensym "undo-state")))
+    `(let ((,state-sym (telega-chatbuf--undo-state)))
+       (unwind-protect
+           (with-silent-modifications
+             ,@body)
+         (telega-chatbuf--undo-adjust ,state-sym)))))
 
 (defmacro with-telega-root-buffer (&rest body)
   "Execute BODY setting current buffer to root buffer.

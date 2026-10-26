@@ -974,6 +974,49 @@ argument would leave them holding an object the cache does not use."
       (remhash chat-id telega--chat-topics)
       (remhash bot-id users-ht)
       (remhash chat-id telega--chats))))
+
+(ert-deftest telega-chatbuf-undo-after-silent-modifications ()
+  "Undo in chatbuf applies to the input after messages are inserted."
+  (with-temp-buffer
+    (buffer-enable-undo)
+    (with-telega-buffer-modify
+     (insert "messages\n>>> "))
+    (should (null buffer-undo-list))
+    (setq-local telega-chatbuf--input-marker (point-marker))
+    (insert "hello")
+    (undo-boundary)
+    (delete-region telega-chatbuf--input-marker (point-max))
+    (undo-boundary)
+    ;; New message is inserted before the input
+    (with-telega-buffer-modify
+     (goto-char (point-min))
+     (insert "new message\n"))
+    (goto-char (point-max))
+    (let ((last-command nil))
+      (undo))
+    (should (equal (telega-chatbuf-input-string) "hello"))))
+
+(ert-deftest telega-chatbuf-undo-after-silent-input-change ()
+  "Undo history is discarded if the input is changed silently."
+  (with-temp-buffer
+    (buffer-enable-undo)
+    (setq-local telega-chatbuf--input-marker (point-marker))
+    (insert "hello")
+    (undo-boundary)
+    (with-telega-buffer-modify
+     (delete-region telega-chatbuf--input-marker (point-max))
+     (insert "draft"))
+    (should (null buffer-undo-list))))
+
+(ert-deftest telega-chatbuf-undo-chatbuf-killed ()
+  "Killing the chatbuf in `with-telega-buffer-modify' is not an error."
+  (let ((chatbuf (generate-new-buffer "chatbuf")))
+    (with-current-buffer chatbuf
+      (setq-local telega-chatbuf--input-marker (point-marker))
+      (with-telega-buffer-modify
+       (kill-buffer chatbuf)))
+    (should-not (buffer-live-p chatbuf))))
+
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:
