@@ -2684,16 +2684,16 @@ Same as `momentary-string-display', but keeps the point."
   "Sensor function to highlight button when entered.
 For box buttons use `telega-box-button-active' face, otherwise use
 `telega-button-highlight' face."
-  (let* ((inhibit-read-only t)
-         (button-region (telega--region-with-cursor-sensor
+  (let* ((button-region (telega--region-with-cursor-sensor
                          (if (eq dir 'entered) (point) oldpos)))
          (start (car button-region))
          (stop (cdr button-region)))
     (when button-region
       (when-let ((active-face (get-text-property start :active-face)))
-        (if (eq dir 'entered)
-            (add-face-text-property start stop active-face)
-          (telega-remove-face-text-property start stop active-face)))
+        (with-telega-buffer-modify
+         (if (eq dir 'entered)
+             (add-face-text-property start stop active-face)
+           (telega-remove-face-text-property start stop active-face))))
 
       (when (eq dir 'entered)
         (when-let ((button (button-at start)))
