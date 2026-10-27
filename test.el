@@ -1024,6 +1024,18 @@ argument would leave them holding an object the cache does not use."
                         '(space :align-to (+ (2) (1 . width)))))
     (should (= (telega-current-column) 5))))
 
+(ert-deftest telega-ins--line-wrap-prefix-non-string-prefix ()
+  "Non-string `wrap-prefix', as set by `visual-wrap-prefix-mode'."
+  (dolist (prefix '("> " ("* " . "  ")))
+    (with-temp-buffer
+      (telega-ins--line-wrap-prefix prefix
+        (insert (propertize "hello" 'line-prefix "  " 'wrap-prefix
+                            '(space :align-to (+ (2) (1 . width))))))
+      (should (equal (get-text-property 1 'line-prefix)
+                     (concat (if (consp prefix) (car prefix) prefix) "  ")))
+      (should (equal (get-text-property 1 'wrap-prefix)
+                     (if (consp prefix) (cdr prefix) prefix))))))
+
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:
