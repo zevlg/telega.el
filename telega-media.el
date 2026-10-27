@@ -873,8 +873,9 @@ To be used as `telega-avatar-text-function'."
 CHEIGHT specifies avatar height in chars, default is 2."
   ;; NOTE:
   ;; - For CHEIGHT==1 align avatar at vertical center
-  ;; - For CHEIGHT==2 make svg height to be 3 chars, so if font size
-  ;;   is increased, there will be no gap between two slices
+  ;; - For CHEIGHT>1 the svg is CHEIGHT lines tall and declares its
+  ;;   height in lines, so it follows the font and its slices stay
+  ;;   aligned when the font size changes
   (unless cheight (setq cheight 2))
   (let* ((base-dir (telega-directory-base-uri telega-database-dir))
          (photofile (telega-file--path file))
@@ -887,9 +888,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
          (cfull (floor (+ ch margin)))
          (aw-chars (telega-chars-in-width ch))
          (svg-xw (telega-chars-xwidth aw-chars))
-         (svg-xh (cond ((= cheight 1) cfull)
-                       ((= cheight 2) (+ cfull (telega-chars-xheight 1)))
-                       (t xh)))
+         (svg-xh (if (= cheight 1) cfull xh))
          (svg (telega-svg-create svg-xw svg-xh)))
     (if (telega-file-exists-p photofile)
         (let ((img-type (telega-image-supported-file-p photofile))
@@ -932,6 +931,8 @@ CHEIGHT specifies avatar height in chars, default is 2."
     (telega-svg-image svg
       :scale 1.0
       :width (telega-cw-width aw-chars)
+      :height (unless (= cheight 1) (telega-ch-height cheight))
+      :telega-nslices (unless (= cheight 1) cheight)
       :ascent 'center
       :mask 'heuristic
       :base-uri (expand-file-name "dummy" base-dir)
