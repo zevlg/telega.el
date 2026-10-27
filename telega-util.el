@@ -235,7 +235,10 @@ Also take into account `:align-to' display property, used by
        telega--column-offset
        (or (when-let ((lwprefix (or (get-text-property bol-point 'line-prefix)
                                     (get-text-property bol-point 'wrap-prefix))))
-             (string-width lwprefix))
+             ;; NOTE: prefix might be a display spec, for example
+             ;; `visual-wrap-prefix-mode' uses `(space :align-to ...)'
+             (when (stringp lwprefix)
+               (string-width lwprefix)))
            0))))
 
 (defun telega-canonicalize-number (value from-value)

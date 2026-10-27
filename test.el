@@ -1017,6 +1017,13 @@ argument would leave them holding an object the cache does not use."
        (kill-buffer chatbuf)))
     (should-not (buffer-live-p chatbuf))))
 
+(ert-deftest telega-current-column-non-string-prefix ()
+  "Non-string `wrap-prefix', as set by `visual-wrap-prefix-mode'."
+  (with-temp-buffer
+    (insert (propertize "hello" 'wrap-prefix
+                        '(space :align-to (+ (2) (1 . width)))))
+    (should (= (telega-current-column) 5))))
+
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:
