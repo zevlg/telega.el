@@ -3197,7 +3197,9 @@ not signal an error and just return nil."
 Used if images are not available."
   (let ((qrcode-cmd (telega-docker-exec-cmd
                      (format "qrencode -m 2 -t UTF8 '%s'" text)
-                     'try-host-first)))
+                     'try-host-first))
+        ;; NOTE: output is UTF-8 regardless of the language environment
+        (coding-system-for-read 'utf-8))
     (telega-debug "RUN: %s" qrcode-cmd)
     (string-trim-right (shell-command-to-string qrcode-cmd))))
 
