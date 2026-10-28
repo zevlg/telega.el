@@ -1352,7 +1352,6 @@ Please downgrade TDLib and recompile `telega-server'"
 
       (authorizationStateWaitPhoneNumber
        (if (and (not telega--relogin-with-phone-number)
-                telega-use-images
                 (or (executable-find "qrencode")
                     ;; NOTE: docker image has "qrencode" tool
                     telega-use-docker))

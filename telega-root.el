@@ -2406,15 +2406,23 @@ state kinds to show. By default all kinds are shown."
 (defun telega-qr-code--show (link)
   "Hide QR code scanning dialog.
 If LINK is nil, then link is loading."
-  (cl-assert telega-use-images)
   (with-telega-root-view-ewoc "root" ewoc
     (telega-save-cursor
       (telega-ewoc--set-footer ewoc
         (telega-ins--as-string
-         (if link
-             (telega-ins--image
-              (telega-qr-code--create-image link (telega-chars-xheight 10)))
-           (telega-ins "QR code loading.."))
+         (cond ((null link)
+                (telega-ins "QR code loading.."))
+               (telega-use-images
+                (telega-ins--image
+                 (telega-qr-code--create-image
+                  link (telega-chars-xheight 10))))
+               (t
+                ;; NOTE: UTF8 QR code is drawn with light modules as
+                ;; foreground, so use fixed colors to make it
+                ;; scannable regardless of the theme
+                (telega-ins--with-face '(:foreground "white"
+                                         :background "black")
+                  (telega-ins (telega-qr-code--create-text link)))))
          (telega-ins "\n")
          (telega-ins--with-face 'bold
            (telega-ins (telega-i18n "lng_intro_qr_title") "\n"))

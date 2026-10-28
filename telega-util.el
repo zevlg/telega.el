@@ -3192,6 +3192,15 @@ not signal an error and just return nil."
       :scale 1.0 :ascent 'center
       :width size :height size)))
 
+(defun telega-qr-code--create-text (text)
+  "Generate UTF8 text with the QR code encoding TEXT.
+Used if images are not available."
+  (let ((qrcode-cmd (telega-docker-exec-cmd
+                     (format "qrencode -m 2 -t UTF8 '%s'" text)
+                     'try-host-first)))
+    (telega-debug "RUN: %s" qrcode-cmd)
+    (string-trim-right (shell-command-to-string qrcode-cmd))))
+
 (defun telega-completing-read-emoji-status-duration (prompt)
   "Read duration for the custom emoji."
   (let* ((choices (mapcar (lambda (delay)
