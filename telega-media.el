@@ -927,6 +927,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
     (telega-svg-image svg
       :scale 1.0
       :width (telega-cw-width aw-chars)
+      :height (unless (= cheight 1) (telega-ch-height cheight))
       :max-height (telega-ch-height cheight)
       :ascent 'center
       :mask 'heuristic
