@@ -254,6 +254,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} joined the group via invite link")
  ("lng_action_user_joined_by_request"
   :value "{from} was accepted to the group")
+ ("lng_action_user_joined_via_community"
+  :value "{from} joined the group via the {community} community")
+ ("lng_action_user_joined_via_community_unknown"
+  :value "{from} joined the group via a community")
  ("lng_action_you_joined_by_request"
   :value "Your request to join the group was approved")
  ("lng_action_you_joined_by_request_channel"
@@ -357,6 +361,8 @@ Example: 23 y.o. designer from San Francisco")
  ("telega_query_reset_notifications"
   :value "Reset all notifications settings? ")
 
+ ("lng_profile_enable_notifications"
+  :value "Notifications")
  ("lng_profile_delete_channel"
   :value "Delete channel")
  ("lng_profile_delete_group"
@@ -462,8 +468,24 @@ Example: 23 y.o. designer from San Francisco")
   :value "Location")
  ("lng_info_location_label"
   :value "Location")
+ ("lng_location_title"
+  :value "Location")
  ("lng_live_location"
   :value "Live Location")
+ ("lng_live_location_now"
+  :value "updated just now")
+ ("lng_live_location_minutes"
+  :one_value "updated {count} minute ago"
+  :other_value "updated {count} minutes ago")
+ ("lng_live_location_hours"
+  :one_value "updated {count} hour ago"
+  :other_value "updated {count} hours ago")
+ ("lng_live_location_date_time"
+  :value "updated {date} at {time}")
+ ("lng_live_location_yesterday"
+  :value "updated yesterday at {time}")
+ ("lng_reaction_live_location"
+  :value "{reaction} to your live location")
 
  ("lng_manage_linked_channel"
   :value "Linked channel")
@@ -626,12 +648,14 @@ Example: 23 y.o. designer from San Francisco")
   :value "You cannot edit the rights of this admin.") ; :can_be_edited
  ("lng_rights_group_manage_calls"
   :value "Manage Video chats")
+ ("lng_rights_group_send_welcome_messages"
+  :value "Send Welcome Messages")
  ("lng_rights_group_anonymous"
   :value "Remain Anonymous")
  ("lng_rights_group_manage_ranks"
   :value "Edit member tags")
  ("lng_rights_edit_admin"
-  :value "Edit permissions")
+  :value "Admin rights")
  ("telega_rights_restrict_members"
   :value "Restrict Members")
  ("telega_rights_promote_members"
@@ -1405,6 +1429,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "View Style")
  ("lng_auction_preview_view_results"
   :value "View Results")
+ ("lng_contact_details_button"
+  :value "View Contact")
 
  ("lng_unblock_button"
   :value "Unblock")
@@ -2514,4 +2540,44 @@ this channel?")
 
  ("lng_community_title"
   :value "Community")
+
+ ("lng_managed_bot_created_title"
+  :value "{name} created!")
+ ("lng_action_community_added"
+  :value "{from} added this group to the {community} community.")
+ ("lng_action_community_added_chat"
+  :value "This chat was added to the {community} community.")
+ ("lng_action_community_added_channel"
+  :value "This channel was added to the {community} community.")
+ ("lng_action_community_added_unknown"
+  :value "{from} added this group to a community.")
+ ("lng_action_community_added_unknown_chat"
+  :value "This chat was added to a community.")
+ ("lng_action_community_added_unknown_channel"
+  :value "This channel was added to a community.")
+ ("lng_action_community_removed"
+  :value "{from} removed this group from the community.")
+ ("lng_action_community_removed_chat"
+  :value "This chat was removed from the community.")
+ ("lng_action_community_removed_channel"
+  :value "This channel was removed from the community.")
+
+ ("lng_community_manage"
+  :value "Manage Community")
+ ("lng_community_manage_name"
+  :value "Community Name")
+ ("lng_rights_community_info"
+  :value "Edit Community Name")
+ ("lng_rights_community_linked"
+  :value "Edit Chat List")
+ ("lng_rights_community_ban"
+  :value "Ban Members")
+
+ ("lng_restore_window"
+  :value "Restore")
+ ("lng_export_from_beginning"
+  :value "Reset")
+
+ ("lng_auction_join_time_left"
+  :value "{time} left")
  )

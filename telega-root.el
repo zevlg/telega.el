@@ -64,7 +64,7 @@ First element is symbol denoting the view.
 Second arg is root view header to show.
 Rest elements are ewoc specs.")
 (defvar telega-root--view-filter nil
-  "Additional Chat Filter applied implicitely for the root view.")
+  "Additional Chat Filter applied implicitly for the root view.")
 (defvar telega-root-view--header-marker nil
   "Marker used for root view header.")
 (defvar telega-root-view--ewocs-marker nil
@@ -702,7 +702,7 @@ Keep cursor position only if CHAT is visible."
 
 ;;; Pretty Printers for root view ewocs
 (defun telega-chat-button-toggle-view (chat)
-  "Toogle view for CHAT button."
+  "Toggle view for CHAT button."
   (interactive (list (telega-chat-at (point))))
   (unless (telega-chat-p chat)
     (user-error "telega: No chat at point"))
@@ -854,7 +854,7 @@ CONTACT is some user you have exchanged contacts with."
 (defun telega-root--message-pp (msg &optional custom-inserter visible-p)
   "Pretty printer for MSG button shown in root buffer."
   (declare (indent 1))
-  (let ((visible-p (or visible-p 
+  (let ((visible-p (or visible-p
                        (telega-chat-match-active-p (telega-msg-chat msg)))))
     (when visible-p
       (telega-button--insert 'telega-msg msg
@@ -1106,9 +1106,9 @@ If corresponding chat node does not exists in EWOC, then create new one."
   ;; NOTE: `telega-root--found-messages-add' also used for
   ;; `FoundPublicPosts' structure, which has no `:total_count'
   ;; property
-  (let ((total-count (plist-get found-messages :total_count))
+  (let ((total-count (telega-tl-get0 found-messages :total_count))
         (next-offset (telega-tl-str found-messages :next_offset)))
-    (cond ((and total-count (zerop total-count))
+    (cond ((zerop total-count)
            (with-telega-root-view-ewoc ewoc-name ewoc
              (telega-save-cursor
                (telega-ewoc--set-footer ewoc
@@ -1180,7 +1180,8 @@ If corresponding chat node does not exists in EWOC, then create new one."
            (telega-ins "\n")
            (telega-ins--help-message
             (telega-ins-i18n "lng_posts_remaining"
-              :count (plist-get pp-limits :remaining_free_query_count)))))))))
+              :count (telega-tl-get0 pp-limits :remaining_free_query_count)))))))
+    ))
 
 (defun telega-root--call-messages-search (&optional offset)
   "Search for call messages."
@@ -1493,10 +1494,10 @@ VIEW-FILTER is additional chat filter for this root view."
         (telega-chat> (telega-msg-chat msg1) (telega-msg-chat msg2)))
 
     ;; Sort by message date
-    (> (if (zerop (plist-get msg1 :edit_date))
+    (> (if (zerop (telega-tl-get0 msg1 :edit_date))
            (plist-get msg1 :date)
          (plist-get msg1 :edit_date))
-       (if (zerop (plist-get msg2 :edit_date))
+       (if (zerop (telega-tl-get0 msg2 :edit_date))
            (plist-get msg2 :date)
          (plist-get msg2 :edit_date)))))
 
@@ -2405,14 +2406,22 @@ state kinds to show. By default all kinds are shown."
 (defun telega-qr-code--show (link)
   "Hide QR code scanning dialog.
 If LINK is nil, then link is loading."
-  (cl-assert telega-use-images)
   (with-telega-root-view-ewoc "root" ewoc
     (telega-save-cursor
       (telega-ewoc--set-footer ewoc
         (telega-ins--as-string
          (if link
-             (telega-ins--image
-              (telega-qr-code--create-image link (telega-chars-xheight 10)))
+             ;; NOTE: UTF8 text is used if images are not available.
+             ;; It is drawn with light modules as foreground, so use
+             ;; fixed colors to make it scannable regardless of the
+             ;; theme
+             (telega-ins--with-face '(:foreground "white"
+                                      :background "black")
+               (telega-ins--image
+                (telega-qr-code--create-image link (telega-chars-xheight 10))
+                nil
+                :telega-text (string-trim-right
+                              (telega-qr-code--encode link "UTF8"))))
            (telega-ins "QR code loading.."))
          (telega-ins "\n")
          (telega-ins--with-face 'bold

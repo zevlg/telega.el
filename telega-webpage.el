@@ -165,8 +165,8 @@ Keymap:
 (defun telega-webpage-rticon--image (rt)
   "Return image representing rich text icon for RT."
   (let* ((doc (plist-get rt :document))
-         (width (plist-get rt :width))
-         (height (plist-get rt :height))
+         (width (telega-tl-get0 rt :width))
+         (height (telega-tl-get0 rt :height))
          (cheight (telega-media--cheight-for-limits
                    width height
                    (list 1 1 (nth 2 telega-webpage-photo-size-limits)
@@ -288,7 +288,7 @@ Keymap:
          (title (telega-tl-str pageblock :title))
          (desc (telega-tl-str pageblock :description))
          (author (plist-get pageblock :author))
-         (publish-date (plist-get pageblock :publish_date)))
+         (publish-date (telega-tl-get0 pageblock :publish_date)))
     (telega-ins--with-attrs (list :max telega-webpage-fill-column
                                   :elide t)
       (when photo-image
@@ -317,8 +317,8 @@ Keymap:
 (defun telega-webpage--animation-ffplay-callback (proc frame anim)
   "Callback for inline animation playback."
   (let ((telega-animation-height (telega-media--cheight-for-limits
-                                  (plist-get anim :width)
-                                  (plist-get anim :height)
+                                  (telega-tl-get0 anim :width)
+                                  (telega-tl-get0 anim :height)
                                   telega-webpage-photo-size-limits)))
     (telega-animation--ffplay-callback proc frame anim)))
 
@@ -341,22 +341,26 @@ Keymap:
 (defun telega-webpage--animation-inserter (anim)
   "Inserter for the animation button."
   (let ((telega-animation-height (telega-media--cheight-for-limits
-                                  (plist-get anim :width)
-                                  (plist-get anim :height)
+                                  (telega-tl-get0 anim :width)
+                                  (telega-tl-get0 anim :height)
                                   telega-webpage-photo-size-limits)))
     (telega-ins--animation-image anim 'sliced)))
 
-(defun telega-webpage--animation-action (anim)
-  "Action to take when animation button in pressed."
+(defun telega-webpage--play-media (media file-property)
+  "Download and play FILE-PROPERTY of MEDIA."
   (telega-ffplay-stop)
-  (telega-file--cancel-download (plist-get anim :animation) 'sync)
+  (telega-file--cancel-download (plist-get media file-property) 'sync)
 
-  (telega-file--download (telega-file--renew anim :animation)
+  (telega-file--download (telega-file--renew media file-property)
     :priority 32
     :update-callback
-    (lambda (afile)
-      (when (telega-file--downloaded-p afile)
-        (telega-video-player-run (telega--tl-get afile :local :path))))))
+    (lambda (file)
+      (when (telega-file--downloaded-p file)
+        (telega-video-player-run (telega--tl-get file :local :path))))))
+
+(defun telega-webpage--animation-action (animation)
+  "Action to take when an animation button is pressed."
+  (telega-webpage--play-media animation :animation))
 
 (defun telega-webpage--ins-animation (animation)
   "Insert pageblock with ANIMATION."
@@ -366,6 +370,15 @@ Keymap:
     :telega-animation animation
     :telega-add-sensor-func #'telega-webpage--animation-sensor-func
     'help-echo "RET to play animation"))
+
+(defun telega-webpage--ins-video (video)
+  "Insert a button to play VIDEO."
+  (telega-button--insert 'telega video
+    :inserter (lambda (button-video)
+                (telega-ins--video nil button-video 'thumbnail))
+    :action (lambda (button-video)
+              (telega-webpage--play-media button-video :video))
+    'help-echo "RET to play video"))
 
 (defun telega-webpage--ins-pb (pb)
   "Insert PageBlock PB for the instant view."
@@ -382,7 +395,7 @@ Keymap:
          (telega-ins-prefix "By "
            (when (telega-webpage--ins-rt (plist-get pb :author))
              (telega-ins " • ")))
-         (let ((publish-date (plist-get pb :publish_date)))
+         (let ((publish-date (telega-tl-get0 pb :publish_date)))
            (when (zerop publish-date)
              (setq publish-date (time-to-seconds)))
            (telega-ins--date publish-date 'date-long)))
@@ -465,7 +478,7 @@ Keymap:
        (let ((telega-webpage-strip-nl t))
          (telega-webpage--ins-pb (plist-get pb :caption))))
       (pageBlockVideo
-       (telega-ins "<TODO: pageBlockVideo>\n"))
+       (telega-rich-text--ins-pb pb))
       (pageBlockCover
        (telega-webpage--ins-pb (plist-get pb :cover)))
       (pageBlockEmbedded
@@ -595,8 +608,8 @@ instant view for the URL."
     (telega-ins-from-newline
      (telega-ins "\n")
      (telega-ins--with-face '(:inherit telega-webpage-outline :overline t)
-       (let ((view-count (plist-get telega-webpage--iv :view_count)))
-         (unless (telega-zerop view-count)
+       (let ((view-count (telega-tl-get0 telega-webpage--iv :view_count)))
+         (unless (zerop view-count)
            (telega-ins-i18n "lng_views_tooltip"
              :count view-count)))
        (when-let ((tdlib-link (plist-get telega-webpage--iv :feedback_link))

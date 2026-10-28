@@ -149,6 +149,9 @@ If DEFAULT-VALUE is not specified, then nil is used."
   :description (lambda () (telega-i18n "lng_forward_action_hide_sender"))
   :class 'telega-transient--checkbox-switch
   :variable :fwd-remove-sender
+  :init-value (lambda (obj)
+                (oset obj value
+                      (and current-prefix-arg t)))
   :global-p nil
   :deps-list '((nil nil :fwd-remove-caption))
   )
@@ -162,6 +165,9 @@ If DEFAULT-VALUE is not specified, then nil is used."
                     (telega--tl-get msg :content :caption))
                   (oref (transient-prefix-object) scope)))
   :variable :fwd-remove-caption
+  :init-value (lambda (obj)
+                (oset obj value
+                      (> (prefix-numeric-value current-prefix-arg) 4)))
   :global-p nil
   :deps-list '((t t :fwd-remove-sender)))
 
@@ -201,7 +207,7 @@ If DEFAULT-VALUE is not specified, then nil is used."
      (telega-ins--chat chat))))
 
 (transient-define-argument telega-transient--infix-fwd-chats ()
-  "List of chats to forward messges to."
+  "List of chats to forward messages to."
   :description (lambda () (telega-i18n "lng_recent_chats"))
   :class 'telega-transient--chats
   :format " %k %d%v"
@@ -252,6 +258,8 @@ If DEFAULT-VALUE is not specified, then nil is used."
               :with-brackets-p t)))
   :if (lambda ()
         (and telega-msg-forward--last-chat
+             (not (eq telega-msg-forward--last-chat
+                      telega-chatbuf--chat))
              (not (eq telega-msg-forward--last-chat
                       (telega-chat-me)))))
 
@@ -404,8 +412,9 @@ If DEFAULT-VALUE is not specified, then nil is used."
   "Help for message auto deletion duration."
   :format "  %d"
   :description (lambda ()
-                 (let ((auto-delete-in (plist-get (car (telega-transient-scope))
-                                                  :auto_delete_in)))
+                 (let ((auto-delete-in (telega-tl-get0
+                                        (car (telega-transient-scope))
+                                        :auto_delete_in)))
                    (telega-ins--as-string
                     (telega-ins--with-attrs (list :fill 'left
                                                   :fill-column fill-column
@@ -418,8 +427,9 @@ If DEFAULT-VALUE is not specified, then nil is used."
   :if (lambda ()
         (when-let* ((messages (telega-transient-scope))
                     ((= 1 (length messages)))
-                    (auto-delete-in (plist-get (car messages) :auto_delete_in)))
-          (not (telega-zerop auto-delete-in))))
+                    (auto-delete-in (telega-tl-get0
+                                     (car messages) :auto_delete_in)))
+          (not (zerop auto-delete-in))))
   :class 'telega-transient-information)
 
 (transient-define-infix telega-transient--infix-msg-revoke ()
@@ -550,7 +560,7 @@ If DEFAULT-VALUE is not specified, then nil is used."
   (interactive (list (telega-transient-scope)))
   (cl-ecase (telega--tl-type topic)
     (forumTopic
-     (telega--deleteForumTopic 
+     (telega--deleteForumTopic
       (telega-topic-chat topic) topic))
     (directMessagesChatTopic
      (telega--deleteDirectMessagesChatTopicHistory
@@ -1305,14 +1315,14 @@ Return fake chat suitable for `telega-ins--msg-sender'."
                                   (plist-get il-info :verification_status))
                                  (telega-tl-str il-info :title))
              :with-palette (telega-palette-by-color-id
-                            (plist-get il-info :accent_color_id))))
+                            (telega-tl-get0 il-info :accent_color_id))))
          (telega-ins--with-face 'telega-shadow
            (telega-ins-i18n (if (telega-chat-match-p fake-chat '(type channel))
                                 "lng_chat_status_subscribers"
                               "lng_chat_status_members")
-             :plural-count (plist-get il-info :member_count)
+             :plural-count (telega-tl-get0 il-info :member_count)
              :count (telega-number-human-readable
-                     (plist-get il-info :member_count))))
+                     (telega-tl-get0 il-info :member_count))))
          (telega-ins "\n")
 
          (unless (telega-transient--invite-link-need-subscription-p)
@@ -1328,7 +1338,8 @@ Return fake chat suitable for `telega-ins--msg-sender'."
              :channel (propertize (telega-tl-str il-info :title)
                                   'face 'bold)
              :price (format "%s%d" (telega-symbol 'telegram-star)
-                            (telega--tl-get s-info :pricing :star_count)))
+                            (telega-tl-get0 (plist-get s-info :pricing)
+                                            :star_count)))
            (telega-ins "\n")
 
            ;; My stars balance
@@ -1521,7 +1532,7 @@ Return fake chat suitable for `telega-ins--msg-sender'."
   (telega-msg-summarize msg nil (telega-transient--translate-ai-tone)))
 
 (transient-define-suffix telega-transient--suffix-summarize-translate (msg)
-  :description 
+  :description
   (lambda ()
     (telega-ins--as-string
      (telega-ins (telega-i18n "lng_summarize_header_title")
@@ -1576,7 +1587,7 @@ Return first applicable imc."
         'inputMessageVoiceNote)))
 
 (defun telega-transient--input-options-can-spoiler-p ()
-  "Retrun non-nil if spoiler is applicable."
+  "Return non-nil if spoiler is applicable."
   (telega-transient--input-option-applicable-p
    'inputMessageAnimation
    'inputMessagePhoto
@@ -1607,7 +1618,7 @@ Return first applicable imc."
     (let ((imc (telega-transient--input-option-applicable-p
                 'inputMessageLocation)))
       (or (not imc)
-          (telega-zerop (plist-get imc :live_period))))))
+          (zerop (telega-tl-get0 imc :live_period))))))
 
 (transient-define-infix telega-transient--infix-input-option-spoiler ()
   "Hide media content under spoiler."
@@ -1640,12 +1651,14 @@ Return first applicable imc."
 (transient-define-prefix telega-transient-chatbuf-input-options (attaches)
   "Edit chatbuf input options before sending message."
   [
-   ["Media Options"             
+   ["Media Options"
     ("s" telega-transient--infix-input-option-spoiler)
     ("d" telega-transient--infix-input-option-self-destruct)
     ]
    ["Link Preview Options"
-    ("l" telega-transient-link-preview-options)
+    ("l" telega-transient-link-preview-options
+     :description (lambda ()
+                    (telega-i18n "lng_link_options_header")))
     ]
    ]
   [("RET" telega-transient--suffix-input-option-apply)
@@ -1849,6 +1862,8 @@ Return first applicable imc."
     (user-error "No input for AI compose"))
   (transient-setup 'telega-transient-chatbuf-input-ai-compose nil nil
                    :scope (plist-get imc :text)))
+
+;; TODO: transient dialog for input poll
 
 
 ;;; ellit-org: minor-modes

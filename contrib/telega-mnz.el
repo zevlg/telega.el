@@ -100,7 +100,7 @@ only for code larger then this number of chars."
 ;; - {{{user-option(telega-mnz-edit-display-buffer-action, 2)}}}
 (defcustom telega-mnz-edit-display-buffer-action
   '((display-buffer-below-selected))
-  "Action value when poping to code edit buffer.
+  "Action value when popping to code edit buffer.
 See docstring for `display-buffer' for the value meaning."
   :type (get 'display-buffer-alist 'custom-type)
   :group 'telega-modes)
@@ -286,15 +286,15 @@ language-detection is used in this case, used for
     ))
 
 (defun telega-mnz--text-entity-apply (ent &optional object)
-  "Highligh OBJECT in case of code block with defined language."
+  "Highlight OBJECT in case of code block with defined language."
   (when (and object
              (memq (telega--tl-type (plist-get ent :type))
                    telega-mnz-entity-types)
              telega-msg--current
              (with-telega-chatbuf (telega-msg-chat telega-msg--current 'offline)
                telega-mnz-mode))
-    (when-let* ((beg (plist-get ent :offset))
-                (end (+ (plist-get ent :offset) (plist-get ent :length)))
+    (when-let* ((beg (telega-tl-get0 ent :offset))
+                (end (+ beg (telega-tl-get0 ent :length)))
                 (text (telega--desurrogate-apply (substring object beg end)))
                 (mode (telega-mnz--mode-for-language
                        (telega-tl-str (plist-get ent :type) :language) text)))
@@ -376,8 +376,8 @@ To cancel, hit %s.")
       (if-let* ((telega-inhibit-telega-display-by t)
                 (msg-fmt-text (or (telega--tl-get msg :content :text)
                                   (telega--tl-get msg :content :caption)))
-                (cb-start (plist-get cb-ent :offset))
-                (cb-stop (+ cb-start (plist-get cb-ent :length)))
+                (cb-start (telega-tl-get0 cb-ent :offset))
+                (cb-stop (+ cb-start (telega-tl-get0 cb-ent :length)))
                 (new-code (telega-mnz--recursive-edit-code
                            (telega-mnz--mode-for-language
                             (telega-tl-str (plist-get cb-ent :type) :language))

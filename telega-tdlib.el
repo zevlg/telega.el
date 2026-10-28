@@ -600,7 +600,7 @@ BLOCK-LIST is one of `blockListMain' or `blockListStories'.
 First element is the list is total number of blocked message senders."
   (declare (indent 2))
   (with-telega-server-reply (reply)
-      (nconc (list block-list (plist-get reply :total_count))
+      (nconc (list block-list (telega-tl-get0 reply :total_count))
             (mapcar #'telega-msg-sender (plist-get reply :senders)))
 
     (list :@type "getBlockedMessageSenders"
@@ -1351,7 +1351,7 @@ TDLib 1.8.12:
                          :is_current_phone_number :false))))
 
 (defun telega--checkAuthenticationPassword (password)
-  "Check the PASSWORD for the 2-factor authentification."
+  "Check the PASSWORD for the 2-factor authentication."
   (telega-server--send
    (list :@type "checkAuthenticationPassword"
          :password password)))
@@ -1508,7 +1508,7 @@ by 86400."
 
 (defun telega--setChatDraftMessage (chat &optional draft-msg)
   "Set CHAT's draft message to DRAFT-MSG.
-If DRAFT-MSG is ommited, then clear draft message."
+If DRAFT-MSG is omitted, then clear draft message."
   (telega-server--send
    (nconc (list :@type "setChatDraftMessage"
                 :chat_id (plist-get chat :id)
@@ -1784,7 +1784,7 @@ PRIORITY is same as for `telega-file--download'."
                                     options &key reply-markup callback sync-p)
   "Send the message content represented by IMC to CHAT.
 If CALLBACK is specified, then call it with one argument - new
-message uppon message is created."
+message upon message is created."
   ;; We catch new message with `telega--on-updateNewMessage', so
   ;; ignore result returned from `sendMessage'
   (telega-server--call
@@ -1805,7 +1805,7 @@ message uppon message is created."
                                          options &key callback sync-p)
   "Send IMCS as media album.
 If CALLBACK is specified, then call it with one argument - new
-message uppon message is created."
+message upon message is created."
   (telega-server--call
    (nconc (list :@type "sendMessageAlbum"
                 :chat_id (plist-get chat :id)
@@ -1834,7 +1834,7 @@ PARAM is additional parameter for deep linking."
                                                      options &key callback sync-p)
   "Send IMC as inline query result from bot.
 If CALLBACK is specified, then call it with one argument - new
-message uppon message is created."
+message upon message is created."
   (telega-server--call
    (nconc (list :@type "sendInlineQueryResultMessage"
                 :chat_id (plist-get chat :id)
@@ -1880,39 +1880,33 @@ message uppon message is created."
             (list :reply_markup reply-markup)))
    (or callback (unless sync-p #'ignore))))
 
-(cl-defun telega--editMessageLiveLocation (msg location
+(cl-defun telega--editMessageLiveLocation (msg live-location
                                                &key reply-markup
                                                heading proximity-alert-radius
                                                callback sync-p)
   "Edit the message content of a live location.
-Pass nil as LOCATION to stop sharing live location.
+Pass nil as LIVE-LOCATION to stop sharing live location.
 HEADING - the new direction in which the location moves, in degrees;
 1-360. Pass 0 if unknown.
 PROXIMITY-ALERT-RADIUS - the new maximum distance for proximity
 alerts, in meters (0-100000). Pass 0 if the notification is disabled."
   (declare (indent 2))
-  (let ((content (plist-get msg :content)))
-    ;; Keep heading/proximity-alert-radius values if not explicitly
-    ;; specified
-    (unless heading
-      (setq heading
-            (plist-get content :heading)))
-    (unless proximity-alert-radius
-      (setq proximity-alert-radius
-            (plist-get content :proximity_alert_radius))))
+  (let ((content (plist-get msg :content))
+        (new-live-loc (copy-sequence live-location)))
+    ;; Probably update heading and proximity alert radius
+    (when (and new-live-loc heading)
+      (plist-put new-live-loc :heading heading))
+    (when (and new-live-loc proximity-alert-radius)
+      (plist-put new-live-loc :proximity_alert_radius proximity-alert-radius))
 
-  (telega-server--call
-   (nconc (list :@type "editMessageLiveLocation"
-                :chat_id (plist-get msg :chat_id)
-                :message_id (plist-get msg :id)
-                :location location)
-          (when heading
-            (list :heading heading))
-          (when proximity-alert-radius
-            (list :proximity_alert_radius proximity-alert-radius))
-          (when reply-markup
-            (list :reply_markup reply-markup)))
-   (or callback (unless sync-p #'ignore))))
+    (telega-server--call
+     (nconc (list :@type "editMessageLiveLocation"
+                  :chat_id (plist-get msg :chat_id)
+                  :message_id (plist-get msg :id)
+                  :location new-live-loc)
+            (when reply-markup
+              (list :reply_markup reply-markup)))
+     (or callback (unless sync-p #'ignore)))))
 
 (cl-defun telega--editMessageMedia (msg imc &key reply-markup
                                         callback sync-p)
@@ -2207,7 +2201,7 @@ Return error if all chats are loaded."
    callback))
 
 (defun telega--getChats (chat-list &optional callback)
-  "Retreive all chats from the server in async manner.
+  "Retrieve all chats from the server in async manner.
 OFFSET-CHAT is the chat to start getting chats from."
   (declare (indent 1))
   (with-telega-server-reply (reply)
@@ -2344,7 +2338,7 @@ be marked as read."
          :chat_list tdlib-chat-list)))
 
 (defun telega--toggleChatHasProtectedContent (chat has-protected-content-p)
-  "Toogle ability of users to save, forward, or copy CHAT content."
+  "Toggle ability of users to save, forward, or copy CHAT content."
   (telega-server--send
    (list :@type "toggleChatHasProtectedContent"
          :chat_id (plist-get chat :id)
@@ -2481,7 +2475,7 @@ If OPTION-IDS is not specified, then retract the voice."
          :protocol telega-voip-protocol)))
 
 (defun telega--acceptCall (call-id)
-  "Accept incomming call, defined by CALL-ID."
+  "Accept incoming call, defined by CALL-ID."
   (telega-server--call
    (list :@type "acceptCall"
          :call_id call-id
@@ -2513,7 +2507,7 @@ Return FoundMessages TL structure."
 
 (cl-defun telega--searchPublicPosts (query &key offset (limit 100) star-count
                                            callback)
-  "Searche for public channel posts using the given QUERY.
+  "Search for public channel posts using the given QUERY.
 Return FoundPublicPosts."
   (declare (indent 1))
   (telega-server--call
@@ -3517,7 +3511,7 @@ Saved Messages topic is specified by SM-TOPIC-ID."
     (supergroup enable-p &optional callback)
   "Toggles whether sponsored messages are shown in the channel chat."
   (telega-server--send-or-call
-   (list :@type "toggleHasSponsoredMessagesEnabled"
+   (list :@type "toggleSupergroupCanHaveSponsoredMessages"
          :supergroup_id (plist-get supergroup :id)
          :can_have_sponsored_messages (if enable-p t :false))
    callback))
@@ -3601,6 +3595,7 @@ Saved Messages topic is specified by SM-TOPIC-ID."
 
 (defun telega--getCurrentWeather (location &optional callback)
   "Return the current weather in the given LOCATION."
+  (declare (indent 1))
   (telega-server--call
    (list :@type "getCurrentWeather"
          :location location)
@@ -3797,7 +3792,7 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
    callback))
 
 (defun telega--searchChatAffiliateProgram (username referrer &optional callback)
-  "Searche a chat with an affiliate program."
+  "Search a chat with an affiliate program."
   (declare (indent 2))
   (with-telega-server-reply (reply)
       (telega-chat-get (plist-get reply :id))
@@ -3841,6 +3836,13 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
   (telega-server--call
    (list :@type "fixTextWithAi"
          :text fmt-text)
+   callback))
+
+(defun telega--getTextEntities (text &optional callback)
+  "Return all entities found in the TEXT string."
+  (telega-server--call
+   (list :@type "getTextEntities"
+         :text text)
    callback))
 
 (provide 'telega-tdlib)

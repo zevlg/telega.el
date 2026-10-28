@@ -579,6 +579,39 @@
  ("lng_action_user_joined_by_request"
   :value "{from} 已被批准加入群组")
 
+ ("lng_action_user_joined_via_community"
+  :value "{from} 通过 {community} 社群加入了此群组")
+
+ ("lng_action_user_joined_via_community_unknown"
+  :value "{from} 通过社群加入了此群组")
+
+ ("lng_action_community_added"
+  :value "{from} 已将此群组添加到 {community} 社群中。")
+
+ ("lng_action_community_added_chat"
+  :value "此聊天已添加到 {community} 社群。")
+
+ ("lng_action_community_added_channel"
+  :value "此频道已添加到 {community} 社群。")
+
+ ("lng_action_community_added_unknown"
+  :value "{from} 已将此群组添加到社群。")
+
+ ("lng_action_community_added_unknown_chat"
+  :value "此聊天已添加到社群。")
+
+ ("lng_action_community_added_unknown_channel"
+  :value "此频道已添加到社群。")
+
+ ("lng_action_community_removed"
+  :value "{from} 已从社群中移除此群组。")
+
+ ("lng_action_community_removed_chat"
+  :value "此聊天已从社群中移除。")
+
+ ("lng_action_community_removed_channel"
+  :value "此频道已从社群中移除。")
+
  ("lng_action_you_joined_by_request"
   :value "您加入群组的请求已被批准")
 

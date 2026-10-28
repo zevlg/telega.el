@@ -34,7 +34,7 @@
 ;; - {{{user-option(telega-company-active, 2)}}}
 ;;
 ;; Enable company completions with:
-;;;; #+begin_src elisp
+;; #+begin_src elisp
 ;; (add-hook 'telega-chat-mode-hook 'telega-completions-setup-company)
 ;; #+end_src
 ;;

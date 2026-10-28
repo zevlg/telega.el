@@ -164,8 +164,8 @@ chats matching this chat filter."
   (when (and telega-url-shorten-mode
              (eq 'textEntityTypeUrl (telega--tl-type (plist-get ent :type)))
              (not (telega--inhibit-telega-display-p 'telega-url-shorten)))
-    (let* ((beg (plist-get ent :offset))
-           (end (+ (plist-get ent :offset) (plist-get ent :length)))
+    (let* ((beg (telega-tl-get0 ent :offset))
+           (end (+ beg (telega-tl-get0 ent :length)))
            (ent-text (telega--desurrogate-apply
                       (if object
                           (substring object beg end)

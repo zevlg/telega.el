@@ -1,4 +1,4 @@
-[![CI test](https://github.com/zevlg/telega.el/workflows/CI/badge.svg)](https://github.com/zevlg/telega.el/actions) [![DOCKER image build](https://github.com/zevlg/telega.el/workflows/DOCKER/badge.svg)](https://github.com/zevlg/telega.el/actions) [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1?logo=telegram)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/TDLib-v1.8.66_(5c77c4692)-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://repology.org/badge/version-for-repo/gnuguix/emacs:telega.svg?header=GNU%20Guix)](https://packages.guix.gnu.org/packages/emacs-telega/) [![Open Collective](https://img.shields.io/opencollective/backers/telega?logo=opencollective)](https://opencollective.com/telega)
+[![CI test](https://github.com/zevlg/telega.el/workflows/CI/badge.svg)](https://github.com/zevlg/telega.el/actions) [![DOCKER image build](https://github.com/zevlg/telega.el/workflows/DOCKER/badge.svg)](https://github.com/zevlg/telega.el/actions) [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1?logo=telegram)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/TDLib-v1.8.68_(d1085f9ce)-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://repology.org/badge/version-for-repo/gnuguix/emacs:telega.svg?header=GNU%20Guix)](https://packages.guix.gnu.org/packages/emacs-telega/) [![Open Collective](https://img.shields.io/opencollective/backers/telega?logo=opencollective)](https://opencollective.com/telega)
 
 [![Backers](https://opencollective.com/telega/backers.svg?avatarHeight=32&width=600)](https://opencollective.com/telega)
 
@@ -81,7 +81,7 @@ Support `telega.el` by donating to:
 |:--:|
 | **BTC:** 1PeqqU1dGEqXy52yk3XEySaHXREsrtDvCc |
 
-Donating makes you telega patron forever and you get telega cat eyars
+Donating makes you telega patron forever and you get telega cat ears
 if you wish.
 
 # License
@@ -141,7 +141,7 @@ See `C-h v telega-proxies RET` for full range of proxy types.
 
 **Q**: **Stickers are not shown.**
 
-**A**: If you are using Emacs 26.3 or older, ensure you it was 
+**A**: If you are using Emacs 26.3 or older, ensure you it was
 configured with ImageMagick support. Next, install the `webp` package.
 
 **Q**: **There are no glyphs for some unicode characters.**
@@ -156,7 +156,7 @@ If using `fonts-symbola`, add this to your init.el:
 
 **Q**: **There is some formatting issues when some unicode characters are used.**
 
-**A**: Yes, partly.  If character has full width of multiple ordinary chars 
+**A**: Yes, partly.  If character has full width of multiple ordinary chars
 you can tweak `char-width-table`.  Add code like this to your init.el:
 
 ```elisp
@@ -210,5 +210,5 @@ does not show**
 
 **A**: Make sure your time is correct
 
-Eval `(telega-time-seconds)` to get UTC time in your Emacs, 
+Eval `(telega-time-seconds)` to get UTC time in your Emacs,
 it should be more or less the same as on https://www.unixtimestamp.com/

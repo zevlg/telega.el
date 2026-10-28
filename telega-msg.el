@@ -229,6 +229,15 @@
 
     map))
 
+(defvar telega-msg-button-location-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map telega-msg-button-map)
+    (define-key map (kbd "<wheel-down>") 'telega-msg-map-zoom-in)
+    (define-key map (kbd "<wheel-up>") 'telega-msg-map-zoom-out)
+    (define-key map (kbd "<down-mouse-1>") 'telega-msg-map-drag)
+    map)
+  "Keymap to control map thumbnail with the mouse.")
+
 (define-button-type 'telega-msg
   :supertype 'telega
   :inserter telega-inserter-for-msg-button
@@ -330,7 +339,7 @@ Return nil if there is no `down-mouse-3' keys in `this-command-keys'."
 
 (defun telega-msg-at (&optional pos msg-predicate)
   "Return current message at POS point.
-If POS is ommited, then return massage at current point.
+If POS is omitted, then return massage at current point.
 For interactive commands acting on message at point/mouse-event
 use `telega-msg-for-interactive' instead.
 If MSG-PREDICATE is specified, return non-nil only if resulting
@@ -366,13 +375,15 @@ Return nil for deleted messages."
 
 (defun telega-msg-replies-count (msg)
   "Return number of replies to the message MSG."
-  (or (telega--tl-get msg :interaction_info :reply_info :reply_count) 0))
+  (telega-tl-get0 (telega--tl-get msg :interaction_info :reply_info)
+                  :reply_count))
 
 (defun telega-msg-replies-has-unread-p (msg)
   "Return non-nil if some replies to MSG has been read and there are new unread."
   (let* ((reply-info (telega--tl-get msg :interaction_info :reply_info))
-         (last-msg-id (plist-get reply-info :last_message_id))
-         (last-read-msg-id (plist-get reply-info :last_read_inbox_message_id)))
+         (last-msg-id (telega-tl-get0 reply-info :last_message_id))
+         (last-read-msg-id
+          (telega-tl-get0 reply-info :last_read_inbox_message_id)))
     (and last-msg-id last-read-msg-id (not (zerop last-read-msg-id))
          (< last-read-msg-id last-msg-id))))
 
@@ -395,10 +406,10 @@ Return nil for deleted messages."
 (defun telega-msg-goto-reply-to-message (msg)
   "Goto message denoted by `:reply_to' field of the message MSG."
   (let* ((reply-to (plist-get msg :reply_to))
-         (chat-id (plist-get reply-to :chat_id))
-         (msg-id (plist-get reply-to :message_id))
+         (chat-id (telega-tl-get0 reply-to :chat_id))
+         (msg-id (telega-tl-get0 reply-to :message_id))
          (reply-quote (plist-get reply-to :quote)))
-    (unless (or (telega-zerop chat-id) (telega-zerop msg-id))
+    (unless (or (zerop chat-id) (zerop msg-id))
       (unless (gethash (cons chat-id msg-id) telega--cached-messages)
         (message "telega: %s" (telega-i18n "telega_loading")))
       (telega-msg-get (telega-chat-get chat-id) msg-id
@@ -525,15 +536,16 @@ Return nil for deleted messages."
          ;; 3) Time to download file to the end is less than it takes
          ;;    to play it
          (let* ((fsize (telega-file--size video-file))
-                (dsize
-                 (telega--tl-get video-file :local :downloaded_prefix_size))
-                (duration (or (plist-get video :duration) 50))
+                (dsize (telega-tl-get0 (plist-get video-file :local)
+                                       :downloaded_prefix_size))
+                (duration (telega-tl-get0 video :duration))
                 (probe-size (plist-get video :telega-video-probe-size))
                 (open-time (plist-get video :telega-video-pending-open))
                 ;; Downloaded duration
                 (ddur (* duration (/ (float dsize) fsize))))
            (when (and
-                  (zerop (telega--tl-get video-file :local :download_offset))
+                  (zerop (telega-tl-get0 (plist-get video-file :local)
+                                         :download_offset))
                   ;; Check for 1)
                   probe-size (> dsize probe-size) (> ddur 3)
                   ;; Check for 3)
@@ -543,7 +555,7 @@ Return nil for deleted messages."
                          (left-dtime (/ (- duration ddur) dspeed)))
                     (< left-dtime (- duration 1.5))))
              ;; Check for 2)
-             ;; 
+             ;;
              ;; NOTE: protect video from playing multiple times
              ;; *before* calling `telega-ffplay-get-resolution', which
              ;; might result in telega-server events processing,
@@ -581,7 +593,7 @@ Return nil for deleted messages."
                ;; file
                (plist-get video :supports_streaming)
                (not (memq 'video telega-open-message-as-file))
-               (let ((moov-size (* 2 1024 (or (plist-get video :duration) 50))))
+               (let ((moov-size (* 2 1024 (telega-tl-get0 video :duration))))
                  (when (> video-file-size (* 2 moov-size))
                    moov-size)))))
     (when (telega--tl-get msg :content :is_secret)
@@ -749,7 +761,7 @@ note finishes."
   (let* ((proc-plist (process-plist proc))
          (note (or (telega--tl-get msg :content :video_note)
                    (telega--tl-get msg :content :link_preview :type :video_note)))
-         (duration (plist-get note :duration))
+         (duration (telega-tl-get0 note :duration))
          (nframes (or (float (plist-get proc-plist :nframes))
                       (* 30.0 duration)))
          (played (when frame
@@ -925,7 +937,7 @@ non-nil."
   (unless link-preview
     (setq link-preview (telega--tl-get msg :content :link_preview)))
 
-  (if (telega-zerop (plist-get link-preview :instant_view_version))
+  (if (zerop (telega-tl-get0 link-preview :instant_view_version))
       (let ((lp-type (plist-get link-preview :type)))
         (cl-case (telega--tl-type lp-type)
           (linkPreviewTypePhoto
@@ -991,7 +1003,7 @@ non-nil."
         (telega-ins--with-face 'bold
           (telega-ins--fmt-text (plist-get poll :question))
           (telega-ins " (" (telega-i18n "lng_polls_votes_count"
-                             :count (plist-get poll :total_voter_count))
+                             :count (telega-tl-get0 poll :total_voter_count))
                       ")"))
         (telega-ins "\n")
         ;; Quiz explanation goes next
@@ -1012,7 +1024,7 @@ non-nil."
                 (telega-ins-fmt " — %d%% (%s)\n"
                   (plist-get popt :vote_percentage)
                   (telega-i18n "lng_polls_votes_count"
-                    :count (plist-get popt :voter_count))))
+                    :count (telega-tl-get0 popt :voter_count))))
               (when-let* ((voters-reply (telega--getPollVoters msg popt-id))
                           (voters (plist-get voters-reply :voters)))
                 (telega-ins--line-wrap-prefix "  "
@@ -1075,9 +1087,9 @@ non-nil."
           (telega-i18n "lng_prizes_how_text"
             :admins (telega-i18n "lng_prizes_admins"
                       :channel channel-button
-                      :count (plist-get content :winner_count)
+                      :count (telega-tl-get0 content :winner_count)
                       :duration (telega-i18n "lng_premium_gift_duration_months"
-                                  :count (plist-get prize :month_count)))))
+                                  :count (telega-tl-get0 prize :month_count)))))
          (telega-ins "\n\n")
          (telega-ins-i18n "lng_prizes_how_when_finish"
            :date (telega-ins--as-string
@@ -1090,7 +1102,7 @@ non-nil."
                                    (if many-p
                                        "lng_prizes_winners_all_of_many"
                                      "lng_prizes_winners_all_of_one"))
-                      :count (plist-get content :winner_count)
+                      :count (telega-tl-get0 content :winner_count)
                       :channel channel-button
                       :start_date (telega-ins--as-string
                                    (telega-ins--date
@@ -1182,6 +1194,9 @@ non-nil CLICKED-P means message explicitly has been clicked by user."
     (messageText
      (when-let ((link-preview (telega--tl-get msg :content :link_preview)))
        (telega-msg-open-link-preview msg link-preview)))
+    (messageRichMessage
+     (unless (telega--tl-get msg :content :message :is_full)
+       (telega-msg-rich-message-show-full msg)))
     (messagePoll
      (telega-msg-open-poll msg))
     (messageGame
@@ -1356,15 +1371,16 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
        (propertize (telega-i18n "lng_scam_badge") 'face 'error))
      (when (plist-get v-status :is_fake)
        (propertize (telega-i18n "lng_fake_badge") 'face 'error))
-     (if (plist-get v-status :is_verified)
-         (telega-symbol 'verified)
-       (let ((v-custom-emoji-id
-              (plist-get v-status :bot_verification_icon_custom_emoji_id)))
-         (unless (telega-zerop v-custom-emoji-id)
-           (telega-symbol
-            'verified-by-bot
-            (when-let ((v-sticker (telega-custom-emoji-get v-custom-emoji-id)))
-              (telega-sticker--image v-sticker)))))))))
+     (cond ((plist-get v-status :is_verified)
+            (telega-symbol 'verified))
+           ((not (telega-zerop
+                  (telega-tl-get0
+                   v-status :bot_verification_icon_custom_emoji_id 'int64)))
+            (telega-symbol
+             'verified-by-bot
+             (telega-custom-emoji--image v-status
+               :prop-name :bot_verification_icon_custom_emoji_id)))
+           ))))
 
 (defun telega-msg-sender-title (msg-sender &rest args)
   "Return title for the message sender MSG-SENDER.
@@ -1390,7 +1406,7 @@ ARGS are passed directly to `telega-ins--msg-sender'."
     (let ((bg-mode (frame-parameter nil 'background-mode)))
       (or (alist-get bg-mode (plist-get msg-sender :telega-palette))
           (let ((palette (telega-palette-by-color-id
-                          (plist-get msg-sender :accent_color_id)
+                          (telega-tl-get0 msg-sender :accent_color_id)
                           bg-mode)))
             (setf (alist-get bg-mode (plist-get msg-sender :telega-palette))
                   palette)
@@ -1673,8 +1689,8 @@ favorite message."
   (let* ((state (plist-get msg :sending_state))
          (pay-stars
           (let ((required-stars
-                 (plist-get state :required_paid_message_star_count)))
-            (when (and (not (telega-zerop required-stars))
+                 (telega-tl-get0 state :required_paid_message_star_count)))
+            (when (and (not (zerop required-stars))
                        (yes-or-no-p
                         (telega-i18n "lng_payment_confirm_sure"
                           :amount (telega-ins--as-string
@@ -1853,7 +1869,15 @@ recognition text if message is a VoiceNote message."
              (telega-msg-match-p msg '(type VoiceNote))
              (telega-tl-str
               (telega--tl-get content :voice_note :speech_recognition_result)
-              :text)))))
+              :text))
+        ;; Extract text from different non-text messages
+        (cond ((telega-msg-match-p msg '(type Location))
+               (let ((loc (telega--tl-get msg :content :location)))
+                 (format "%fN, %fE"
+                         (telega-tl-get0 loc :latitude)
+                         (telega-tl-get0 loc :longitude))))
+              )
+        )))
 
 (defun telega-msg-copy-text (msg &optional no-properties)
   "Copy a text of the message MSG.
@@ -2037,11 +2061,11 @@ Requires administrator rights in the chat."
         (telega-ins-fmt "%d" chat-id))
       (telega-ins-describe-item "Message-Id"
         (telega-ins-fmt "%d" msg-id))
-      (let ((thread-id (plist-get msg :message_thread_id)))
-        (unless (telega-zerop thread-id)
+      (let ((thread-id (telega-tl-get0 msg :message_thread_id)))
+        (unless (zerop thread-id)
           (telega-ins-describe-item "Thread-Id"
             (telega-ins-fmt "%d" thread-id))))
-      (let ((album-id (plist-get msg :media_album_id)))
+      (let ((album-id (telega-tl-get0 msg :media_album_id 'int64)))
         (unless (telega-zerop album-id)
           (telega-ins-describe-item "Media-Album-Id"
             (telega-ins-fmt "%s" album-id))))
@@ -2057,23 +2081,24 @@ Requires administrator rights in the chat."
               :with-avatar-p t
               :with-username-p 'telega-username
               :with-brackets-p t))
-          (let ((sender-boosts (plist-get msg :sender_boost_count)))
-            (unless (telega-zerop sender-boosts)
+          (let ((sender-boosts (telega-tl-get0 msg :sender_boost_count)))
+            (unless (zerop sender-boosts)
               (telega-ins-fmt " / %d boosts" sender-boosts)))))
 
       (when-let ((ignored-by (telega-msg-match-p msg 'ignored)))
         (telega-ins-describe-item "Ignored By"
           (telega-ins-fmt "%S" ignored-by)))
 
-      ;; Link to the message
-      (when-let ((link (ignore-errors
-                         ;; NOTE: we ignore any errors such as
-                         ;;   - error=6: Public message links are available
-                         ;;              only for messages in supergroups
-                         ;;   - error=6: Message is scheduled
-                         ;;   ...
-                         (telega--getMessageLink msg
-                           :for-thread-p for-thread-p))))
+      ;; Link to the message (for supergroups and channels only)
+      (when-let* (((telega-msg-match-p msg '(chat (type supergroup channel))))
+                  (link (ignore-errors
+                          ;; NOTE: we ignore any errors such as
+                          ;;   - error=6: Public message links are available
+                          ;;              only for messages in supergroups
+                          ;;   - error=6: Message is scheduled
+                          ;;   ...
+                          (telega--getMessageLink msg
+                            :for-thread-p for-thread-p))))
         (telega-ins-describe-item "Link"
           (telega-ins--raw-button (telega-link-props 'url link 'face 'link)
             (telega-ins link))))
@@ -2112,7 +2137,7 @@ Requires administrator rights in the chat."
                      (lambda (reply)
                        (let ((added-reactions (plist-get reply :reactions)))
                          (telega-ins-fmt "%d (%d shown)"
-                           (plist-get reply :total_count)
+                           (telega-tl-get0 reply :total_count)
                            (length added-reactions))
                          (seq-doseq (ar added-reactions)
                            (telega-ins "\n")
@@ -2140,7 +2165,9 @@ Requires administrator rights in the chat."
                  (telega-ins-describe-item
                      (telega-i18n "lng_manage_peer_reactions")
                    (telega-ins-fmt "%d"
-                     (apply #'+ (mapcar (telega--tl-prop :total_count) reactions)))
+                     (apply #'+ (mapcar (lambda (r)
+                                          (telega-tl-get0 r :total_count))
+                                        reactions)))
                    (seq-doseq (reaction reactions)
                      (seq-doseq (sender (plist-get reaction :recent_sender_ids))
                        (telega-ins "\n")
@@ -2231,7 +2258,7 @@ Requires administrator rights in the chat."
 
     (with-telega-help-win "*Telegram Public Forwards*"
       (telega-ins-describe-item "Total Forwards"
-        (telega-ins-fmt "%d" (plist-get reply :total_count))
+        (telega-ins-fmt "%d" (telega-tl-get0 reply :total_count))
         (seq-doseq (fwd public-forwards)
           (cl-ecase (telega--tl-type fwd)
             (publicForwardMessage
@@ -2247,7 +2274,7 @@ Requires administrator rights in the chat."
   "Display edits to MSG user did."
   (interactive (list (telega-msg-at (point))))
 
-  (when (zerop (plist-get msg :edit_date))
+  (when (zerop (telega-tl-get0 msg :edit_date))
     (user-error "Message was not edited"))
 
   (cl-flet ((find-msg (accesor events)
@@ -2532,18 +2559,18 @@ TONE of the summarization."
              (replied-msg-id
               (cl-case (telega--tl-type content)
                 (messagePinMessage
-                 (plist-get content :message_id))
+                 (telega-tl-get0 content :message_id))
                 (messageGameScore
-                 (plist-get content :game_message_id))
+                 (telega-tl-get0 content :game_message_id))
                 (PaymentSuccessful
                  (setq chat-id (plist-get content :invoice_chat_id))
-                 (plist-get content :invoice_message_id))
+                 (telega-tl-get0 content :invoice_message_id))
                 (t
                  (when-let ((reply-to (plist-get msg :reply_to)))
                    (when-let ((reply-chat-id (plist-get reply-to :chat_id)))
                      (when reply-chat-id
                        (setq chat-id reply-chat-id)))
-                   (plist-get reply-to :message_id)))))
+                   (telega-tl-get0 reply-to :message_id)))))
              (replied-msg
               (unless (or (null replied-msg-id) (zerop replied-msg-id))
                 (gethash (cons chat-id replied-msg-id)
@@ -2673,7 +2700,7 @@ Return `loading' if replied story starts loading."
     (unless task
       (error "telega: No checklist task at point"))
     (let ((task-id (plist-get task :id))
-          (task-done-p (not (telega-zerop (plist-get task :completion_date)))))
+          (task-done-p (not (zerop (telega-tl-get0 task :completion_date)))))
       (telega--markChecklistTasksAsDone
        msg (unless task-done-p (list task-id))
        (when task-done-p (list task-id))))
@@ -2761,7 +2788,7 @@ Return nil if there is no `down-mouse-3' keys in `this-command-keys'."
 
 (defun telega-sponsored-msg-at (&optional pos)
   "Return current sponsored message at POS point.
-If POS is ommited, then return massage at current point.
+If POS is omitted, then return massage at current point.
 For interactive commands acting on message at point/mouse-event
 use `telega-sponsored-msg-for-interactive' instead."
   (when-let* ((button (button-at (or pos (point))))

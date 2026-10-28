@@ -25,8 +25,13 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'shr)
 
 (declare-function telega-webpage--add-anchor "telega-webpage" (name))
+(declare-function telega-webpage--ins-video "telega-webpage" (video))
+(declare-function telega-ins--keyboard-button-row "telega-ins"
+                  (buttons msg &rest args))
+(declare-function telega-ins--date-time-formatting "telega-ins" (timestamp ts-fmt))
 
 
 (defvar telega-rich-text--block-quote-p nil
@@ -68,6 +73,8 @@
   "Create image function for richTextIcon OBJ-SPEC."
   (let* ((rt (plist-get obj-spec :object))
          (cheight (plist-get obj-spec :cheight))
+         (width (telega-tl-get0 rt :width))
+         (height (telega-tl-get0 rt :height))
          (doc (plist-get rt :document))
          (doc-file (telega-file--renew doc :document))
          (thumb (plist-get doc :thumbnail))
@@ -85,8 +92,7 @@
              :update-callback
              (lambda (_dfile)
                ;; Update progress
-               (telega-media--image-updateNEW obj-spec)
-               (force-window-update)))
+               (telega-media--image-updateNEW obj-spec)))
            (telega-media--progress-svg doc-file width height cheight)))))
 
 (defun telega-rich-text--math-exp-create-image (string &optional cheight)
@@ -98,15 +104,23 @@
                                         (plist-get (cdr backend) :programs)))
                          org-preview-latex-process-alist))
               (f-ext (plist-get (cdr preview-backend) :image-output-type))
-              (f-name (telega-temp-name "rich-text-math" (concat "." f-ext))))
-  (with-temp-buffer
-    (org-create-formula-image string f-name nil nil (car preview-backend))
+              (f-name (concat (expand-file-name
+                               (format "m%S" (sxhash string))
+                               (expand-file-name "rt-math" telega-temp-dir))
+                              "." f-ext)))
+    (unless (file-exists-p f-name)
+      (with-temp-buffer
+        (when telega-rich-text-math-image-messages
+          (message "telega: Generating image for math expression.."))
+        (org-create-formula-image string f-name nil nil (car preview-backend))
+        (when telega-rich-text-math-image-messages
+          (message "telega: Generating image for math expression..DONE"))))
     (telega-create-image f-name nil nil
       :height (telega-ch-height cheight)
-      :telega-nslices cheight
+      :telega-nslices (ceiling cheight)
       :scale 1.0
       :mask 'heuristic
-      :ascent 'center))))
+      :ascent 'center)))
 
 (defun telega-rich-text--ins-rt (rt)
   (when rt
@@ -126,17 +140,25 @@
        (telega-ins--with-face 'telega-webpage-strike-through
          (telega-rich-text--ins-rt (plist-get rt :text))))
       (richTextSpoiler
-       (if (plist-get telega-msg--current :telega-text-spoiler-removed)
-           (telega-rich-text--ins-rt (plist-get rt :text))
-         (telega-ins (with-temp-buffer
-                          (telega-rich-text--ins-rt (plist-get rt :text))
-                          (translate-region (point-min) (point-max)
-                                            telega-spoiler-translation-table)
-                          (buffer-string)))))
+       (telega-ins--with-props
+           (when telega-msg--current
+             (list :action #'telega-msg-text-spoiler-toggle))
+         (if (plist-get telega-msg--current :telega-text-spoiler-removed)
+             (telega-rich-text--ins-rt (plist-get rt :text))
+           (telega-ins--with-props
+               (when telega-msg--current
+                 '(action telega-msg-button--action))
+             (telega-ins
+              (with-temp-buffer
+                (telega-rich-text--ins-rt (plist-get rt :text))
+                (translate-region (point-min) (point-max)
+                                  telega-spoiler-translation-table)
+                (buffer-string)))))))
       (richTextDateTime
-       ;; TODO: use `telega-ins--date-time-formatting'
-       (telega-ins "<TODO: richTextDateTime>")
-       )
+       (telega-ins--with-face 'telega-link
+         (or (when-let* ((ts-fmt (plist-get rt :formatting_type)))
+               (telega-ins--date-time-formatting (plist-get rt :unix_time) ts-fmt))
+             (telega-rich-text--ins-rt (plist-get rt :text)))))
       (richTextMention
        (telega-ins--with-props
            (list 'action #'telega-rich-text--link-button-action
@@ -173,13 +195,11 @@
       (richTextUrl
        (let ((url (telega-tl-str rt :url)))
          (telega-ins--raw-button
-             (list 'action #'telega-button--action
-                   :help-echo (format "URL: %s%s" url
-                                      (if (plist-get rt :is_cached)
-                                          ", has IV"
-                                        ""))
-                   :value url
-                   :action #'telega-browse-url)
+             (telega-link-props 'url url
+               'help-echo (format "URL: %s%s" url
+                                  (if (plist-get rt :is_cached)
+                                      ", has IV"
+                                    "")))
            (telega-ins--with-face 'telega-link
              (telega-rich-text--ins-rt (plist-get rt :text))))))
       (richTextEmailAddress
@@ -211,7 +231,7 @@
           :alt-text (telega-tl-str rt :alternative_text))))
       (richTextIcon
        (let ((cheight (telega-media--cheight-for-limits
-                       (plist-get rt :width) (plist-get rt :height)
+                       (telega-tl-get0 rt :width) (telega-tl-get0 rt :height)
                        (list 1 1 (nth 2 telega-webpage-photo-size-limits)
                              (nth 3 telega-webpage-photo-size-limits)))))
          (telega-ins--image-slices
@@ -233,10 +253,8 @@
        ;; TODO: use `:reference_name'
        (let ((ref-url (telega-tl-str rt :url)))
          (telega-ins--raw-button
-             (list 'action #'telega-button--action
-                   :help-echo (concat "Reference: " ref-url)
-                   :value ref-url
-                   :action #'telega-browse-url)
+             (telega-link-props 'url ref-url
+               'help-echo (concat "Reference: " ref-url))
            (telega-ins--with-face 'telega-link
              (telega-rich-text--ins-rt (plist-get rt :text))))))
       (richTextAnchor
@@ -264,7 +282,57 @@
          (telega--tl-type rt))))
     t))
 
-(defun telega-rich-text--ins-pb-details (pb)
+(defun telega-rich-text--ins-pb-table (pb)
+  "Insert `pageBlockTable' PB using SHR's table layout."
+  ;; TODO: honor cell alignment, `:is_striped' and `:is_compact'.
+  (let* ((rows
+          (cl-loop for row across (plist-get pb :cells)
+                   for cells =
+                   (cl-loop for cell across row
+                            for attrs =
+                            (cl-loop for (attr . prop) in '((colspan . :colspan)
+                                                           (rowspan . :rowspan))
+                                     for span = (telega-tl-get0 cell prop)
+                                     when (> span 1)
+                                     collect (cons attr (number-to-string span)))
+                            collect `(td ,attrs (telega-cell ((cell . ,cell)))))
+                   collect `(tr nil ,@cells)))
+         (shr-use-fonts t)
+         (shr-width telega-webpage-fill-column)
+         (shr-table-horizontal-line
+          (when (plist-get pb :is_bordered)
+            (nth 0 telega-symbol-rich-text-table-border)))
+         (shr-table-vertical-line
+          (if (plist-get pb :is_bordered)
+              (nth 1 telega-symbol-rich-text-table-border)
+            ?\s))
+         (shr-table-corner
+          (if (plist-get pb :is_bordered)
+              (nth 2 telega-symbol-rich-text-table-border)
+            ?\s))
+         (shr-external-rendering-functions
+          '((telega-cell .
+             (lambda (dom)
+               (let ((cell (dom-attr dom 'cell)))
+                 (telega-ins--with-face (when (plist-get cell :is_header)
+                                          'telega-rich-text-table-header)
+                   (telega-rich-text--ins-rt (plist-get cell :text)))))))))
+    (telega-ins
+     (with-temp-buffer
+       (shr-insert-document `(table nil ,@rows))
+       ;; SHR uses absolute pixel positions; telega adds line prefixes later.
+       (let ((offset (telega-chars-xwidth telega--column-offset))
+             (pos (point-min)))
+         (while (setq pos (text-property-not-all
+                          pos (point-max) 'shr-table-indent nil))
+           (pcase (get-text-property pos 'display)
+             (`(space :align-to (,x))
+              (put-text-property pos (1+ pos) 'display
+                                 `(space :align-to (,(+ offset x))))))
+           (setq pos (1+ pos))))
+       (buffer-string)))))
+
+(defun telega-rich-text--ins-pb-details (pb &optional msg)
   "Inserter for `pageBlockDetails' page block PB."
   (let ((open-p (plist-get pb :is_open)))
     (telega-ins--with-face 'telega-shadow
@@ -273,10 +341,10 @@
     (telega-rich-text--ins-rt (plist-get pb :header))
     (when open-p
       (seq-doseq (pb-item (plist-get pb :blocks))
-        (telega-rich-text--ins-pb pb-item)))
+        (telega-rich-text--ins-pb pb-item msg)))
     t))
 
-(defun telega-rich-text--ins-pb (pb &optional _msg)
+(defun telega-rich-text--ins-pb (pb &optional msg)
   "Inserter for the page block PB."
   (when pb
     (cl-case (telega--tl-type pb)
@@ -291,7 +359,7 @@
          (telega-ins-prefix "By "
            (when (telega-rich-text--ins-rt (plist-get pb :author))
              (telega-ins " • ")))
-         (let ((publish-date (plist-get pb :publish_date)))
+         (let ((publish-date (telega-tl-get0 pb :publish_date)))
            (when (zerop publish-date)
              (setq publish-date (time-to-seconds)))
            (telega-ins--date publish-date 'date-long))))
@@ -304,7 +372,7 @@
       (pageBlockSectionHeading
        (telega-ins-from-newline
         (telega-ins--with-face `(telega-rich-text-section-heading
-                                 (:height ,(nth (1- (plist-get pb :size))
+                                 (:height ,(nth (1- (telega-tl-get0 pb :size))
                                                 '(1.3 1.15 1.0 0.85 0.7 0.55))))
           (telega-ins--with-props '(line-height (1.25 1.25))
             (telega-rich-text--ins-rt (plist-get pb :text))
@@ -345,13 +413,13 @@
        (telega-webpage--add-anchor (plist-get pb :name)))
       (pageBlockList
        (seq-doseq (pb-item (plist-get pb :items))
-         (telega-rich-text--ins-pb pb-item)))
+         (telega-rich-text--ins-pb pb-item msg)))
       (pageBlockBlockQuote
        (telega-ins-from-newline
         (telega-ins--line-wrap-prefix (telega-symbol 'vbar-left)
           (let ((telega-rich-text--block-quote-p t))
             (seq-doseq (quote-pb (plist-get pb :blocks))
-              (telega-rich-text--ins-pb quote-pb)))
+              (telega-rich-text--ins-pb quote-pb msg)))
           (when-let ((credit-rt (plist-get pb :credit)))
             (telega-ins-from-newline
              (telega-ins--with-face 'telega-shadow
@@ -363,6 +431,9 @@
         (unless telega-rich-text--block-quote-p
           (add-text-properties (1- (point)) (point) '(line-height (1 1.25))))
         ))
+      (pageBlockExpandableBlockQuote
+       (telega-ins-from-newline
+        (telega-ins "<TODO: pageBlockExpandableBlockQuote>")))
       (pageBlockPullQuote
        (telega-ins-from-newline
         (telega-rich-text--ins-divider telega-webpage-fill-column)
@@ -386,6 +457,11 @@
         (telega-ins--audio nil (plist-get pb :audio))
         (telega-ins-from-newline
          (telega-rich-text--ins-pb (plist-get pb :caption)))))
+      (pageBlockDocument
+       (telega-rich-text--ins-block
+        (telega-ins--document nil (plist-get pb :document))
+        (telega-ins-from-newline
+         (telega-rich-text--ins-pb (plist-get pb :caption)))))
       (pageBlockPhoto
        ;; TODO: `:has_spoiler'
        (telega-ins-from-newline
@@ -402,7 +478,7 @@
       (pageBlockVideo
         ;; TODO: `:need_autoplay', `:is_looped', `:has_spoiler'
        (telega-rich-text--ins-block
-        (telega-ins--video nil (plist-get pb :video) 'thumbnail)
+        (telega-webpage--ins-video (plist-get pb :video))
         (telega-ins-from-newline
          (telega-rich-text--ins-pb (plist-get pb :caption)))))
       (pageBlockVoiceNote
@@ -411,7 +487,7 @@
         (telega-ins-from-newline
          (telega-rich-text--ins-pb (plist-get pb :caption)))))
       (pageBlockCover
-       (telega-rich-text--ins-pb (plist-get pb :cover)))
+       (telega-rich-text--ins-pb (plist-get pb :cover) msg))
       (pageBlockEmbedded
        (telega-button--insert 'telega pb
          :inserter (lambda (pb-embedded)
@@ -439,14 +515,14 @@
        (telega-ins "<TODO: pageBlockEmbeddedPost>\n"))
       (pageBlockCollage
        (seq-doseq (pb-item (plist-get pb :blocks))
-         (telega-rich-text--ins-pb pb-item))
+         (telega-rich-text--ins-pb pb-item msg))
        (telega-ins-from-newline
         (telega-rich-text--ins-pb (plist-get pb :caption))))
       (pageBlockSlideshow
        (let ((page-blocks (plist-get pb :blocks)))
          (dotimes (n (length page-blocks))
            (telega-ins-from-newline
-            (telega-rich-text--ins-pb (aref page-blocks n))
+            (telega-rich-text--ins-pb (aref page-blocks n) msg)
             (telega-ins-fmt "%d/%d\n" (1+ n) (length page-blocks)))))
        (telega-rich-text--ins-pb (plist-get pb :caption)))
       (pageBlockChatLink
@@ -458,10 +534,11 @@
            :action 'telega-tme-open-username)
          (telega-ins "\n")))
       (pageBlockTable
-       (telega-ins-from-newline
-        (telega-ins "<TODO: pageBlockTable>\n")
-        (telega-ins-from-newline
-         (telega-rich-text--ins-rt (plist-get pb :caption)))))
+       (telega-rich-text--ins-block
+        (telega-rich-text--ins-pb-table pb)
+        (telega-rich-text--ins-block
+         (telega-rich-text--ins-rt (plist-get pb :caption)))
+        t))
       (pageBlockDetails
        (telega-button--insert 'telega pb
          'action (lambda (button)
@@ -471,7 +548,8 @@
                      ;; TODO: actually open details
                      (save-excursion
                        (telega-button--update-value button new-val))))
-         :inserter #'telega-rich-text--ins-pb-details
+         :inserter (lambda (details)
+                     (telega-rich-text--ins-pb-details details msg))
          'help-echo "Toggle details")
        (telega-ins-from-newline
         (telega-rich-text--ins-divider telega-webpage-fill-column)))
@@ -490,7 +568,21 @@
          (telega-ins "\n")))
       (pageBlockMap
        (telega-ins-from-newline
-        (telega-ins "<TODO: pageBlockMap>")
+        (let* ((map (plist-get pb :telega-map))
+               (orig-width (telega-tl-get0 pb :width))
+               (orig-height (telega-tl-get0 pb :height))
+               (wh-frac (/ (float orig-width) orig-height))
+               (h (telega-chars-xheight
+                   (telega-chars-in-height orig-height)))
+               (w (round (* h wh-frac))))
+          (unless map
+            (setq map (list :width w :height h
+                            :zoom (telega-tl-get0 pb :zoom)
+                            :location (plist-get pb :location)))
+            (plist-put pb :telega-map map))
+          (telega-ins--with-props (list 'local-map telega-msg-button-location-map)
+            (telega-ins--image-slices (telega-map--image map)
+                '(pointer hand))))
         (telega-ins-from-newline
          (telega-rich-text--ins-pb (plist-get pb :caption)))))
 
@@ -507,14 +599,50 @@
               (cons (concat label " ")
                     (concat (make-string (string-width label) ?\s " ") " "))
             (seq-doseq (pb-item (plist-get pb :blocks))
-              (telega-rich-text--ins-pb pb-item))))))
+              (telega-rich-text--ins-pb pb-item msg))))))
       (pageBlockCaption
        (telega-ins--with-face 'telega-shadow
          (telega-rich-text--ins-rt (plist-get pb :text))
          (telega-ins-prefix " • "
            (telega-rich-text--ins-rt (plist-get pb :credit)))))
+      (pageBlockButtonRow
+       ;; TODO: honor `:align'.
+       (when-let ((buttons (append (plist-get pb :buttons) nil)))
+         (telega-rich-text--ins-block
+          (telega-ins--keyboard-button-row buttons msg)
+          t)))
+      (pageBlockUnsupported
+       (telega-ins "<TODO: pageBlockUnsupported>"))
       )
     t))
+
+(defun telega-rich-text--ins-pb-one-line (pb &optional msg)
+  "One line inserter for page block PB."
+  (when pb
+    (telega-ins--one-lined
+     (cl-case (telega--tl-type pb)
+       (pageBlockPhoto
+        (if-let ((preview-img (telega-photo-preview--create-image-one-line
+                               (plist-get pb :photo)
+                               (when msg
+                                 (telega-msg-chat msg 'offline)))))
+            (telega-ins--image preview-img)
+          (telega-ins (telega-symbol 'photo)))
+        (telega-ins-prefix " "
+          (or (telega-rich-text--ins-pb (plist-get pb :caption))
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins-i18n "lng_in_dlg_photo"))))
+        t)
+
+       (pageBlockSlideshow
+        (or (telega-rich-text--ins-pb (plist-get pb :caption))
+            (telega-ins--with-face 'telega-shadow
+              (telega-ins "SlideShow"))))
+
+       ;; TODO: other media types
+
+       (t
+        (telega-rich-text--ins-pb pb msg))))))
 
 (provide 'telega-rich-text)
 

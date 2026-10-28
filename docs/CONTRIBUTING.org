@@ -1,0 +1,242 @@
+#+TITLE: Contributing to telega.el
+#+DATE: 2026-09-21
+#+STARTUP: showall
+
+* Welcome
+
+Thank you for your interest in contributing to ~telega.el~ — the unofficial
+GNU Emacs client for Telegram.
+
+This document describes how to set up a development environment, follow
+coding conventions, and submit your changes.
+
+* Quick Links
+
+- Repository: https://github.com/zevlg/telega.el
+- Issue tracker: https://github.com/zevlg/telega.el/issues
+- Manual: https://zevlg.github.io/telega.el/
+- Telegram chat (development discussion):
+  https://t.me/telega_el
+
+* Getting Started
+
+** Prerequisites
+
+- ~GNU Emacs~ ≥ 26.1 (with SVG support)
+- ~GNU make~ (or ~gmake~ on BSD)
+- ~CMake~ (for building TDLib)
+- ~GNU gperf~ (for building TDLib)
+- ~pkg-config~ (for building ~telega-server~)
+- ~C compiler~ (GCC / Clang)
+
+Optional:
+
+- ~Python~ (for testing ~telega-server~)
+- ~libappindicator3~ (system tray icon support)
+
+** Building TDLib
+
+~telega.el~ requires a compatible version of TDLib
+(see ~telega-tdlib-min-version~). Build it from source:
+
+#+begin_src sh
+git clone https://github.com/tdlib/td.git
+cd td
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+sudo make install
+#+end_src
+
+Make sure ~libtdjson.so~ (or ~.dylib~ on macOS) is in your library path.
+
+** Cloning and compiling telega.el
+
+#+begin_src sh
+git clone https://github.com/zevlg/telega.el
+cd telega.el
+make compile
+#+end_src
+
+This compiles all ~.el~ files and builds ~telega-server~.
+
+** Running telega from the repository
+
+Add to your Emacs config:
+
+#+begin_src elisp
+(add-to-list 'load-path "~/path/to/telega.el")
+(require 'telega)
+#+end_src
+
+* Code Architecture
+
+The project is organised into five layers (see ~design.txt~ for details):
+
+1. *UI Layer* — Emacs buffers: root buffer (chat list), chat buffers.
+   Inserters functionality.
+2. *Business Logic Layer* — message lifecycle, chat filtering (Temex),
+   media handling, text formatting.
+3. *Core Layer* — data caching (chats, messages, files), SVG utilities,
+   EWOC buffer management, customisation.
+4. *TDLib Interface Layer* — API requests (~telega-tdlib.el~) and
+   incoming updates (~telega-tdlib-events.el~).
+5. *External Layer* — ~telega-server~ process (bridge between Emacs and
+   TDLib).
+
+Key source files:
+
+| File                     | Purpose                        |
+|--------------------------|--------------------------------|
+| ~telega.el~              | Main entry point, UI           |
+| ~telega-core.el~         | Core data structures, caching  |
+| ~telega-tdlib.el~        | TDLib API calls                |
+| ~telega-tdlib-events.el~ | TDLib event processing         |
+| ~telega-chat.el~         | Chat buffer logic              |
+| ~telega-msg.el~          | Message rendering              |
+| ~telega-match.el~        | Temexes                        |
+| ~server/telega-server.c~ | C bridge process               |
+| ~test.el~                | Unit tests                     |
+
+* Coding Conventions
+
+** Naming
+
+- Functions operating on a chat buffer: prefix ~telega-chatbuf-~.
+- Direct TDLib API wrappers: prefix ~telega--~ (double dash), e.g.
+  ~telega--sendMessageAlbum~.
+- Callbacks: prefix ~telega--on-~, e.g. ~telega--on-updateNewMessage~.
+- Predicates (returning bool): suffix ~p~, e.g. ~telega-chat-p~.
+- Global symbols: always use the ~telega-~ prefix to avoid collisions.
+
+** Code style
+
+- Use ~lexical-binding~ in all new files.
+- Prefer ~cl-lib~ over the deprecated ~cl~ library.
+- Use ~provide~ at the end of each ~.el~ file.
+- Do not use ~eval-after-load~ or ~with-eval-after-load~ in library code.
+- Loading a file should not alter Emacs's editing behaviour — provide
+  commands or modes instead.
+- Keep lines reasonably short (≤ 80 columns where practical).
+
+** Hooks
+
+Add hooks at load time, *after* the ~(provide 'telega-FEATURE)~ form, to
+avoid shadowing user defaults when telega is not loaded yet.
+
+** API functions
+
+Place TDLib API-related functions in ~telega-tdlib.el~. Keep the
+interface layer thin — business logic belongs in the layer above.
+
+** Special functions
+
+To access ~int32~, ~int53~, ~int64~ TDLib object properties use
+~telega-tl-get0~ macro instead of plain ~plist-get~, for example:
+#+begin_src elisp
+(telega-tl-get0 reply :total_count)
+#+end_src
+or 
+#+begin_src elisp
+(telega-tl-get0 msg :media_album_id 'int64)
+#+end_src
+if accessing ~int64~ value.
+
+Use ~zerop~ to test ~int32~ and ~int53~ values for zero value.  And
+~telega-zerop~ to test ~int64~ for zero value.
+
+This is done to make telega-server's zero value optimization to work,
+see ~telega-server-optimize~.  zero value optimization is enabled by
+default.
+
+* Testing
+
+Run the test suite from the project root:
+
+#+begin_src sh
+make test
+#+end_src
+
+This runs both:
+
+- ~test_el~ — Emacs Lisp unit tests (ERT-based, defined in ~test.el~)
+- ~test_server~ — ~telega-server~ tests (if Python is available)
+
+To run only the Elisp tests:
+
+#+begin_src sh
+make test_el
+#+end_src
+
+When adding new functionality, please include corresponding tests.
+Use ~ert-deftest~ and place tests in ~test.el~.
+
+* Submitting Changes
+
+** Before you start
+
+- Check the issue tracker and existing pull requests to avoid duplicate
+  work.
+- For significant changes, open an issue first to discuss the design.
+
+** Pull request workflow
+
+1. Fork the repository on GitHub.
+2. Create a feature branch from ~master~:
+   #+begin_src sh
+   git checkout -b my-feature
+   #+end_src
+3. Make your changes, following the coding conventions above.
+4. Run ~make compile~ and ~make test~ to verify nothing is broken.
+5. Update documentation if your change affects user-facing behaviour.
+6. Commit with a clear, descriptive message:
+   #+begin_src
+   feat: add sticker search by emoji
+
+   Implement search-by-emoji for stickers using TDLib
+   searchStickers method.  Add new command `telega-sticker-search-by-emoji'.
+   Closes #575.
+   #+end_src
+7. Push your branch and open a pull request on GitHub.
+
+** Commit message style
+
+- Use conventional commits: ~feat:~, ~fix:~, ~docs:~, ~refactor:~, ~test:~.
+- First line: short summary (≤ 72 chars).
+- Body: explain *what* and *why*, not *how*.
+
+* Reporting Issues
+
+Bug reports and feature requests are very welcome.
+
+** Bug reports
+
+Include:
+
+- Emacs version (~M-x emacs-version~)
+- telega.el version (~M-x telega-version~)
+- TDLib version
+- Operating system
+- Steps to reproduce
+- Expected vs actual behaviour
+- Relevant error messages (from ~*Messages*~ buffer or ~telega-debug~)
+
+You can also use ~M-x telega-report-bug~ to generate a report template.
+
+** Feature requests
+
+Describe the feature, the problem it solves, and (if applicable) how you
+imagine it working. Mockups or references to other clients are helpful.
+
+* Community
+
+Join the Telegram group: https://t.me/telega_el
+
+This is the primary place for development discussion, questions, and
+coordination. Be respectful and follow the group's guidelines.
+
+* License
+
+By contributing, you agree that your contributions will be licensed under
+the GNU General Public License v3 (or any later version) — the same
+license as the project itself. See the ~COPYING~ file for details.

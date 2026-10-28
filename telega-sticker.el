@@ -36,6 +36,7 @@
 (defvar ido-matches)
 (defvar ivy--index)
 (defvar ivy--old-cands)
+(declare-function vertico--candidate "vertico" (&optional hl))
 
 (declare-function telega-chatbuf-sticker-insert "telega-chat" (sticker))
 (declare-function telega-chatbuf-animation-insert "telega-chat" (animation))
@@ -68,7 +69,7 @@ Thumbnail is a smaller (and faster) version of sticker image.")
   'keymap telega-sticker-button-map)
 
 (defun telega-sticker-at (&optional pos)
-  "Retur sticker at POS."
+  "Return sticker at POS."
   (let ((button (button-at (or pos (point)))))
     (when (and button (eq (button-type button) 'telega-sticker))
       (button-get button :value))))
@@ -249,9 +250,9 @@ CALLBACK is called without arguments"
   (declare (indent 2))
   (cl-assert (plist-get sticker :outline))
   (let ((factor (cons (/ (float (telega-svg-width svg))
-                         (plist-get sticker :width))
+                         (telega-tl-get0 sticker :width))
                       (/ (float (telega-svg-height svg))
-                         (plist-get sticker :height)))))
+                         (telega-tl-get0 sticker :height)))))
     (seq-doseq (outline-path (plist-get sticker :outline))
       (apply #'telega-sticker--svg-outline-path
              svg outline-path factor args))))
@@ -429,15 +430,17 @@ Return path to png file."
 
       ;; Start downloading sticker/thumbnail, and fallback to
       ;; downloading progress image
-      (seq-doseq (file (list tfile sfile))
-        (unless (telega-file--downloading-p file)
-          (telega-file--download file
+      (let ((sticker-file (if (or telega-sticker--use-thumbnail
+                                  (not (telega-sticker-static-p sticker)))
+                              tfile
+                            sfile)))
+        (unless (telega-file--downloading-p sticker-file)
+          (telega-file--download sticker-file
             :priority 32
             :update-callback
             (lambda (dfile)
               (when (telega-file--downloaded-p dfile)
-                (telega-media--image-updateNEW obj-spec)
-                (force-window-update))))))
+                (telega-media--image-updateNEW obj-spec))))))
 
       (telega-sticker--progress-svg sticker cheight))))
 
@@ -964,7 +967,7 @@ Install from https://github.com/zevlg/tgs2png"))
   :inserter 'telega-ins--animation-image)
 
 (defun telega-animation-at (&optional pos)
-  "Retur sticker at POS."
+  "Return sticker at POS."
   (let ((button (button-at (or pos (point)))))
     (when (and button (eq (button-type button) 'telega-animation))
       (button-get button :value))))
@@ -1115,7 +1118,7 @@ Its behavior is controlled by `telega-animation-play-inline' and
   (unless (memq 'animation telega-open-message-as-file)
     (if (numberp telega-animation-play-inline)
         (>= telega-animation-play-inline
-            (or (plist-get animation :duration) 0))
+            (telega-tl-get0 animation :duration))
       telega-animation-play-inline)))
 
 (provide 'telega-sticker)

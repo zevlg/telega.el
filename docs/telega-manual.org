@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.660)
+#+title: Telega Manual (v0.8.680)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -232,6 +232,11 @@ support (graphical).
 See [[https://ritschmaster.github.io/2021/06/13/Using-telga-in-Windows-10.html][detailed description]] how to install =telega= under Windows 10.
 
 Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
+
+Pre-built =telega-server= and =TDLib= binaries for Windows x86-64 are
+available from [[https://github.com/zHaOdANiuu/telega-rc][telega-rc]].
+
+Thanks to [[https://t.me/zdn_y][=@zdn_y=]]
 ** Building TDLib
 :PROPERTIES:
 :CUSTOM_ID: building-tdlib
@@ -239,7 +244,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.66-1b08c83bc.
+version equal to v1.8.68-c15d3f5a5.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -247,7 +252,7 @@ from [[https://brew.sh][brew.sh]].  Just run:
   $ brew install tdlib --HEAD
 #+end_src
 
-On Linux, you will need to build =TDLib= from source.  Use 
+On Linux, you will need to build =TDLib= from source.  Use
 [[https://tdlib.github.io/td/build.html][TDLib build instructions generator]] for comprehensive build
 instructions.
 
@@ -463,7 +468,7 @@ Default value: "~/.telega"
 
   Set to non-nil to use this as location of me.
   Plist in form (:latitude <LAT> :longitude <LONG>)
-  To publically expose this location set ~:is_location_visible~ to
+  To publicly expose this location set ~:is_location_visible~ to
   non-nil in ~telega-options-plist~.
   Used to calculate distances from other peers to me. 
 
@@ -1090,7 +1095,7 @@ Use ~telega-chat-match-p~ to match a chat.
      Matches if chat's title matches ~REGEXP~.
 
 - (search ~QUERY~), @@html:<kbd>@@/ s@@html:</kbd>@@ (~telega-filter-by-search~) :: 
-     Matches if chat maches search QUERY.
+     Matches if chat matches search QUERY.
 
 - (custom ~NAME~), @@html:<kbd>@@/ C@@html:</kbd>@@ (~telega-filter-by-custom~) :: 
      Matches if custom filter with ~NAME~ matches.
@@ -2044,7 +2049,7 @@ Markup syntax table:
 | [[http://t.me/user][name]] | ~[name](tg://user?id=<USER-ID>)~ | ~[[tg://user?id=<USER-ID>][name]]~ | ~[name](tg://user?id=<USER-ID>)~ |
 
 There is also "markdown1" syntax to insert multiline code blocks of
-specified languge:
+specified language:
 #+begin_example
   ```<language-name>
   first line of multiline preformatted code
@@ -2342,8 +2347,8 @@ You can navigate your previous chatbuf input using commands:
 It is possible to complete chatbuf's input with
 @@html:<kbd>@@TAB@@html:</kbd>@@ (~telega-chatbuf-complete-or-next-link~).
 
-You can use standard Emacs ~capf~ (completion at point) or advanced 
-[[#telega-company][telega-company]].
+You can use standard Emacs ~capf~ (completion at point) or advanced
+[[#telega-companyel--powerful-completions-with-company][telega-company]].
 
 To enable ~capf~ completions use:
 #+begin_src elisp
@@ -2427,7 +2432,7 @@ Chatbuf uses next bindings for message filtering:
 
 - @@html:<kbd>@@C-c C-c@@html:</kbd>@@ (~telega-chatbuf-filter-cancel~) :: 
      Cancel current messages filtering.
-     If point is at some message, then keep point on this message after reseting.
+     If point is at some message, then keep point on this message after resetting.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then cancel topic filtering as well.
 
 - @@html:<kbd>@@C-c C-r@@html:</kbd>@@ (~telega-chatbuf-inplace-search-query~) :: 
@@ -2588,7 +2593,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 #+begin_example
-  [⏪] [⏩] [2×] [Stop] 
+  [⏪] [⏩] [2×] [Stop]
 #+end_example
 
 For fast access to media controls you can you next bindings:
@@ -3391,6 +3396,49 @@ customized with:
   Default value: ~t~
 
 Enable company completions with:
+#+begin_src elisp
+  (add-hook 'telega-chat-mode-hook 'telega-completions-setup-company)
+#+end_src
+
+Consider also using =company-posframe= Emacs package (in MELPA), so
+chatbuf's contents remain untouched when completion menu pops above
+the chatbuf prompt.
+
+If you don't like =company-posframe=, consider option:
+- User Option: ~telega-company-tooltip-always-below~ 
+
+  Non-nil to show company tooltip always below the point.
+  Done by recentering point in the chatbuf. 
+
+  Default value: ~t~
+
+User options you might want to customize:
+- User Option: ~telega-company-active~ 
+
+  Non-nil to use ~telega-company~ in active mode. 
+
+  Default value: ~t~
+- User Option: ~telega-company-backends~ 
+
+  Company backends to use in chat buffers.
+  Set to nil to disable company completions in chat buffers. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    (telega-company-emoji telega-company-telegram-emoji
+                          telega-company-username telega-company-hashtag
+                          telega-company-markdown-precode
+                          telega-company-quick-reply telega-company-botcmd)
+  #+end_src
+
+- User Option: ~telega-company-tooltip-always-below~ 
+
+  Non-nil to show company tooltip always below the point.
+  Done by recentering point in the chatbuf. 
+
+  Default value: ~t~
+
+Company backends provided by =telega-company=:
 
 
 - telega-company-emoji :: Complete emojis via ~:<emoji>:~
@@ -3655,7 +3703,7 @@ Customizable options:
 
 - User Option: ~telega-mnz-edit-display-buffer-action~ 
 
-  Action value when poping to code edit buffer.
+  Action value when popping to code edit buffer.
   See docstring for ~display-buffer~ for the value meaning. 
 
   Default value: ~((display-buffer-below-selected))~
@@ -3905,7 +3953,7 @@ backtrace buffer.  Report this backtrace to github issues or to the
 stickers, like on the screenshot:
 [[file:https:/zevlg.github.io/telega/bad-stickers.jpg]]
 
-**A**: If your Emacs does not have bultin WEBP format
+**A**: If your Emacs does not have builtin WEBP format
 support. =telega= will use =dwebp= tool to convert stickers from WEBP
 format to the format supported by your Emacs.  See [[#stickers--animations][Stickers /
 Animations]] for details.  So, make sure =dwebp= tool is available on

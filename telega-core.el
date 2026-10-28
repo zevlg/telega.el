@@ -139,6 +139,7 @@ Use FILENAME as is if resulting file does not exist."
 
     (:can_manage_direct_messages . "lng_rights_channel_manage_direct")
     (:can_manage_tags . "lng_rights_group_manage_ranks")
+    (:can_send_welcome_messages . "lng_rights_group_send_welcome_messages")
     (:is_anonymous . "lng_rights_group_anonymous")))
 
 (defconst telega-chat--admin-permissions-for-channels
@@ -159,6 +160,11 @@ Use FILENAME as is if resulting file does not exist."
 
 (defvar telega--column-offset 0
   "Additional offset for the `telega-currency-column'.")
+
+(defvar telega--line-prefix nil
+  "Line prefix `telega-ins--line-wrap-prefix' is about to apply.
+Bound while inserting the body, because the prefix is applied only
+afterwards, so inserters can measure the resulting line height.")
 
 (defconst telega-symbol-nbsp "\u00a0"
   "Non-breakable space.")
@@ -249,7 +255,7 @@ Updated on `updateDefaultPaidReactionType' event.")
 
 ;;; Runtime variables
 (defvar telega-msg--current nil
-  "Bound to currenty inserting message.")
+  "Bound to currently inserting message.")
 
 (defvar telega--chat nil
   "Telega chat for the current buffer.
@@ -546,6 +552,9 @@ display the list.")
 (defvar telega--recent-inline-bots nil
   "List of usernames for recently used inline bots.")
 
+(defvar telega--trusted-miniapp-bots-ids nil
+  "List of bot ids with trusted mini apps.")
+
 (defvar telega--notification-messages-ring (make-ring 1)
   "Ring of messages triggered notification.
 Use \\[execute-extended-command] telega-notifications-history RET to
@@ -585,7 +594,7 @@ Available contexts are: `title', `msg-header', `link-preview', `quote',
 
 (defun telega-palette-by-color-id (color-id &optional background-mode)
   "Return palette with accent colors by COLOR-ID.
-Pallete is a plist with the following keys: `:outline', `:foreground',
+Palette is a plist with the following keys: `:outline', `:foreground',
 `:background' and `:colors'"
   (unless background-mode
     (setq background-mode (frame-parameter nil 'background-mode)))
@@ -726,7 +735,7 @@ Could contain `:loading', `:older-loaded', `:newer-freezed' or
 (make-variable-buffer-local 'telega-chatbuf--topic)
 
 (defun telega-chatbuf--topic-thread-msg ()
-  "If message thread topic is curretly active, return its starting message."
+  "If message thread topic is currently active, return its starting message."
   (when-let ((messages (plist-get telega-chatbuf--topic :messages)))
     (seq-elt messages (1- (length messages)))))
 
@@ -742,7 +751,7 @@ To be used in various TDLib methods as `:topic_id` argument."
     (telega--MessageTopic telega-chatbuf--topic)))
 
 (defvar telega-chatbuf--aux-plist nil
-  "Supplimentary plist for aux prompt.")
+  "Supplementary plist for aux prompt.")
 (make-variable-buffer-local 'telega-chatbuf--aux-plist)
 
 (defvar telega-chatbuf--msg-send-options nil
@@ -754,7 +763,7 @@ To be used in various TDLib methods as `:topic_id` argument."
 Such as marking media as spoiler/self-destructuring, link preview
 settings, etc.")
 (make-variable-buffer-local 'telega-chatbuf--input-options-plist)
-  
+
 
 (defun telega--init-vars ()
   "Initialize runtime variables.
@@ -845,6 +854,7 @@ Done when telega server is ready to receive queries."
   (setq telega--group-calls (make-hash-table :test 'eq))
   (setq telega-docker--container-id nil)
   (setq telega--recent-inline-bots nil)
+  (setq telega--trusted-miniapp-bots-ids nil)
 
   (setq telega--favorite-messages-storage-message 'not-yet-fetched)
   (setq telega--favorite-messages nil)
@@ -916,7 +926,7 @@ Return non-nil if all tests are passed."
 
 (defmacro telega-save-window-start (start end &rest body)
   "Execute BODY saving window start and point.
-Window start is saved only if window start is inbetween START and
+Window start is saved only if window start is in between START and
 END."
   (declare (indent 2))
   (let ((buf-win-sym (gensym))
@@ -977,10 +987,65 @@ END."
        (telega-save-excursion
          ,@body))))
 
+(defun telega-chatbuf--undo-list-shift (shift)
+  "Shift positions in `buffer-undo-list' by SHIFT.
+Done the same way as `erc-update-undo-list'."
+  (unless (or (zerop shift) (atom buffer-undo-list))
+    (let ((list buffer-undo-list) elt)
+      (while list
+        (setq elt (car list))
+        (cond ((integerp elt)           ; POSITION
+               (cl-incf (car list) shift))
+              ((or (atom elt)           ; nil, EXTENT
+                   (markerp (car elt))) ; (MARKER . DISTANCE)
+               nil)
+              ((integerp (car elt))     ; (BEGIN . END)
+               (cl-incf (car elt) shift)
+               (cl-incf (cdr elt) shift))
+              ((stringp (car elt))      ; (TEXT . POSITION)
+               (cl-incf (cdr elt) (* (if (natnump (cdr elt)) 1 -1) shift)))
+              ((null (car elt))         ; (nil PROPERTY VALUE BEG . END)
+               (let ((cons (nthcdr 3 elt)))
+                 (cl-incf (car cons) shift)
+                 (cl-incf (cdr cons) shift))))
+        (setq list (cdr list))))))
+
+(defun telega-chatbuf--undo-state ()
+  "Return chatbuf input state for `telega-chatbuf--undo-adjust'.
+Return nil if current buffer is not a chatbuf."
+  (when telega-chatbuf--input-marker
+    (list (current-buffer)
+          (marker-position telega-chatbuf--input-marker)
+          (buffer-substring-no-properties
+           telega-chatbuf--input-marker (point-max)))))
+
+(defun telega-chatbuf--undo-adjust (state)
+  "Adjust `buffer-undo-list' after modifications not recorded into it.
+STATE is the value of `telega-chatbuf--undo-state' before the
+modifications.  If the input is moved, positions in `buffer-undo-list'
+are shifted, so undo still applies to the input.  If the input text is
+changed, undo history is discarded, since it no longer matches the
+input."
+  ;; NOTE: chatbuf might be killed by the modifications
+  (when (eq (car state) (current-buffer))
+    (if (equal (nth 2 state) (buffer-substring-no-properties
+                              telega-chatbuf--input-marker (point-max)))
+        (telega-chatbuf--undo-list-shift
+         (- telega-chatbuf--input-marker (nth 1 state)))
+      (when (listp buffer-undo-list)
+        (setq buffer-undo-list nil)))))
+
 (defmacro with-telega-buffer-modify (&rest body)
-  "Run BODY inhibiting `buffer-read-only' variable."
-  `(with-silent-modifications
-     ,@body))
+  "Run BODY inhibiting `buffer-read-only' variable.
+Modifications made by BODY are not recorded into `buffer-undo-list'.
+In the chatbuf, `buffer-undo-list' is adjusted by
+`telega-chatbuf--undo-adjust'."
+  (let ((state-sym (gensym "undo-state")))
+    `(let ((,state-sym (telega-chatbuf--undo-state)))
+       (unwind-protect
+           (with-silent-modifications
+             ,@body)
+         (telega-chatbuf--undo-adjust ,state-sym)))))
 
 (defmacro with-telega-root-buffer (&rest body)
   "Execute BODY setting current buffer to root buffer.
@@ -1129,6 +1194,11 @@ For example:
       (setq ret (list 'plist-get ret prop)))
     ret))
 
+(defmacro telega-tl-get0 (obj prop &optional string-p)
+  "Get OBJ's property PROP which might have zero value.
+Use this to make telega-server's OPTIMIZE_ZERO_VALUES optimization to work."
+  `(or (plist-get ,obj ,prop) ,(if string-p "0" 0)))
+
 (defmacro telega--tl-prop (prop1 &rest props)
   "Generate function to get property by PROP1 and PROPS.
 Uses `telega--tl-get' to obtain the property."
@@ -1155,15 +1225,15 @@ If TL-TYPES is nil, then return first TL entity from the TL-ENTITIES list."
 
 (defun telega--tl-star-amount-as-float (tl-star-amount)
   "Return starAmount TL-STAR-AMOUNT as float number."
-  (+ (plist-get tl-star-amount :star_count)
-     (/ (plist-get tl-star-amount :nanostar_count) 1000000000.0)))
+  (+ (telega-tl-get0 tl-star-amount :star_count)
+     (/ (telega-tl-get0 tl-star-amount :nanostar_count) 1000000000.0)))
 
 (defsubst telega-file--size (file)
   "Return FILE size."
   ;; NOTE: fsize is 0 if unknown, in this case esize is approximate
   ;; size
-  (let ((fsize (plist-get file :size))
-        (esize (plist-get file :expected_size)))
+  (let ((fsize (telega-tl-get0 file :size))
+        (esize (telega-tl-get0 file :expected_size)))
     (if (zerop fsize) esize fsize)))
 
 (defmacro telega-file--path (file)
@@ -1189,7 +1259,7 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
        (not (telega-file--downloaded-p file))))
 
 (defmacro telega-file--downloaded-size (file)
-  `(telega--tl-get ,file :local :downloaded_size))
+  `(telega-tl-get0 (plist-get ,file :local) :downloaded_size))
 
 (defun telega-file--downloading-progress (file)
   "Return progress of FILE downloading as float from 0 to 1."
@@ -1213,8 +1283,9 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
 
 (defun telega-file--uploading-progress (file)
   "Return progress of FILE uploading as float from 0 to 1."
-  (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
-                  (telega-file--size file))))
+  (color-clamp
+   (/ (float (telega-tl-get0 (plist-get file :remote) :uploaded_size))
+      (telega-file--size file))))
 
 (defun telega-file--partially-uploaded-p (file)
   "Return non-nil if FILE is partially uploaded."
@@ -1224,7 +1295,7 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
 (defvar telega-inhibit-telega-display-by nil
   "Bind it to non-nil to inhibit `telega-display' property for non-emoji parts.
 Can be a list of symbols if you need to inhibit particular transforms.
-Use it to get/copy text ommiting text modifications from plugins, such
+Use it to get/copy text omitting text modifications from plugins, such
 at `telega-url-shorten'.")
 
 (defun telega--inhibit-telega-display-p (display-by)
@@ -1294,7 +1365,7 @@ If NO-PROPERTIES is specified, then do not keep text properties."
 
 (defun telega-tl-str (obj &optional prop no-properties)
   "Get property PROP from OBJ, desurrogating resulting string.
-If PROP is ommited, use OBJ.
+If PROP is omitted, use OBJ.
 NO-PROPERTIES is passed directly to `telega--desurrogate-apply'.
 Return nil for empty strings.
 Also supports \"formattedText\" a value of the OBJ's PROP."
@@ -1869,18 +1940,19 @@ Draft input is the input that have `:draft-input-p' property on both sides."
            telega--cached-messages))
 
 (defun telega-msg-location-live-for (msg)
-  "For live location message MSG return number of seconds it will last live.
-Return nil if location message is not live.
+  "For messageLiveLocation message MSG return number of seconds it will last live.
+Return nil if location message is expired.
 Return list of two values - (LIVE-FOR UPDATED-AGO)."
   (let* ((content (plist-get msg :content))
-         (live-period (plist-get content :live_period))
-         (expires-in (plist-get content :expires_in)))
-    (unless (or (telega-zerop live-period) (telega-zerop expires-in))
+         (live-loc (plist-get content :location))
+         (live-period (telega-tl-get0 live-loc :live_period))
+         (expires-in (telega-tl-get0 content :expires_in)))
+    (unless (or (zerop live-period) (zerop expires-in))
       (let ((current-ts (telega-time-seconds))
-            (since (if (zerop (plist-get msg :edit_date))
+            (since (if (zerop (telega-tl-get0 msg :edit_date))
                        (plist-get msg :date)
                      (plist-get msg :edit_date))))
-        (list (- (+ since expires-in) current-ts)
+        (list (- (+ (plist-get msg :date) live-period) current-ts)
               (- current-ts since))))))
 
 
@@ -2077,11 +2149,14 @@ If help message has been inserted, insert newline at the end."
 (defun telega-box-button-style (style-sym &rest style-sym-mixins)
   "Create a box button style from STYLE-SYM and STYLE-SYM-MIXINS."
   (declare (indent 1))
-  (apply #'append 
-         (alist-get style-sym telega-box-button-styles)
-         (mapcar (lambda (ssym)
-                    (alist-get ssym telega-box-button-styles))
-                 style-sym-mixins)))
+  (let ((style (alist-get style-sym telega-box-button-styles)))
+    (when style-sym-mixins
+      (setq style (copy-sequence style))
+      (dolist (ssym style-sym-mixins)
+        (telega--tl-dolist ((prop-name value)
+                            (alist-get ssym telega-box-button-styles))
+          (plist-put style prop-name value))))
+    style))
 
 (defun telega-box-button--style-get (style attr)
   "Return STYLE's value for the attribute ATTR."
@@ -2147,14 +2222,23 @@ Return what BODY returns."
   (declare (indent 1))
   (let ((style-sym (gensym "style"))
         (left-bracket-sym (gensym "left-bracket"))
-        (right-bracket-sym (gensym "right-bracket")))
-    `(let ((,style-sym ,style))
+        (right-bracket-sym (gensym "right-bracket"))
+        (left-start-sym (gensym "left-start"))
+        (body-start-sym (gensym "body-start"))
+        (metrics-sym (gensym "metrics")))
+    `(let* ((,style-sym ,style)
+            (,left-bracket-sym
+             (telega-box-button--style-get ,style-sym :left-bracket))
+            (,right-bracket-sym
+             (telega-box-button--style-get ,style-sym :right-bracket))
+            (,left-start-sym (point))
+            ,body-start-sym
+            ,metrics-sym)
        (telega-ins--with-face
            (telega-box-button--style-get ,style-sym :passive-face)
 
          ;; Left bracket
-         (when-let ((,left-bracket-sym 
-                     (telega-box-button--style-get ,style-sym :left-bracket)))
+         (when ,left-bracket-sym
            (if (stringp ,left-bracket-sym)
                (telega-ins ,left-bracket-sym)
              (telega-ins--image
@@ -2162,20 +2246,49 @@ Return what BODY returns."
                ,style-sym :left-bracket ,left-bracket-sym))))
 
          ;; Button body
+         (setq ,body-start-sym (point))
          (telega-ins--with-face (telega-box-button--body-face ,style-sym)
            (telega-ins (telega-box-button--style-get ,style-sym :prefix))
            ,@body
-           (telega-ins (telega-box-button--style-get ,style-sym :suffix)))
+           (telega-ins (telega-box-button--style-get ,style-sym :suffix))))
 
-         ;; Right bracket
-         (when-let ((,right-bracket-sym
-                     (telega-box-button--style-get ,style-sym :right-bracket)))
+       ;; Measure styled content once, sharing metrics between both brackets.
+       ;; NOTE: a multiline label moves `line-beginning-position' past the
+       ;; left bracket, such labels keep the fixed bracket size.
+       (when (and telega-use-images
+                  (<= (line-beginning-position) ,left-start-sym)
+                  (eq (telega-box-button--style-get ,style-sym :height)
+                      'content))
+         (setq ,metrics-sym
+               (or (telega-box-button--style-get
+                    ,style-sym :telega-content-metrics)
+                   (telega-box-button--content-metrics
+                    (concat telega--line-prefix
+                            (buffer-substring
+                             (line-beginning-position) ,left-start-sym)
+                            (buffer-substring ,body-start-sym (point)))))))
+
+       ;; Adjust already inserted left bracket to content height.
+       (when (and ,metrics-sym (consp ,left-bracket-sym)
+                  (get-text-property ,left-start-sym 'display))
+         (put-text-property
+          ,left-start-sym ,body-start-sym 'display
+          (telega-box-button--bracket-image
+           ,style-sym :left-bracket ,left-bracket-sym ,metrics-sym)))
+
+       ;; Right bracket
+       ;; NOTE: uses its own `telega-ins--with-face' block, because metrics
+       ;; must be measured before the right bracket is inserted.
+       (telega-ins--with-face
+           (telega-box-button--style-get ,style-sym :passive-face)
+         (when ,right-bracket-sym
            (if (stringp ,right-bracket-sym)
                (telega-ins ,right-bracket-sym)
              (telega-ins--image
               (telega-box-button--bracket-image
-               ,style-sym :right-bracket ,right-bracket-sym))))
-         t))))
+               ,style-sym :right-bracket ,right-bracket-sym
+               ,metrics-sym)))))
+       t)))
 
 (defmacro telega-ins--box-button2 (label style &rest button-props)
   "Insert box button of STYLE.
@@ -2303,7 +2416,7 @@ Use `telega-box-button-style' to make a STYLE."
 
 (defmacro telega-ins--line-wrap-prefix (prefix &rest body)
   "Execute BODY adding `line-prefix' and `wrap-prefix' properties.
-`line-prefix' and `wrap-prefix' are contatenated on subsequent calls to
+`line-prefix' and `wrap-prefix' are concatenated on subsequent calls to
 `telega-ins--line-wrap-prefix'."
   (declare (indent 1))
   (let ((lwprefix-sym (gensym "lwprefix"))
@@ -2323,6 +2436,8 @@ Use `telega-box-button-style' to make a STYLE."
             (telega--column-offset (+ telega--column-offset
                                       (string-width
                                        (or ,prefix-sym ,wrap-sym ""))))
+            (telega--line-prefix (concat telega--line-prefix
+                                         (or ,prefix-sym ,wrap-sym)))
             ,region-sym)
        (prog1
            (progn ,@body)

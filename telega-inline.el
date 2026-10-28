@@ -148,9 +148,12 @@
         msg (list :@type "callbackQueryPayloadData"
                   :data (plist-get kbd-type :data))))
 
+      (inlineKeyboardButtonTypeDisabled
+       nil)
+
       (inlineKeyboardButtonTypeSwitchInline
        ;; Generate another inline query to the bot
-       (let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
+       (let* ((via-bot-user-id (telega-tl-get0 msg :via_bot_user_id))
               (bot (if (not (zerop via-bot-user-id))
                        (telega-user-get via-bot-user-id)
                      (telega-msg-sender msg)))
@@ -385,9 +388,9 @@
       (telega-ins--image thumb-img 1)
       (telega-ins " "))
     (telega-ins-fmt "%dx%d %s"
-      (plist-get video :width)
-      (plist-get video :height)
-      (telega-duration-human-readable (plist-get video :duration)))
+      (telega-tl-get0 video :width)
+      (telega-tl-get0 video :height)
+      (telega-duration-human-readable (telega-tl-get0 video :duration)))
     (telega-ins "\n")))
 
 (defun telega-ins--inline-game (qr)

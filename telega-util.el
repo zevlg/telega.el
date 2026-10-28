@@ -112,7 +112,7 @@ Can be used as value for `telega-online-status-function'."
 
 (defun telega-buffer-p (&optional buffer)
   "Return non-nil if BUFFER is some telega buffer.
-If BUFFER is ommited, current buffer is used.
+If BUFFER is omitted, current buffer is used.
 Could be used as value for `telega-online-status-function'."
   (with-current-buffer (or buffer (current-buffer))
     (when (or (derived-mode-p 'telega-root-mode)
@@ -605,8 +605,8 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
 
 (defun telega-spoiler-create-svg (minithumb &optional width height limits video-p)
   "Create svg image for MINITHUMB that has spoiler."
-  (let* ((width (or width (plist-get minithumb :width)))
-         (height (or height (plist-get minithumb :height)))
+  (let* ((width (or width (telega-tl-get0 minithumb :width)))
+         (height (or height (telega-tl-get0 minithumb :height)))
          (cheight (telega-media--cheight-for-limits width height limits))
          (svg (telega-svg-create width height)))
     (telega-svg-append-spoiler-node svg "noise")
@@ -629,11 +629,34 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
    (dom-node 'filter
              `((id . ,node-id))
              (dom-node 'feGaussianBlur
-                       `((stdDeviation . ,(or std-deviation "3"))
+                       `((in . "SourceAlpha")
+                         (stdDeviation . ,(or std-deviation "3"))
                          (result . "coloredBlur")))
              (dom-node 'feMerge nil
                        (dom-node 'feMergeNode
                                  `((in . "coloredBlur")))
+                       (dom-node 'feMergeNode
+                                 `((in . "SourceGraphic"))))
+             )))
+
+(defun telega-svg-append-shadow-filter (svg node-id &optional std-deviation dx dy)
+  "Create shadow filter."
+  (svg--append
+   svg
+   (dom-node 'filter
+             `((id . ,node-id))
+             (dom-node 'feGaussianBlur
+                       `((in . "SourceAlpha")
+                         (stdDeviation . ,(or std-deviation "3"))
+                         (result . "blur")))
+             (dom-node 'feOffset
+                       `((in . "blur")
+                         (dx . ,(or dx "2"))
+                         (dy . ,(or dy "2"))
+                         (result . "offsetBlur")))
+             (dom-node 'feMerge nil
+                       (dom-node 'feMergeNode
+                                 `((in . "offsetBlur")))
                        (dom-node 'feMergeNode
                                  `((in . "SourceGraphic"))))
              )))
@@ -900,7 +923,7 @@ HOW specifies how list is changed, one of: `prepend', `append' or `remove'."
 
 (defun telega--text-entity-at-newline-p (ent text)
   "Return non-nil if textEntity ENT for TEXT starts at newline."
-  (let ((beg (plist-get ent :offset)))
+  (let ((beg (telega-tl-get0 ent :offset)))
     (or (zerop beg) (= ?\n (aref text (1- beg))))))
 
 (defun telega--text-entity-apply (ent &optional object)
@@ -909,8 +932,8 @@ Optional OBJECT could be a buffer (or nil, which means the current
 buffer) or a string."
   (let* ((ent-type (plist-get ent :type))
          (ent-type-tl-type (telega--tl-type ent-type))
-         (beg (plist-get ent :offset))
-         (end (+ (plist-get ent :offset) (plist-get ent :length)))
+         (beg (telega-tl-get0 ent :offset))
+         (end (+ beg (telega-tl-get0 ent :length)))
          (ent-text (if object
                        (substring object beg end)
                      (buffer-substring beg end))))
@@ -1291,6 +1314,14 @@ RSTART and REND specifies STR region to work on."
                              :type entity-type))
                     [])))
 
+(defun telega-fmt-text--with-tdlib (text)
+  "Use TDLib to create formatted text from TEXT.
+Makes sync call to TDLib."
+  (when-let ((text-str (telega-tl-str text)))
+    (list :@type "formattedText"
+          :text text
+          :entities (plist-get (telega--getTextEntities text-str) :entities))))
+
 (defun telega-string-as-markup (str markup-name markup-func &rest markup-args)
   "From STR create string with markup named MARKUP-NAME.
 MARKUP-NAME can be nil, in this case markup outline is not displayed,
@@ -1450,11 +1481,11 @@ Return nil if STR does not specify an org mode link."
         ;; NOTE: In emacs27 `cl-incf' with `plist-get' does not work,
         ;; thats why we use `plist-put' instead. See
         ;; https://t.me/emacs_ru/454836
-        (plist-put ent :offset (+ (plist-get ent :offset) offset-shift))
+        (plist-put ent :offset (+ (telega-tl-get0 ent :offset) offset-shift))
 
         (when-let* ((ent-type (plist-get ent :type))
-                    (ent-len (plist-get ent :length))
-                    (beg (plist-get ent :offset))
+                    (ent-len (telega-tl-get0 ent :length))
+                    (beg (telega-tl-get0 ent :offset))
                     (end (+ beg ent-len))
                     (pre-p (eq 'textEntityTypePre (telega--tl-type ent-type)))
                     (text (plist-get fmt-text :text))
@@ -1478,7 +1509,8 @@ Return nil if STR does not specify an org mode link."
                                  (substring text (+ beg lang-len))))
               )))))
     (telega-fmt-text-desurrogate fmt-text)))
-(put 'telega-markup-markdown2-fmt :telega-accepts-fmt-text t)
+;; NOTE: commented out, because to avoid incorrect formatting
+;; (put 'telega-markup-markdown2-fmt :telega-accepts-fmt-text t)
 
 (defun telega-string-split-by-tl-entity-type (text default-markup-func)
   "Split TEXT by `:tl-entity-type'.
@@ -1580,8 +1612,8 @@ parts without explicit markup."
   ;;                             |---ent---|  (partially inside)
   ;;                                      |--ent--| (outside substring)
   ;;
-  (let* ((ent-off (plist-get ent :offset))
-         (ent-len (plist-get ent :length))
+  (let* ((ent-off (telega-tl-get0 ent :offset))
+         (ent-len (telega-tl-get0 ent :length))
          (ent-end (+ ent-off ent-len))
          (ent-ioff (if (< ent-off from) from ent-off))
          (ent-iend (if (> ent-end to) to ent-end)))
@@ -1621,8 +1653,8 @@ Return desurrogated formattedText."
                   (prog1
                       (mapcar (lambda (ent)
                                 (list :@type "textEntity"
-                                      :offset (+ offset (plist-get ent :offset))
-                                      :length (plist-get ent :length)
+                                      :offset (+ offset (telega-tl-get0 ent :offset))
+                                      :length (telega-tl-get0 ent :length)
                                       :type (plist-get ent :type)))
                               (plist-get fmt-text :entities))
                     (cl-incf offset (telega-string-fmt-text-length
@@ -1639,8 +1671,8 @@ ENTITY-TO-MARKUP-FUN is function to convert TDLib entities to string."
         (offset 0)
         (strings nil))
     (seq-doseq (ent (plist-get fmt-text :entities))
-      (let ((ent-off (plist-get ent :offset))
-            (ent-len (plist-get ent :length)))
+      (let ((ent-off (telega-tl-get0 ent :offset))
+            (ent-len (telega-tl-get0 ent :length)))
         ;; Part without attached entity
         (when (> ent-off offset)
           (push (cons nil (substring text offset ent-off)) strings))
@@ -2047,7 +2079,7 @@ Return a chat."
 (defvar telega-permission-read-history nil)
 (defun telega-completing-read-permission (prompt &optional permissions)
   "Read a permission from PERMISSIONS list completing user input.
-If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
+If PERMISSIONS is omitted, then `telega-chat--chat-permissions' is used."
   (let* ((raw-perms (or permissions telega-chat--chat-permissions))
          (i18n-choices (cl-remove
                         nil (mapcar (lambda (perm-spec)
@@ -2153,7 +2185,7 @@ Do not trap errors if `debug-on-error' is enabled."
   (ewoc-location (ewoc--header ewoc)))
 
 (defun telega-ewoc--find (ewoc item test &optional key start-node iter-func)
-  "Find EWOC's node by item and TEST funcion.
+  "Find EWOC's node by item and TEST function.
 TEST function is run with two arguments - ITEM and NODE-VALUE.
 Optionally KEY can be specified to get KEY from node value.
 START-NODE is node to start from, default is first node if
@@ -2394,9 +2426,51 @@ integer values, then absolute value in pixels is used."
       :mask 'heuristic
       :telega-text "()")))
 
+(defun telega-box-button--content-metrics (content)
+  "Return image metrics as (HEIGHT . ASCENT) cons for the CONTENT.
+HEIGHT is in characters and ASCENT is a percentage.
+Metrics are measured from real CONTENT rendering, so emoji
+compositions, embedded images and raised text are all taken into
+account."
+  (when (and content (not (string-empty-p content))
+             (fboundp 'buffer-text-pixel-size))
+    (when-let* ((window
+                 (or (get-buffer-window nil t)
+                     (when-let ((frame (telega-x-frame)))
+                       (frame-selected-window frame))))
+                ((display-graphic-p (window-frame window)))
+                (char-height (telega-chars-xheight 1))
+                ((> char-height 0)))
+      (let ((remapping face-remapping-alist))
+        ;; NOTE: keeping a work buffer around is more efficient than
+        ;; creating a new temporary buffer, same as in `string-pixel-width'.
+        (with-current-buffer (get-buffer-create " *telega-content-metrics*")
+          (delete-region (point-min) (point-max))
+          ;; Keep buffer-local text scaling in the measurement buffer.
+          (setq-local face-remapping-alist remapping
+                      truncate-lines t
+                      inhibit-read-only t)
+          (insert content)
+          ;; Include the default font's ascent and descent in the line metrics.
+          (insert (propertize "x" 'face 'default))
+          (when-let* ((h1 (cdr (buffer-text-pixel-size
+                                (current-buffer) window t)))
+                      ((> h1 0)))
+            ;; A full-ascent H1-pixel probe adds the line's descent to H1.
+            (insert (propertize " " 'display `(space :height (,h1) :ascent 100)))
+            (let* ((h2 (cdr (buffer-text-pixel-size
+                             (current-buffer) window t)))
+                   (ascent (- (* 2 h1) h2)))
+              ;; Image ascent is truncated to pixels, so round up to cover content.
+              (cons (/ (float h1) char-height)
+                    (max 0 (min 100 (ceiling (* 100 ascent) h1)))))))))))
+
 (defun telega-box-button--bracket-image (style bracket-prop
-                                               &optional bracket-spec)
-  "Generate bracket image for the STYLE and BRACKET-PROP."
+                                               &optional bracket-spec metrics)
+  "Generate bracket image for the STYLE and BRACKET-PROP.
+BRACKET-SPEC is a cons (TEXT . PROPS).  The style's `:height' property
+may be `content' to use METRICS, a (HEIGHT . ASCENT) cons from
+`telega-box-button--content-metrics'.  Nil METRICS uses the default size."
   (when-let* ((bracket-spec
                (or bracket-spec
                    (telega-box-button--style-get style bracket-prop)))
@@ -2408,17 +2482,23 @@ integer values, then absolute value in pixels is used."
                            (face-background 'default)))
            (outline-color (telega-box-button--style-outline-color style))
            (outline-width (telega-box-button--style-outline-width style))
+           (content-metrics (and (eq (telega-box-button--style-get
+                                     style :height) 'content)
+                                 metrics))
+           (height (or (car content-metrics) 1))
+           (ascent (or (cdr content-metrics) 'center))
            (left-p (eq bracket-prop :left-bracket))
            (icon-symbol (unless left-p
                           (telega-box-button--style-get style :icon-symbol)))
-           (cacheprop (format "button-bracket-%S-%S-%S-%S-%S-%S"
+           (cacheprop (format "button-bracket-%S-%S-%S-%S-%S-%S-%S-%S"
                               bracket-prop bracket-spec
                               fill-color outline-color
-                              outline-width icon-symbol)))
+                              outline-width height ascent icon-symbol)))
       (or (and (not (plist-get (cdr bracket-spec) :no-cache))
                (telega-emoji--image-cache-get cacheprop 1))
           (let* ((w (round (telega-chars-xwidth
                             (or (plist-get bracket-props :width) 1))))
+                 ;; Scale the one-char viewport to keep the bracket cap's shape.
                  (h (telega-chars-xheight 1))
                  (svg (telega-svg-create w h))
                  (mask (dom-node 'mask `((id . "hole"))))
@@ -2427,16 +2507,15 @@ integer values, then absolute value in pixels is used."
                  (round-fraction
                   (or (plist-get bracket-props :rx) 0.25))
                  (xpos (round (* w (if left-p pos-fraction (- 1 pos-fraction)))))
-                 (sw (or outline-width 0))
+                 ;; Keep the displayed outline width equal to the body's box.
+                 (sw (/ (or outline-width 0) (float height)))
                  (sw2 (/ sw 2.0)))
             (svg--def svg mask)
             (svg-rectangle mask 0 0 w h :fill "white")
-            (svg-rectangle mask (if left-p (+ xpos sw2) (- 0 w sw2)) sw2
-                           (if left-p (+ w w) (+ w xpos)) (- h sw)
+            (svg-rectangle mask (if left-p (+ xpos sw) (- 0 w sw)) sw
+                           (if left-p (+ w w) (+ w xpos)) (- h (* 2 sw))
                            :rx (round (* h round-fraction))
-                           :fill "black"
-                           :stroke-width sw
-                           :stroke-color "black")
+                           :fill "black")
 
             (svg-rectangle svg 0 0 w h
                            :fill (telega-color-name-as-hex-2digits fill-color)
@@ -2461,9 +2540,10 @@ integer values, then absolute value in pixels is used."
 
             (let ((image (telega-svg-image svg
                            :scale 1.0
-                           :height (telega-ch-height 1)
+                           :height (telega-ch-height height)
+                           :background nil
                            :telega-text (car bracket-spec)
-                           :ascent 'center)))
+                           :ascent ascent)))
               (telega-emoji--image-cache-put cacheprop 1 image)
               image))))))
 
@@ -2604,16 +2684,16 @@ Same as `momentary-string-display', but keeps the point."
   "Sensor function to highlight button when entered.
 For box buttons use `telega-box-button-active' face, otherwise use
 `telega-button-highlight' face."
-  (let* ((inhibit-read-only t)
-         (button-region (telega--region-with-cursor-sensor
+  (let* ((button-region (telega--region-with-cursor-sensor
                          (if (eq dir 'entered) (point) oldpos)))
          (start (car button-region))
          (stop (cdr button-region)))
     (when button-region
       (when-let ((active-face (get-text-property start :active-face)))
-        (if (eq dir 'entered)
-            (add-face-text-property start stop active-face)
-          (telega-remove-face-text-property start stop active-face)))
+        (with-telega-buffer-modify
+         (if (eq dir 'entered)
+             (add-face-text-property start stop active-face)
+           (telega-remove-face-text-property start stop active-face))))
 
       (when (eq dir 'entered)
         (when-let ((button (button-at start)))
@@ -2826,7 +2906,7 @@ RET\" string."
   "Workaround Emacs bug.
 Emacs does not respect buffer local nil value for
 `switch-to-buffer-preserve-window-point', so we hack window point
-in `(window-prev-buffers)' to achive behaviour for nil-valued
+in `(window-prev-buffers)' to achieve behaviour for nil-valued
 `switch-to-buffer-preserve-window-point'."
   (unless switch-to-buffer-preserve-window-point
 ;    (when (version< emacs-version "28.1.0")
@@ -3099,18 +3179,21 @@ not signal an error and just return nil."
 
 
 ;; QR code image generation
+(defun telega-qr-code--encode (text type)
+  "Return QR code of TYPE encoding TEXT, as generated by qrencode."
+  (let ((qrcode-cmd (telega-docker-exec-cmd
+                     (format "qrencode -m 2 -t %s -o - '%s'" type text)
+                     'try-host-first))
+        ;; NOTE: output is UTF-8 regardless of the language environment
+        (coding-system-for-read 'utf-8))
+    (telega-debug "RUN: %s" qrcode-cmd)
+    (shell-command-to-string qrcode-cmd)))
+
 (defun telega-qr-code--create-image (text size)
   "Generate image of SIZE with the QR code encoding TEXT."
-  (let* ((png-filename (telega-temp-name "qrcode-" ".png"))
-         (qrcode-cmd (telega-docker-exec-cmd
-                      (format "qrencode -m 1 -s %d -t png -o %s '%s'"
-                              (telega-chars-xwidth 1) png-filename text)
-                      'try-host-first)))
-    (telega-debug "RUN: %s" qrcode-cmd)
-    (shell-command-to-string qrcode-cmd)
-    (telega-create-image png-filename nil nil
-      :scale 1.0 :ascent 'center
-      :width size :height size)))
+  (telega-create-image (telega-qr-code--encode text "SVG") 'svg t
+    :scale 1.0 :ascent 'center
+    :width size :height size))
 
 (defun telega-completing-read-emoji-status-duration (prompt)
   "Read duration for the custom emoji."
@@ -3363,7 +3446,7 @@ Return nil if no reaction is available for the MSG."
 (defun telega-completing-read-saved-messages-tag (prompt &optional sm-topic-id
                                                          new-tag-label)
   "Read a Saved Messages tag.
-Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
+Return nil if there is no tags for the SM-TOPIC-ID or new tag is chosen."
   (when-let* ((tags (telega-saved-messages-tags sm-topic-id))
               (tag-choices
                (mapcar (lambda (tag)

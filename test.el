@@ -86,7 +86,7 @@ Have Stoploss 690 Satoshi." :entities []))))
          :name (:@type "chatFolderName" :text (:@type "formattedText" :text "Emacs" :entities []))
          :icon (list :@type "chatFolderIcon" :name ""))
         ("😹😹😹" :@type "chatFolderInfo" :id 3
-         :name (:@type "chatFolderName" :text (:@type "formattedText" :text #("������������������" 0 2 (telega-emoji-p t telega-display "😹") 2 4 (telega-emoji-p t telega-display "😹") 4 6 (telega-emoji-p t telega-display "😹")) :entities []) :animate_custom_emoji t)
+         :name (:@type "chatFolderName" :text (:@type "formattedText" :text #("������������������" 0 2 (telega-emoji-p t telega-display "😹") 2 4 (telega-emoji-p t telega-display "😹") 4 6 (telega-emoji-p t telega-display "😹")) :entities []) :animate_custom_emoji t)
          :icon (list :@type "chatFolderIcon" :name ""))))
 
 
@@ -200,6 +200,242 @@ Have Stoploss 690 Satoshi." :entities []))))
                  "test.domain.ru##[title~=\\[NSP\\]]:nth-ancestor(6)"))
   )
 
+(ert-deftest telega-rich-message-links ()
+  "Rich-text links keep their targets inside message buttons."
+  (let ((msg '(:@type "message" :chat_id -123 :id 456))
+        opened-url)
+    (cl-letf (((symbol-function 'telega-browse-url)
+               (lambda (url &rest _) (setq opened-url url))))
+      (dolist (type '("richTextUrl" "richTextReferenceLink"))
+        (with-temp-buffer
+          (telega-button--insert 'telega-msg msg
+            :inserter
+            (lambda (_msg)
+              (telega-rich-text--ins-rt
+               `(:@type ,type :url "https://example.com"
+                 :text (:@type "richTextPlain" :text "Open")))))
+          (let ((button (button-at (point-min))))
+            (should (eq (button-get button :value) msg))
+            (setq opened-url nil)
+            (button-activate button)
+            (should (equal opened-url "https://example.com"))))))))
+
+(ert-deftest telega-rich-message-button-row-callbacks ()
+  "Buttons after a footer keep their full labels and message callbacks."
+  (let* ((telega-use-images nil)
+         (msg '(:@type "message" :chat_id -123 :id 456))
+         (row '(:@type "pageBlockButtonRow"
+                :buttons
+                [(:@type "inlineButton"
+                  :text (:@type "richTexts"
+                          :texts [(:@type "richTextPlain" :text "First")
+                                  (:@type "richTextPlain" :text "Button")])
+                  :type (:@type "inlineKeyboardButtonTypeCallback" :data "Zmlyc3Q="))
+                 (:@type "inlineButton"
+                  :text (:@type "richTextPlain" :text "Second")
+                  :style (:@type "buttonStyleLink")
+                  :type (:@type "inlineKeyboardButtonTypeCallback" :data "c2Vjb25k"))
+                 (:@type "inlineButton"
+                  :text (:@type "richTextPlain" :text "Disabled")
+                  :type (:@type "inlineKeyboardButtonTypeDisabled"))]))
+         calls)
+    (cl-letf (((symbol-function 'telega--getCallbackQueryAnswer)
+               (lambda (message payload &rest _)
+                 (push (list message payload) calls))))
+      ;; The same message context must also reach nested rows.
+      (dolist (block (list row (list :@type "pageBlockBlockQuote"
+                                    :blocks (vector row))))
+        (with-temp-buffer
+          (telega-ins--rich-message
+           (list :@type "richMessage" :is_full t
+                 :blocks (vector (list :@type "pageBlockFooter"
+                                       :footer (list :@type "richTextPlain"
+                                                     :text (make-string 100 ?x)))
+                                 block
+                                 '(:@type "pageBlockParagraph"
+                                   :text (:@type "richTextPlain" :text "After"))))
+           msg)
+          (should (string-match-p "x\n+.*FirstButton" (buffer-string)))
+          (should (string-suffix-p "\nAfter\n" (buffer-string)))
+          (goto-char (point-min))
+          (dolist (expected '(("FirstButton" . "Zmlyc3Q=") ("Second" . "c2Vjb25k")))
+            (search-forward (car expected))
+            (button-activate (button-at (1- (point))))
+            (should (equal (pop calls)
+                           (list msg (list :@type "callbackQueryPayloadData"
+                                           :data (cdr expected))))))
+          (search-forward "Disabled")
+          (button-activate (button-at (1- (point))))
+          (should-not calls))))))
+
+(ert-deftest telega-keyboard-button-rich-labels ()
+  "Rich and ordinary keyboard labels preserve URL actions and hints."
+  (let ((telega-use-images nil)
+        opened-url)
+    (cl-letf (((symbol-function 'telega-browse-url)
+               (lambda (url &rest _) (setq opened-url url))))
+      (dolist (type '("inlineButton" "inlineKeyboardButton"))
+        (with-temp-buffer
+          (telega-ins--keyboard-button
+              (list :@type type
+                    :text (if (equal type "inlineButton")
+                              '(:@type "richTextPlain" :text "Open")
+                            "Open")
+                    :type '(:@type "inlineKeyboardButtonTypeUrl"
+                            :url "https://example.com"))
+              nil)
+          (let ((button (button-at (point-min))))
+            (should (string-match-p "Open" (button-label button)))
+            (should (equal (button-get button 'help-echo) "https://example.com"))
+            (setq opened-url nil)
+            (button-activate button)
+            (should (equal opened-url "https://example.com"))))))))
+
+(ert-deftest telega-rich-message-spoilers ()
+  "Spoilers in paragraphs and tables reveal before following nested links."
+  (let* ((msg '(:@type "message" :chat_id -123 :id 456))
+         (spoiler '(:@type "richTextSpoiler"
+                    :text (:@type "richTexts"
+                            :texts [(:@type "richTextUrl" :url "https://example.com"
+                                     :text (:@type "richTextPlain" :text "Secret"))
+                                    (:@type "richTextPlain" :text " tail")])))
+         opened-url)
+    (cl-letf (((symbol-function 'telega-msg-redisplay) #'ignore)
+              ((symbol-function 'telega-browse-url)
+               (lambda (url &rest _) (setq opened-url url))))
+      (dolist (block (list (list :@type "pageBlockParagraph" :text spoiler)
+                          (list :@type "pageBlockTable" :is_bordered t
+                                :cells (vector (vector (list :text spoiler
+                                                             :colspan 1 :rowspan 1))))))
+        (with-temp-buffer
+          (cl-labels ((render ()
+                        (let ((inhibit-read-only t)
+                              (telega-msg--current msg))
+                          (erase-buffer)
+                          (telega-button--insert 'telega-msg msg
+                            :inserter (lambda (_msg)
+                                        (telega-rich-text--ins-pb block msg)))
+                          (goto-char (point-min)))))
+            (setq opened-url nil)
+            (render)
+            (should-not (string-match-p "Secret" (buffer-string)))
+            (let ((pos (text-property-any (point-min) (point-max)
+                                          :action #'telega-msg-text-spoiler-toggle)))
+              (should pos)
+              (button-activate (button-at pos)))
+            (should (plist-get msg :telega-text-spoiler-removed))
+            (should-not opened-url)
+            (render)
+            (search-forward "Secret")
+            (button-activate (button-at (1- (point))))
+            (should (equal opened-url "https://example.com"))
+            (search-forward "tail")
+            (button-activate (button-at (1- (point))))
+            (should-not (plist-get msg :telega-text-spoiler-removed))
+            (render)
+            (should-not (string-match-p "Secret" (buffer-string)))))))))
+
+(ert-deftest telega-rich-message-table-alignment ()
+  "Table columns align inside message and quote prefixes."
+  (let ((table
+         (list :@type "pageBlockTable" :is_bordered t
+               :cells (cl-map 'vector
+                        (lambda (row)
+                          (cl-map 'vector
+                            (lambda (text)
+                              (list :text (list :@type "richTextPlain" :text text)
+                                    :colspan 1 :rowspan 1))
+                            row))
+                        '(("中文" "Long value 🙂 ❤️") ("" "X\nY")
+                          ("Emoji" "👩‍💻 🇨🇳"))))))
+    (dolist (block (list table (list :@type "pageBlockBlockQuote"
+                                   :blocks (vector table))))
+      (with-temp-buffer
+        (telega-ins--line-wrap-prefix "    "
+          (telega-ins "Before")
+          (telega-rich-text--ins-pb block)
+          (telega-rich-text--ins-pb
+           '(:@type "pageBlockParagraph"
+             :text (:@type "richTextPlain" :text "After"))))
+        (should (string-prefix-p "Before\n" (buffer-string)))
+        (should (string-suffix-p "\nAfter\n" (buffer-string)))
+        (save-window-excursion
+          (set-window-buffer (selected-window) (current-buffer))
+          (let (expected)
+            (dolist (text '("Long value" "X" "👩‍💻"))
+              (goto-char (point-min))
+              (let* ((start (- (search-forward text) (length text)))
+                     (column (car (window-text-pixel-size
+                                   nil (line-beginning-position) start))))
+                (if expected
+                    (should (= column expected))
+                  (setq expected column))))
+            (should expected)))))))
+
+(ert-deftest telega-keyboard-button-row-height ()
+  "Rich and ordinary button rows share their tallest label's height."
+  (let ((telega-use-images t)
+        (telega-emoji-use-images nil)
+        (row '(:@type "pageBlockButtonRow"
+               :buttons [(:@type "inlineButton"
+                          :text (:@type "richTextPlain" :text "取消封禁")
+                          :style (:@type "buttonStyleSuccess")
+                          :type (:@type "inlineKeyboardButtonTypeCallback"
+                                 :data "undo"))
+                         (:@type "inlineButton"
+                          :text (:@type "richTextPlain" :text "✅ 好")
+                          :style (:@type "buttonStylePrimary")
+                          :type (:@type "inlineKeyboardButtonTypeCallback"
+                                 :data "close"))]))
+        (msg '(:@type "message"
+               :content (:@type "messageText")
+               :reply_markup
+               (:@type "replyMarkupInlineKeyboard"
+                :rows [[(:@type "inlineKeyboardButton" :text "取消封禁"
+                         :type (:@type "inlineKeyboardButtonTypeCallback"
+                                :data "undo"))
+                        (:@type "inlineKeyboardButton" :text "✅ 好"
+                         :type (:@type "inlineKeyboardButtonTypeCallback"
+                                :data "close"))]]))))
+    (cl-letf (((symbol-function 'telega-ins--image)
+               (lambda (image &optional _slice-num &rest _props)
+                 (let ((start (point)))
+                   (telega-ins (plist-get (cdr image) :telega-text))
+                   (put-text-property start (point) 'display image))))
+              ((symbol-function 'telega-box-button--content-metrics)
+               (lambda (content)
+                 (if (string-match-p "✅" content) '(1.5 . 75) '(1 . 80)))))
+      (dolist (render (list (lambda () (telega-rich-text--ins-pb row))
+                            (lambda () (telega-ins--reply-markup msg))))
+        (with-temp-buffer
+          (funcall render)
+          (goto-char (point-min))
+          (dolist (label '("取消封禁" "好"))
+            (search-forward label)
+            (let ((left (get-text-property
+                         (save-excursion (search-backward "[")) 'display))
+                  (right (get-text-property
+                          (save-excursion (search-forward "]") (1- (point)))
+                          'display)))
+              (dolist (image (list left right))
+                (should (equal (plist-get (cdr image) :height)
+                               (telega-ch-height 1.5)))
+                (should (= (plist-get (cdr image) :ascent) 75))))))))))
+
+(ert-deftest telega-rich-message-open-content ()
+  "Opening a rich message fetches its full content only when needed."
+  (let (requested)
+    (cl-letf (((symbol-function 'telega--openMessageContent) #'ignore)
+              ((symbol-function 'telega-msg-rich-message-show-full)
+               (lambda (msg) (push msg requested))))
+      (dolist (state '(nil loading t))
+        (let ((msg (list :@type "message"
+                         :content (list :@type "messageRichMessage"
+                                        :message (list :is_full state)))))
+          (setq requested nil)
+          (telega-msg-open-content msg)
+          (should (equal requested (unless state (list msg)))))))))
+
 (ert-deftest telega-webpage-tdlib-1.8.66-block-fields ()
   (with-temp-buffer
     (let ((telega-webpage-strip-nl t))
@@ -281,6 +517,199 @@ Have Stoploss 690 Satoshi." :entities []))))
         (should target)
         (button-activate button)
         (should (= (point) target))))))
+
+(ert-deftest telega-vvnote-tdlib-1.8.66-input-file ()
+  "Voice and video note attachments keep their file inside a wrapper."
+  (let ((ifile '(:@type "inputFileLocal" :path "/tmp/note.mp4")))
+    (should (equal ifile
+                   (telega-chatbuf--input-imc-file
+                    `(:@type "inputMessageVoiceNote"
+                             :voice_note (:@type "inputVoiceNote"
+                                                 :voice_note ,ifile
+                                                 :duration 3
+                                                 :waveform "AAAA")))))
+    (should (equal ifile
+                   (telega-chatbuf--input-imc-file
+                    `(:@type "inputMessageVideoNote"
+                             :video_note (:@type "inputVideoNote"
+                                                 :video_note ,ifile
+                                                 :duration 3
+                                                 :length 240)))))))
+
+(ert-deftest telega-vvnote-tdlib-1.8.66-one-line ()
+  "Input line reads a wrapped attachment, and a draft converted into one."
+  (let ((telega-use-images nil))
+    (cl-flet ((one-line (imc)
+                (with-temp-buffer
+                  (telega-ins--input-content-one-line imc)
+                  (buffer-substring-no-properties (point-min) (point-max))))
+              (draft-line (draft-content)
+                (with-temp-buffer
+                  (telega-ins--draft-content-one-line draft-content)
+                  (buffer-substring-no-properties (point-min) (point-max)))))
+      (should (string-match-p
+               "VoiceNote.*(3s)"
+               (one-line '(:@type "inputMessageVoiceNote"
+                                  :voice_note (:@type "inputVoiceNote"
+                                                      :voice_note (:@type "inputFileLocal"
+                                                                          :path "/tmp/note.mp4")
+                                                      :duration 3
+                                                      :waveform "AAAA")))))
+      (should (string-match-p
+               "VideoNote.*(9s)"
+               (one-line '(:@type "inputMessageVideoNote"
+                                  :video_note (:@type "inputVideoNote"
+                                                      :video_note (:@type "inputFileLocal"
+                                                                          :path "/tmp/note.mp4")
+                                                      :duration 9
+                                                      :length 240)))))
+      ;; A draft keeps these fields flat, and is rendered by the same function
+      ;; after `telega-ins--draft-content-one-line' has nested them.
+      (should (string-match-p
+               "VoiceNote.*(7s)"
+               (draft-line '(:@type "draftMessageContentVoiceNote"
+                                    :file_path "/tmp/note.mp4"
+                                    :duration 7 :waveform "AAAA"))))
+      (should (string-match-p
+               "VideoNote.*(11s)"
+               (draft-line '(:@type "draftMessageContentVideoNote"
+                                    :file_path "/tmp/note.mp4"
+                                    :duration 11 :length 240)))))))
+
+(ert-deftest telega-box-button-content-metrics ()
+  (let (line-heights expected-remapping)
+    (cl-letf (((symbol-function 'get-buffer-window)
+               (lambda (&rest _args) (selected-window)))
+              ((symbol-function 'telega-chars-xheight)
+               (lambda (n) (* n 14)))
+              ((symbol-function 'display-graphic-p)
+               (lambda (&optional _display) t))
+              ;; First call measures the line height H1, second call
+              ;; measures H1 + line descent (the baseline probe)
+              ((symbol-function 'buffer-text-pixel-size)
+               (lambda (&rest _args)
+                 (when expected-remapping
+                   (should (equal face-remapping-alist expected-remapping)))
+                 (cons 42 (pop line-heights)))))
+      ;; Plain text line: height 14, descent 2 -> ascent 12
+      (setq line-heights (list 14 16))
+      (should (equal (telega-box-button--content-metrics "A")
+                     (cons 1.0 86)))
+      (setq line-heights (list 14 16))
+      (should (equal (telega-box-button--content-metrics
+                      (propertize "A" 'read-only t))
+                     (cons 1.0 86)))
+      ;; Line with emoji: height 20, descent 5 -> ascent 15
+      (setq line-heights (list 20 25))
+      (should (equal (telega-box-button--content-metrics (string ?A #xfe0f))
+                     (cons (/ 20.0 14) 75)))
+      ;; Ascent percentage must be `ceiling'ed: 18/23 = 78.26%, and
+      ;; display truncates floor(78 * 23 / 100) = 17px < 18px, placing
+      ;; the bracket 1px too low; 79% restores exact 18px
+      (setq line-heights (list 23 28))
+      (should (equal (telega-box-button--content-metrics (string ?A #xfe0f))
+                     (cons (/ 23.0 14) 79)))
+      ;; Text scaling is buffer-local and must carry into the work buffer.
+      (with-temp-buffer
+        (face-remap-add-relative 'default :height 1.5)
+        (setq expected-remapping face-remapping-alist
+              line-heights (list 21 24))
+        (should (equal (telega-box-button--content-metrics "A")
+                       (cons 1.5 86)))))))
+
+(ert-deftest telega-box-button-content-height-inserter ()
+  (let ((telega-use-images t)
+        (measurements 0)
+        measured-content)
+    (cl-letf (((symbol-function 'telega-ins--image)
+               (lambda (image &optional _slice-num &rest _props)
+                 (let ((start (point)))
+                   (telega-ins
+                    (plist-get (cdr image) :telega-text))
+                   (put-text-property start (point) 'display image))))
+              ((symbol-function 'telega-box-button--content-metrics)
+               (lambda (content)
+                 (cl-incf measurements)
+                 (setq measured-content content)
+                 '(2 . 80))))
+      (with-temp-buffer
+        (telega-ins "prefix ")
+        (let ((button-start (point)))
+          (telega-ins--with-style (telega-box-button-style 'reaction)
+            (telega-ins "x"))
+          (let ((left (get-text-property button-start 'display))
+                (right (get-text-property (1- (point-max)) 'display)))
+            (dolist (image (list left right))
+              (should (equal (plist-get (cdr image) :height)
+                             (telega-ch-height 2)))
+              (should (= (plist-get (cdr image) :ascent) 80)))))
+        (should (= measurements 1))
+        (should (equal (substring-no-properties measured-content)
+                       "prefix x"))
+        (should (memq 'telega-reaction
+                      (get-text-property 7 'face measured-content))))
+      (setq measurements 0)
+      (with-temp-buffer
+        (telega-ins--with-style (telega-box-button-style 'reaction)
+          (telega-ins "first\nsecond"))
+        (should (zerop measurements))))))
+
+(ert-deftest telega-box-button-bracket-metrics ()
+  (cl-letf (((symbol-function 'telega-chars-xwidth)
+             (lambda (n) (* n 10)))
+            ((symbol-function 'telega-chars-xheight)
+             (lambda (n) (ceiling (* n 16))))
+            ((symbol-function 'telega-emoji--image-cache-get)
+             (lambda (&rest _args) nil))
+            ((symbol-function 'telega-emoji--image-cache-put)
+             (lambda (_key _scale image) image)))
+    (dolist (style '(default reaction telega-ui keyboard-default))
+      (let* ((image (telega-box-button--bracket-image
+                     (telega-box-button-style style)
+                     :left-bracket nil '(1.5 . 80)))
+             (scaled (not (eq style 'default))))
+        (should (equal (plist-get (cdr image) :height)
+                       (telega-ch-height (if scaled 1.5 1))))
+        (should (equal (plist-get (cdr image) :ascent)
+                       (if scaled 80 'center)))
+        (should (string-match-p
+                 "<svg width=\"[^\"]+\" height=\"16\""
+                 (plist-get (cdr image) :data)))))))
+
+(ert-deftest telega-community-service-messages ()
+  (let ((telega--communities-alist
+         '((42 . (:@type "community" :id 42 :name "Emacs"))))
+        from-chat-p)
+    (cl-letf (((symbol-function 'telega-msg-sender)
+               (lambda (_msg) (if from-chat-p 'chat 'sender)))
+              ((symbol-function 'telega-msg-chat)
+               (lambda (&rest _args) 'chat))
+              ((symbol-function 'telega-msg-sender-title--special)
+               (lambda (_sender &rest _args) "Alice")))
+      (dolist (case
+               '((messageChatJoinFromCommunity 42 nil nil
+                  "Alice joined the group via the Emacs community")
+                 (messageChatJoinFromCommunity 43 nil nil
+                  "Alice joined the group via a community")
+                 (messageChatAddedToCommunity 42 nil nil
+                  "Alice added this group to the Emacs community.")
+                 (messageChatAddedToCommunity 43 t t
+                  "This channel was added to a community.")
+                 (messageChatRemovedFromCommunity nil nil nil
+                  "Alice removed this group from the community.")
+                 (messageChatRemovedFromCommunity nil t nil
+                  "This chat was removed from the community.")))
+        (setq from-chat-p (nth 2 case))
+        (let ((msg `(:@type "message"
+                     :is_channel_post ,(nth 3 case)
+                     :content (:@type ,(symbol-name (car case))
+                               :community_id ,(nth 1 case)))))
+          (should (telega-msg-special-p msg))
+          (with-temp-buffer
+            (telega-ins--special msg)
+            (should (string-match-p
+                     (regexp-quote (nth 4 case))
+                     (buffer-string)))))))))
 
 (ert-deftest telega-org-formatting ()
   "Test org mode text formatting."
@@ -387,6 +816,34 @@ Have Stoploss 690 Satoshi." :entities []))))
           (should (equal (nth 2 capf)
                          '(":rocket:"))))))))
 
+(ert-deftest telega-capf-ignores-history-before-input ()
+  "CAPFs should return nil when point precedes the chat input."
+  (with-temp-buffer
+    (insert " :rocket")
+    (let ((history-end (point)))
+      (insert "\n> ")
+      (setq-local telega-chatbuf--input-marker (point-marker))
+      (goto-char history-end)
+      (cl-letf (((symbol-function 'telega-emoji-init) #'ignore))
+        (should-not (telega-capf-emoji)))))
+  (with-temp-buffer
+    (insert "/help")
+    (let ((history-end (point)))
+      (insert "\n")
+      (setq-local telega-chatbuf--input-marker (point-marker))
+      (goto-char history-end)
+      (should-not (telega-capf-botcmd)))))
+
+(ert-deftest telega-supergroup-chat-id ()
+  "Chat id is TDLib's ZERO_CHANNEL_ID minus the supergroup id."
+  ;; Ten digit ids, where appending to \"-100\" happens to give the same answer.
+  (should (= -1001234567890 (telega-chat--id-by-supergroup-id 1234567890)))
+  (should (= -1009876543210 (telega-chat--id-by-supergroup-id 9876543210)))
+  ;; Ids of any other length, where it does not.  Telegram issues supergroup
+  ;; ids past ZERO_CHANNEL_ID's magnitude nowadays.
+  (should (= -2000000000000 (telega-chat--id-by-supergroup-id 1000000000000)))
+  (should (= -1000001234567 (telega-chat--id-by-supergroup-id 1234567))))
+
 (ert-deftest telega-bot-chat-with-topics-is-forum ()
   "Bot chats with topics enabled should reuse forum topic support."
   (let* ((bot-id 90901)
@@ -406,6 +863,31 @@ Have Stoploss 690 Satoshi." :entities []))))
           (should (telega-chat-match-p bot-chat 'is-forum)))
       (remhash bot-id users-ht)
       (remhash chat-id telega--chats))))
+
+(ert-deftest telega-topic-ensure-returns-cached-topic ()
+  "Ensuring a known topic returns the cached object, not the fresh one.
+Callers keep the result and compare topics with `eq', so handing back the
+argument would leave them holding an object the cache does not use."
+  (let* ((chat-id -1001)
+         (topic-id 7)
+         (chat `(:@type "chat" :id ,chat-id))
+         (make-topic
+          (lambda (unread)
+            `(:@type "forumTopic"
+                     :info (:@type "forumTopicInfo"
+                                   :chat_id ,chat-id
+                                   :forum_topic_id ,topic-id)
+                     :unread_count ,unread))))
+    (unwind-protect
+        (cl-letf (((symbol-function 'telega-chat--forum-topics-icons-fetch)
+                   #'ignore))
+          (let* ((cached (telega-topic--ensure (funcall make-topic 1) chat))
+                 (again (telega-topic--ensure (funcall make-topic 9) chat)))
+            (should (eq cached (telega-topic-get chat topic-id)))
+            (should (eq again cached))
+            ;; The fresh data still lands in the cached object.
+            (should (= 9 (plist-get cached :unread_count)))))
+      (remhash chat-id telega--chat-topics))))
 
 (ert-deftest telega-msg-open-thread-or-topic-fetches-forum-topic ()
   "Opening a forum topic message should fetch missing topic info."
@@ -493,72 +975,81 @@ Have Stoploss 690 Satoshi." :entities []))))
       (remhash bot-id users-ht)
       (remhash chat-id telega--chats))))
 
+(ert-deftest telega-chatbuf-undo-after-silent-modifications ()
+  "Undo in chatbuf applies to the input after messages are inserted."
+  (with-temp-buffer
+    (buffer-enable-undo)
+    (with-telega-buffer-modify
+     (insert "messages\n>>> "))
+    (should (null buffer-undo-list))
+    (setq-local telega-chatbuf--input-marker (point-marker))
+    (insert "hello")
+    (undo-boundary)
+    (delete-region telega-chatbuf--input-marker (point-max))
+    (undo-boundary)
+    ;; New message is inserted before the input
+    (with-telega-buffer-modify
+     (goto-char (point-min))
+     (insert "new message\n"))
+    (goto-char (point-max))
+    (let ((last-command nil))
+      (undo))
+    (should (equal (telega-chatbuf-input-string) "hello"))))
+
+(ert-deftest telega-chatbuf-undo-after-silent-input-change ()
+  "Undo history is discarded if the input is changed silently."
+  (with-temp-buffer
+    (buffer-enable-undo)
+    (setq-local telega-chatbuf--input-marker (point-marker))
+    (insert "hello")
+    (undo-boundary)
+    (with-telega-buffer-modify
+     (delete-region telega-chatbuf--input-marker (point-max))
+     (insert "draft"))
+    (should (null buffer-undo-list))))
+
+(ert-deftest telega-chatbuf-undo-chatbuf-killed ()
+  "Killing the chatbuf in `with-telega-buffer-modify' is not an error."
+  (let ((chatbuf (generate-new-buffer "chatbuf")))
+    (with-current-buffer chatbuf
+      (setq-local telega-chatbuf--input-marker (point-marker))
+      (with-telega-buffer-modify
+       (kill-buffer chatbuf)))
+    (should-not (buffer-live-p chatbuf))))
+
 (ert-deftest telega-msg-resend-as-file ()
-  "Resend the original photo and caption only on button activation."
-  (let* ((caption-text #("\uD83D\uDC7B caption" 0 2 (telega-display "👻")))
-         (caption (telega-fmt-text caption-text '(:@type "textEntityTypeBold")))
-         (msg `(:@type "message" :id 90001 :chat_id 1111
-                        :sending_state
-                        (:@type "messageSendingStateFailed"
-                                :error (:@type "error" :code 400
-                                               :message "PHOTO_INVALID_DIMENSIONS"))
-                        :content
-                        (:@type "messagePhoto" :caption ,caption
-                                :photo (:@type "photo"
-                                               :sizes [(:type "x" :photo (:local (:path "preview.jpg")))
-                                                       (:type "i" :photo (:local (:path "original.png")))]))))
-         request callback deleted)
-    (cl-letf (((symbol-function 'telega-server--call)
-               (lambda (query &optional cb _command)
-                 (setq request query callback cb)))
-              ((symbol-function 'telega-server--send)
-               (lambda (query &optional _command)
-                 (setq deleted query))))
-      (with-temp-buffer
-        (telega-button--insert 'telega-msg msg
-          :inserter #'telega-ins--msg-sending-state-failed)
-        (should-not request)
-        (goto-char (point-min))
-        (search-forward "RESEND")
-        (button-activate (button-at (point)))
-        (should (= (plist-get request :chat_id) 1111))
-        (should (equal (plist-get request :input_message_content)
-                       `(:@type "inputMessageDocument"
-                                :document (:@type "inputDocument"
-                                                  :document (:@type "inputFileLocal"
-                                                                   :path "original.png")
-                                                  :disable_content_type_detection t)
-                                :caption (:@type "formattedText"
-                                                 :text "👻 caption"
-                                                 :entities ,(plist-get caption :entities)))))
-        (should (eq (plist-get caption :text) caption-text))
-        (should-not deleted)
-        (funcall callback '(:@type "error" :code 400 :message "Rejected"))
-        (should-not deleted)
-        (funcall callback '(:@type "message" :id 90002 :chat_id 1111))
-        (should (equal deleted '(:@type "deleteMessages" :chat_id 1111
-                                       :message_ids [90001] :revoke :false))))
-      (setq request nil)
-      (setf (plist-get (plist-get msg :content) :photo) nil)
-      (should-error (telega-msg-resend-as-file msg) :type 'user-error)
-      (should-not request))))
+  "Failed photo is resent as document with original file and caption."
+  (let ((msg '(:@type "message" :id 1 :chat_id 1111
+               :content
+               (:@type "messagePhoto"
+                :caption (:@type "formattedText" :text "caption" :entities [])
+                :photo (:sizes [(:type "x" :photo (:local (:path "preview.jpg")))
+                                (:type "i" :photo (:local (:path "original.png")))]))))
+        sent-imc)
+    (cl-letf (((symbol-function 'telega-msg-chat) #'ignore)
+              ((symbol-function 'telega--sendMessage)
+               (lambda (_chat imc &rest _args)
+                 (setq sent-imc imc))))
+      (telega-msg-resend-as-file msg))
+    (should (equal (telega--tl-get sent-imc :document :document :path)
+                   "original.png"))
+    (should (equal (telega--tl-get sent-imc :caption :text) "caption"))))
 
 (ert-deftest telega-msg-resend-as-file-button ()
-  "Offer conversion only for photos that failed dimension validation."
+  "[RESEND as file] is shown only for photos with invalid dimensions."
   (dolist (test '(("messagePhoto" "PHOTO_INVALID_DIMENSIONS" t)
                   ("messagePhoto" "Too Many Requests" nil)
                   ("messageDocument" "PHOTO_INVALID_DIMENSIONS" nil)))
     (let ((msg `(:@type "message" :content (:@type ,(nth 0 test))
-                         :sending_state
-                         (:@type "messageSendingStateFailed"
-                                 :error (:@type "error" :code 400
-                                                :message ,(nth 1 test))))))
+                 :sending_state
+                 (:@type "messageSendingStateFailed"
+                  :error (:@type "error" :code 400 :message ,(nth 1 test))))))
       (with-temp-buffer
         (telega-ins--msg-sending-state-failed msg)
-        (should (eq (not (null (text-property-any
-                               (point-min) (point-max)
-                               :action #'telega-msg-resend-as-file)))
-                    (nth 2 test)))))))
+        (should (eq (nth 2 test)
+                    (and (text-property-any (point-min) (point-max)
+                                            :action #'telega-msg-resend-as-file)
+                         t)))))))
 
 ;; Local Variables:
 ;; no-byte-compile: t

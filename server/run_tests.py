@@ -75,9 +75,15 @@ JSON_TO_PLIST_TESTS = TESTS + [
     # (True, b'"\ud83e\udd37\u200d\u2642"', '#("\\u2764" 0 4 (telega-emoji-p t telega-display "\\U0001f937\\u200d\\u2642"))'),
 ]
 
-def run_telega(input, flag):
+# Tests for JSON --> PLIST with OPTIMIZE_ZERO_VALUES (-O 32)
+JSON_TO_PLIST_OPTIMIZE_ZERO_TESTS = [
+    # 0 is removed, but "0" is kept, it might be a text
+    (True, '{"text":"0","count":0}', '(:text "0" )'),
+]
+
+def run_telega(input, *flags):
     """Return tuple - (status, output)."""
-    proc = subprocess.Popen([TELEGA_SERVER, flag], stdin=subprocess.PIPE,
+    proc = subprocess.Popen([TELEGA_SERVER, *flags], stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     if not isinstance(input, bytes):
         input = input.encode()
@@ -85,12 +91,12 @@ def run_telega(input, flag):
     return proc.returncode, output.rstrip().decode()
 
 
-def run_single_test(test, flag):
+def run_single_test(test, *flags):
     """Return True if TEST passed.
-    FLAG is passed to telega-server."""
+    FLAGS are passed to telega-server."""
     should_pass, input, expected = test
     try:
-        status, output = run_telega(test[1], flag)
+        status, output = run_telega(test[1], *flags)
     except subprocess.TimeoutExpired:
         status = -1
     except OSError as e:
@@ -125,6 +131,11 @@ def run_tests(args):
     print("JSON --> PLIST:")
     for test in JSON_TO_PLIST_TESTS:
         results.append(run_single_test(test, '-j'))
+
+    print()
+    print("JSON --> PLIST with OPTIMIZE_ZERO_VALUES:")
+    for test in JSON_TO_PLIST_OPTIMIZE_ZERO_TESTS:
+        results.append(run_single_test(test, '-O', '32', '-j'))
 
     print()
     print("PLIST --> JSON:")

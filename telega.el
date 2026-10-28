@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (transient "0.9.0"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.660
-(defconst telega-version "0.8.660")
+;; Version: 0.8.680
+(defconst telega-version "0.8.680")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.8.66")
 (defconst telega-tdlib-max-version nil)
@@ -128,6 +128,8 @@ Used for manual generation.")
   (mkdir telega-directory t)
   (mkdir telega-cache-dir t)
   (mkdir telega-temp-dir t)
+  (mkdir (expand-file-name "4sq" telega-temp-dir) t) ; for venues
+  (mkdir (expand-file-name "rt-math" telega-temp-dir) t) ; for rich text math
 
   ;; NOTE: make sure directory for `telega-server-logfile' exists
   ;; See https://github.com/zevlg/telega.el/issues/307
@@ -221,8 +223,13 @@ If `\\[universal-argument]' is specified, then do not pop to root buffer."
       ;; default strings before entering rootbuf
       (let ((telega-language "en"))
         (telega-i18n-init))
-      (with-current-buffer (get-buffer-create telega-root-buffer-name)
-        (telega-root-mode))
+
+      ;; NOTE: Ensure `default-directory' is local, chats created from
+      ;; rootbuf inherits rootbuf's `default-directory'
+      ;; ref. https://github.com/zevlg/telega.el/issues/610
+      (let ((default-directory (expand-file-name "~/")))
+        (with-current-buffer (get-buffer-create telega-root-buffer-name)
+          (telega-root-mode)))
 
       (telega-server--ensure-build)
       (telega-server--start)
@@ -317,6 +324,7 @@ string at point."
                           ")"
                           " (telega-server v"
                           (telega-server-version)
+                          (format " [opt:%d]" telega-server-optimize)
                           (when telega-use-docker
                             (format " [%s]" (if (stringp telega-use-docker)
                                                 telega-use-docker

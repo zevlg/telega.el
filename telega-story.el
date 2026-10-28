@@ -138,9 +138,9 @@ telega-server has been made."
   ;; matcher returns msg content or link preview type
   (when-let* ((story-spec (telega-msg-match-p msg
                             '(or (type Story) (link-preview Story))))
-              (chat-id (plist-get story-spec :story_poster_chat_id))
-              (story-id (plist-get story-spec :story_id)))
-    (unless (or (telega-zerop chat-id) (telega-zerop story-id))
+              (chat-id (telega-tl-get0 story-spec :story_poster_chat_id))
+              (story-id (telega-tl-get0 story-spec :story_id)))
+    (unless (or (zerop chat-id) (zerop story-id))
       (let ((story (telega-story-get chat-id story-id 'offline)))
         (if (or story (null callback))
             (if callback
