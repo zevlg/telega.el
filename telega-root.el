@@ -2410,19 +2410,19 @@ If LINK is nil, then link is loading."
     (telega-save-cursor
       (telega-ewoc--set-footer ewoc
         (telega-ins--as-string
-         (cond ((null link)
-                (telega-ins "QR code loading.."))
-               (telega-use-images
-                (telega-ins--image
-                 (telega-qr-code--create-image
-                  link (telega-chars-xheight 10))))
-               (t
-                ;; NOTE: UTF8 QR code is drawn with light modules as
-                ;; foreground, so use fixed colors to make it
-                ;; scannable regardless of the theme
-                (telega-ins--with-face '(:foreground "white"
-                                         :background "black")
-                  (telega-ins (telega-qr-code--create-text link)))))
+         (if link
+             ;; NOTE: UTF8 text is used if images are not available.
+             ;; It is drawn with light modules as foreground, so use
+             ;; fixed colors to make it scannable regardless of the
+             ;; theme
+             (telega-ins--with-face '(:foreground "white"
+                                      :background "black")
+               (telega-ins--image
+                (telega-qr-code--create-image link (telega-chars-xheight 10))
+                nil
+                :telega-text (string-trim-right
+                              (telega-qr-code--encode link "UTF8"))))
+           (telega-ins "QR code loading.."))
          (telega-ins "\n")
          (telega-ins--with-face 'bold
            (telega-ins (telega-i18n "lng_intro_qr_title") "\n"))
