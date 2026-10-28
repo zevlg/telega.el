@@ -871,7 +871,6 @@ To be used as `telega-avatar-text-function'."
 (defun telega-avatar--create-image (sender file &optional cheight addon-function)
   "Create SENDER (char or user) avatar image.
 CHEIGHT specifies avatar height in chars, default is 2."
-  ;; NOTE: For CHEIGHT==1 align avatar at vertical center
   (unless cheight (setq cheight 2))
   (let* ((base-dir (telega-directory-base-uri telega-database-dir))
          (photofile (telega-file--path file))
@@ -884,7 +883,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
          (cfull (floor (+ ch margin)))
          (aw-chars (telega-chars-in-width ch))
          (svg-xw (telega-chars-xwidth aw-chars))
-         (svg-xh (if (= cheight 1) cfull xh))
+         (svg-xh xh)
          (svg (telega-svg-create svg-xw svg-xh)))
     (if (telega-file-exists-p photofile)
         (let ((img-type (telega-image-supported-file-p photofile))
@@ -927,8 +926,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
     (telega-svg-image svg
       :scale 1.0
       :width (telega-cw-width aw-chars)
-      :height (unless (= cheight 1) (telega-ch-height cheight))
-      :max-height (telega-ch-height cheight)
+      :height (telega-ch-height cheight)
       :ascent 'center
       :mask 'heuristic
       :base-uri (expand-file-name "dummy" base-dir)
