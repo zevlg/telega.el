@@ -162,8 +162,13 @@ margin.  In this case SLICE-NUM is ignored."
 
     ;; NOTE: do not check SLICE-NUM
     (let ((slice (cond ((numberp slice-num)
-                        (list 0 (telega-chars-xheight slice-num)
-                              1.0 (telega-chars-xheight 1)))
+                        (let ((lines (pcase (plist-get (cdr img) :height)
+                                       (`(,n . ch) n)
+                                       (_ (cdr (image-size img nil (telega-x-frame))))))
+                              (up (1+ (expt 2.0 -52))))
+                          ;; one ULP up, Emacs truncates FRACTION*HEIGHT to pixels
+                          (list 0 (/ (* up slice-num) lines)
+                                1.0 (/ up lines))))
                        ((listp slice-num)
                         (prog1
                             (list 0 (nth 1 slice-num)
