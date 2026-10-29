@@ -2414,6 +2414,13 @@ Use `telega-box-button-style' to make a STYLE."
     (when (> end beg)
       (cons beg end))))
 
+(defun telega--prefix-concat (prefix pos prop)
+  "Concat PREFIX and string value of PROP property at POS.
+Non-string value is dropped, it might be a display spec, for example
+`visual-wrap-prefix-mode' uses `(space :align-to ...)' for `wrap-prefix'."
+  (let ((value (get-text-property pos prop)))
+    (concat prefix (when (stringp value) value))))
+
 (defmacro telega-ins--line-wrap-prefix (prefix &rest body)
   "Execute BODY adding `line-prefix' and `wrap-prefix' properties.
 `line-prefix' and `wrap-prefix' are concatenated on subsequent calls to
@@ -2454,12 +2461,10 @@ Use `telega-box-button-style' to make a STYLE."
                (setq ,eol-sym (point)))
              (add-text-properties
               ,start-sym ,eol-sym
-              (list 'line-prefix (concat ,prefix-sym
-                                         (get-text-property ,start-sym
-                                                            'line-prefix))
-                    'wrap-prefix (concat ,wrap-sym
-                                         (get-text-property ,start-sym
-                                                            'wrap-prefix))))
+              (list 'line-prefix (telega--prefix-concat
+                                  ,prefix-sym ,start-sym 'line-prefix)
+                    'wrap-prefix (telega--prefix-concat
+                                  ,wrap-sym ,start-sym 'wrap-prefix)))
              (setq ,start-sym ,eol-sym)))
 
          (when (and ,wrap-sym (not (string-empty-p ,wrap-sym)))
@@ -2471,12 +2476,10 @@ Use `telega-box-button-style' to make a STYLE."
                                     ,lwprefix-props-sym)
                (add-text-properties
                 (car ,region-sym) (cdr ,region-sym)
-                (list 'line-prefix (concat ,wrap-sym
-                                           (get-text-property (car ,region-sym)
-                                                              'line-prefix))
-                      'wrap-prefix (concat ,wrap-sym
-                                           (get-text-property (car ,region-sym)
-                                                              'wrap-prefix))))
+                (list 'line-prefix (telega--prefix-concat
+                                    ,wrap-sym (car ,region-sym) 'line-prefix)
+                      'wrap-prefix (telega--prefix-concat
+                                    ,wrap-sym (car ,region-sym) 'wrap-prefix)))
                (setq ,start-sym (cdr ,region-sym)))
              (add-text-properties ,start-sym (point) ,lwprefix-props-sym)))))))
 
