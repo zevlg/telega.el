@@ -1036,6 +1036,40 @@ argument would leave them holding an object the cache does not use."
       (should (equal (get-text-property 1 'wrap-prefix)
                      (if (consp prefix) (cdr prefix) prefix))))))
 
+(ert-deftest telega-msg-resend-as-file ()
+  "Failed photo is resent as document with original file and caption."
+  (let ((msg '(:@type "message" :id 1 :chat_id 1111
+               :content
+               (:@type "messagePhoto"
+                :caption (:@type "formattedText" :text "caption" :entities [])
+                :photo (:sizes [(:type "x" :photo (:local (:path "preview.jpg")))
+                                (:type "i" :photo (:local (:path "original.png")))]))))
+        sent-imc)
+    (cl-letf (((symbol-function 'telega-msg-chat) #'ignore)
+              ((symbol-function 'telega--sendMessage)
+               (lambda (_chat imc &rest _args)
+                 (setq sent-imc imc))))
+      (telega-msg-resend-as-file msg))
+    (should (equal (telega--tl-get sent-imc :document :document :path)
+                   "original.png"))
+    (should (equal (telega--tl-get sent-imc :caption :text) "caption"))))
+
+(ert-deftest telega-msg-resend-as-file-button ()
+  "[RESEND as file] is shown only for photos with invalid dimensions."
+  (dolist (test '(("messagePhoto" "PHOTO_INVALID_DIMENSIONS" t)
+                  ("messagePhoto" "Too Many Requests" nil)
+                  ("messageDocument" "PHOTO_INVALID_DIMENSIONS" nil)))
+    (let ((msg `(:@type "message" :content (:@type ,(nth 0 test))
+                 :sending_state
+                 (:@type "messageSendingStateFailed"
+                  :error (:@type "error" :code 400 :message ,(nth 1 test))))))
+      (with-temp-buffer
+        (telega-ins--msg-sending-state-failed msg)
+        (should (eq (nth 2 test)
+                    (and (text-property-any (point-min) (point-max)
+                                            :action #'telega-msg-resend-as-file)
+                         t)))))))
+
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:

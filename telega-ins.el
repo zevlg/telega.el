@@ -43,6 +43,7 @@
 ;; telega-chat.el depends on telega-ins.el
 (declare-function telega-msg-delete0 "telega-chat" (msg &optional revoke))
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
+(declare-function telega-msg-resend-as-file "telega-msg" (msg))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-title "telega-chat" (chat &optional fmt-type no-badges))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight callback))
@@ -3959,22 +3960,12 @@ If SENDER is specified, use it instead of messageOrigin from FWD-INFO."
       (telega-ins--with-face 'error
         (telega-ins "Failed to send: "
                     (telega-tl-str (plist-get send-state :error) :message)))
-      (cond ((and (telega-msg-match-p msg '(type Photo))
-                  (equal (telega-tl-str (plist-get send-state :error) :message)
-                         "PHOTO_INVALID_DIMENSIONS"))
-             ;; NOTE: Resending as file will accomplish without errors
-             (when-let ((photofile
-                         (plist-get (cl-find "i" (telega--tl-get
-                                                  msg :content :photo :sizes)
-                                             :test #'equal
-                                             :key (telega--tl-prop :type))
-                                    :photo))
-                        (caption (telega--tl-get msg :content :caption)))
-               (telega-ins " ")
-               (telega-ins--ui-button "RESEND as file"
-                 'action (lambda (_button)
-                           (message "TODO: resend as file")))))
-            )
+      (when (and (telega-msg-match-p msg '(type Photo))
+                 (equal (telega-tl-str (plist-get send-state :error) :message)
+                        "PHOTO_INVALID_DIMENSIONS"))
+        (telega-ins " ")
+        (telega-ins--ui-button "RESEND as file"
+          :action #'telega-msg-resend-as-file))
       t)))
 
 (cl-defun telega-ins--message0 (msg &key no-header sender addon-header-inserter)
