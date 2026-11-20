@@ -276,6 +276,10 @@
       (richTexts
        (seq-doseq (rt-item (plist-get rt :texts))
          (telega-rich-text--ins-rt rt-item)))
+      (richTextButton
+       (telega-ins--keyboard-button-row
+        (list (plist-get rt :button))
+        nil))
 
       (t
        (telega-ins-fmt "<TODO: telega-rich-text--ins-rt for %S>"
@@ -384,11 +388,22 @@
        (telega-rich-text--ins-block
         (telega-rich-text--ins-rt (plist-get pb :text))))
       (pageBlockPreformatted
-       (telega-ins-from-newline
-        (telega-ins--with-face 'telega-webpage-preformatted
-          (telega-rich-text--ins-rt (plist-get pb :text))
-          (unless (bolp)
-            (telega-ins "\n")))))
+       (let* ((telega-palette-context 'precode)
+              (palette (if msg
+                           (telega-msg-sender-palette (telega-msg-sender msg))
+                         ;; id=5 is "blue" palette
+                         (telega-palette-by-color-id 5))))
+         (telega-ins-from-newline
+          (telega-ins--with-outline-palette palette
+            (when-let ((lang (telega-tl-str pb :language)))
+              (telega-ins--with-face (list 'bold 'underline
+                                           (assq :foreground palette))
+                (telega-ins (telega-symbol 'codeblock) " "
+                            (capitalize lang) "\n")))
+            (telega-ins--with-face 'telega-rich-text-preformatted
+              (telega-rich-text--ins-rt (plist-get pb :text))
+              (unless (bolp)
+                (telega-ins "\n")))))))
       (pageBlockFooter
        (telega-ins--with-face 'telega-shadow
          (telega-ins (make-string (/ telega-webpage-fill-column 2) ?-) "\n")

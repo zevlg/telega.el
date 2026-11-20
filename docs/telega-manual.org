@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.680)
+#+title: Telega Manual (v0.8.700)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -244,7 +244,7 @@ Thanks to [[https://t.me/zdn_y][=@zdn_y=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.68-c15d3f5a5.
+version equal to v1.8.70-03220f6b3.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -2114,9 +2114,12 @@ You can attach various media into chatbuf input, using next bindings:
 
 - @@html:<kbd>@@C-c C-f@@html:</kbd>@@ (~telega-chatbuf-attach-media~) :: 
      Attach ~FILENAME~ as media, detecting media type by ~FILENAME~ extension.
+     ~FILENAME~ can be a remote uri.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach as file.
      If ~AS-FILE-P~ is ~preview~, then attach as file with preview.  ~FILENAME~
      must be a photo in this case.
+     ~MIME-NAME~ is a mime type for the ~FILENAME~.  Detected automatically by
+     FILENAME's extension if ommited.  Ignored if ~AS-FILE-P~ is specified.
 
 - @@html:<kbd>@@C-c C-v@@html:</kbd>@@ (~telega-chatbuf-attach-clipboard~) :: 
      Attach clipboard files to the chatbuf as photos.
@@ -2153,6 +2156,8 @@ Attachment types to attach with
      voice-note.  Otherwise record voice note inplace.
      ~telega-vvnote-voice-cmd~ is used to record voice notes.
 - file :: Attach ~FILENAME~ as document to the chatbuf input.
+     If ~PREVIEW-P~ is non-nil, then create a preview thumbnail.  ~FILENAME~
+     must be an image file.
      If ~CONTENT-TYPE-DETECT-P~ is specified, then FILENAME's content type is
      automatically detected.
 - gif :: Attach ~GIF-FILE~ as animation to the chatbuf input.

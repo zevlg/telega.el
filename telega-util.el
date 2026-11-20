@@ -2580,6 +2580,40 @@ may be `content' to use METRICS, a (HEIGHT . ASCENT) cons from
          (telega-emoji--image-cache-put checkmark-sym 1 image)
          image)))
 
+(defun telega-svg-create-badge (badge-label)
+  "Create a badge icon with BADGE-LABEL.
+Used for fake and scam badges."
+  (declare (indent 1))
+  (or (telega-emoji--image-cache-get badge-label 1)
+      (let* ((aw-chars (string-width badge-label))
+             (xw (telega-chars-xwidth aw-chars))
+             (xh (telega-chars-xheight 1))
+             (margin (* xh 0.2))
+             (fsize (/ xh 1.6))
+             (svg (telega-svg-create xw xh))
+             image)
+        (svg-rectangle svg margin margin
+                       (- xw (* 2 margin)) (- xh (* 2 margin))
+                       :stroke-width 2
+                       :fill "none"
+                       :stroke "currentColor"
+                       :rx 4)
+        (svg-text svg badge-label
+                  :x (/ xw 2) :y (+ 2 fsize)
+                  :font-size fsize
+                  :font-weight "bold"
+                  :text-anchor "middle"
+                  :fill "currentColor")
+        (setq image (telega-svg-image svg
+                      :scale 1.0
+                      :max-height (telega-ch-height 1)
+                      :width (telega-cw-width aw-chars)
+                      :ascent 'center
+                      :mask 'heuristic
+                      :telega-text badge-label))
+        (telega-emoji--image-cache-put badge-label 1 image)
+        image)))
+
 (defun telega-symbol-emojify (emoji &optional image-spec)
   "Return a copy of EMOJI with  `display' property of EMOJI svg image.
 Optionally, IMAGE-SPEC can by specified to use existing image instead

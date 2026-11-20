@@ -1328,7 +1328,12 @@ Please downgrade TDLib and recompile `telega-server'"
         ;; Finally stop processing events from telega-server
         (telega-server-kill)
         (error version-error-msg)
-        ))))
+        ))
+
+    ;; Load wallet
+    (when (and (eq option :can_use_ton_wallet) value)
+      (telega--loadTonWalletState))
+    ))
 
 (defun telega--on-updateAuthorizationState (event)
   "Proceed with user authorization state change using EVENT."
@@ -1671,11 +1676,6 @@ Please downgrade TDLib and recompile `telega-server'"
   ;; TODO: Update settings
   )
 
-(defun telega--on-updateOwnedTonCount (event)
-  (setq telega--owned-tons (plist-get event :ton_amount))
-  ;; TODO: update
-  )
-
 (defun telega--on-updateSavedMessagesTopic (event)
   (let ((sm-topic (plist-get event :topic))
         (sm-chat (telega-chat-me)))
@@ -1885,6 +1885,22 @@ For Saved Messages and channel direct messages chat topics only."
   "List of trusted mini app bots."
   (setq telega--trusted-miniapp-bots-ids
         (append (plist-get event :bot_user_ids) nil))
+  )
+
+(defun telega--on-updateOwnedGramCount (event)
+  "The number of TON Grams owned by the current user has changed."
+  (setq telega--owned-grams (telega-tl-get0 event :gram_amount))
+  )
+
+(defun telega--on-updateTonWalletState (event)
+  "The state of the TON wallet of the current user has changed."
+  (setq telega--wallet
+        (plist-put telega--wallet :state (plist-get event :state)))
+  )
+
+(defun telega--on-updateTonWalletGaslessTransfersInfo (event)
+  (setq telega--wallet
+        (plist-put telega--wallet :gasless-info (plist-get event :info)))
   )
 
 (provide 'telega-tdlib-events)

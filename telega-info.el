@@ -190,10 +190,12 @@ For secret chats return nil."
   ;; Scam/Fake/Blacklist status
   (telega-ins-prefix telega-symbol-blocked
     (telega-ins--with-face 'error
-      (when (plist-get user :is_fake)
-        (telega-ins (telega-i18n "lng_fake_badge") " "))
       (when (plist-get user :is_scam)
-        (telega-ins (telega-i18n "lng_scam_badge") " "))
+        (let ((badge (telega-i18n "lng_scam_badge")))
+          (telega-ins (telega-symbol badge (telega-svg-create-badge badge)) " ")))
+      (when (plist-get user :is_fake)
+        (let ((badge (telega-i18n "lng_fake_badge")))
+          (telega-ins (telega-symbol badge (telega-svg-create-badge badge)) " ")))
       (when (telega-user-match-p user 'is-blocked)
         (telega-ins "BLOCKED "))))
 
@@ -1230,7 +1232,8 @@ Call CALLBACK on updates."
 (defun telega-proxy-last-used (&optional added-proxies)
   "Return last time used proxy."
   (car (cl-sort (or (copy-sequence added-proxies) (telega--getProxies))
-                '> :key (telega--tl-prop :last_used_date))))
+                '> :key (lambda (p)
+                          (telega-tl-get0 p :last_used_date)))))
 
 (defun telega-proxy-enabled (&optional added-proxies)
   "Return enabled proxy from ADDED-PROXIES list."

@@ -424,8 +424,13 @@ Favorite message is a plist with at least `:chat_id', `:id' properties.
 (defvar telega--owned-stars 0
   "Number of owned Telegram Stars.")
 
-(defvar telega--owned-tons 0
-  "Number of owned TON coins.")
+(defvar telega--owned-grams 0
+  "Number of owned TON grams.")
+(defvar telega--wallet
+  "Some wallet properties.
+`:state' - tonWalletState
+`:gasless-info' - info about gasless transfers.
+`:sessions' - TON Connect sessions alist.")
 
 (defvar telega--quick-replies nil
   "List of quick reply shortcuts.")
@@ -869,6 +874,8 @@ Done when telega server is ready to receive queries."
 
   (setq telega--close-birthday-users nil)
   (setq telega--owned-stars 0)
+  (setq telega--owned-grams 0)
+  (setq telega--wallet nil)
 
   (setq telega-default-reaction-type nil)
   (setq telega-default-paid-reaction-type nil)
@@ -894,12 +901,18 @@ Return non-nil if all tests are passed."
   ;; at least 25.1 emacs is required
   ;; see https://t.me/emacs_telega/1592
   (cl-assert (fboundp 'cursor-intangible-mode) nil
-             "Emacs with `cursor-intangible-mode' is required")
+             "Emacs (>= 25.1) with `cursor-intangible-mode' is required")
 
-  ;; For now stick with at least 27.1 Emacs
-  (cl-assert (string-version-lessp "27.0" emacs-version) nil
-             (format "At least Emacs 27.0 is required, but you have %s"
-                     emacs-version))
+  ;; At least Emacs 29.1 is required for
+  ;; `cursor-face-highlight-mode' and `yank-media'
+  ;; See https://t.me/emacs_telega/51974
+  (cl-assert (fboundp 'cursor-face-highlight-mode) nil
+             "Emacs (>= 29.1) with `cursor-face-highlight-mode' is required")
+
+  ;; For pasting from clipboard we depend on `yank-media' package
+  ;; appeared in the on Emacs 29.1
+  (cl-assert (fboundp 'yank-media) nil
+             "Emacs (>= 29.1) with `yank-media' is required")
 
   ;; imagemagick for images NOT required, we have now fallback in case
   ;; native image transforms available (newer Emacs)

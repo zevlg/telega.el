@@ -1865,6 +1865,13 @@ Return first applicable imc."
 
 ;; TODO: transient dialog for input poll
 
+;; TODO: transient dialog to send photo/video
+;;   - from file
+;;   - from uri
+;;   - self destruct timer
+;;   - [ ] spoiler
+;;   - [ ] send as file
+
 
 ;;; ellit-org: minor-modes
 ;; ** telega-transient-keymaps-mode -- Use transient for telega keymaps

@@ -2028,7 +2028,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
       (telega-ins " • "))
     (telega-ins--with-face pface
       (telega-ins-i18n "telega_time_left"
-        :time (telega-duration-human-readable live-for)))))
+        :time (telega-duration-human-readable live-for 2)))))
 
 (defun telega-ins--location-msg (msg loc)
   "Insert content for location message MSG."
@@ -2042,7 +2042,18 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
         (telega-ins " • "
                     (telega-distance-human-readable
                      (telega-location-distance loc telega-my-location))
-                    " away")))
+                    " away"))
+
+      ;; Proximity alert radius
+      (when-let* (((telega-msg-match-p msg '(type LiveLocation)))
+                  (proximity-alert-radius
+                   (telega-tl-get0 (telega--tl-get msg :content :location)
+                                   :proximity_alert_radius)))
+        (unless (zerop proximity-alert-radius)
+          (telega-ins " • "
+                      (telega-distance-human-readable proximity-alert-radius)
+                      " alert radius")))
+      )
 
     (unless map
       ;; Initial location map creation
@@ -2477,6 +2488,7 @@ Return number of done tasks."
           messageChatRemovedFromCommunity
           messageChatJoinFromCommunity
           messageManagedBotCreated
+          messageTonWalletTransfer
           telegaInternal)))
 
 (defun telega-ins--special-replied-msg (msg &optional _attrs)
@@ -2939,6 +2951,21 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins-i18n "lng_managed_bot_created_title"
          :name (telega-msg-sender-title--special
                    (telega-user-get (plist-get content :bot_user_id)))))
+      (messageTonWalletTransfer
+       (let ((amount (telega-tl-get0 content :amount))
+             (sent-p (telega-msg-match-p msg 'is-outgoing)))
+         (telega-ins-i18n (if sent-p
+                              "lng_action_gram_transfer_sent"
+                            "lng_action_gram_transfer_received")
+           :user (if sent-p
+                     (telega-msg-sender-title--special
+                         (telega-chat-user (telega-msg-chat msg)))
+                   sender-name)
+           :amount (propertize
+                    (telega-i18n "lng_action_gram_transfer_amount"
+                      :count amount
+                      :amount (/ amount 1000000000.0))
+                    'face 'bold))))
 
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))

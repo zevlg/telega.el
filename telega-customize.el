@@ -524,6 +524,13 @@ might be helpful."
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-clipboard-media-mime-types
+  '("image/png" "image/jpeg"          ; prefered image types to paste
+    "image/.*" "audio/.*" "video/.*" "application/.*")
+  "Mime-types to paste from the clipboard."
+  :type '(repeat string)
+  :group 'telega)
+
 
 ;;; Docker support
 (defgroup telega-docker nil
@@ -1693,12 +1700,7 @@ different days. Such as:
           (eval telega-screenshot-function))
      telega-chatbuf-attach-screenshot)
     ("clipboard"
-     (and (my-permission :can_send_photos)
-          (eval
-           (let ((selection-coding-system 'no-conversion))
-             (or (eq system-type 'darwin) ; always try "pngpaste"
-                 (gui-get-selection 'CLIPBOARD 'image/png)
-                 (gui-get-selection 'CLIPBOARD 'image/jpeg)))))
+     (my-permission :can_send_basic_messages)
      telega-chatbuf-attach-clipboard)
     ("markup"
      (return t) telega-chatbuf-attach-markup)
@@ -3556,6 +3558,11 @@ non-nil if symbol gets emojification."
 (defface telega-rich-text-strike-through
   '((t :strike-through t))
   "Face to display strike through RichText."
+  :group 'telega-faces)
+
+(defface telega-rich-text-preformatted
+  '((t :inherit telega-entity-type-code))
+  "Face to display preformatted rich text blocks."
   :group 'telega-faces)
 
 (defface telega-webpage-subtitle

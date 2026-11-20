@@ -1143,6 +1143,17 @@ CALLBACK is called with two args - venue itself and downloaded filename."
     (cl-assert (telega-chat-p sender))
     (telega--tl-get sender :photo :small)))
 
+(defun telega-map-location (map)
+  "Return map's location."
+  (or (when-let* ((msg (plist-get map :msg)))
+        (cond ((telega-msg-match-p msg '(type Location))
+               (telega--tl-get msg :content :location))
+              ((telega-msg-match-p msg '(type LiveLocation))
+               (telega--tl-get msg :content :location :location))
+              ((telega-msg-match-p msg '(type Venue))
+               (telega--tl-get msg :content :venue :location))))
+      (plist-get map :location)))
+
 (defun telega-map--loc-close-enough-p (map loc1 loc2 &optional distance-px)
   "Return non-nil if LOC1 and LOC2 is close enough on MAP."
   (unless distance-px
@@ -1150,7 +1161,7 @@ CALLBACK is called with two args - venue itself and downloaded filename."
 
   (< (telega-map--distance-pixels
       (telega-location-distance loc1 loc2)
-      (or (plist-get map :map-location) (plist-get map :location))
+      (or (plist-get map :map-location) (telega-map-location map))
       (or (plist-get map :map-zoom) (plist-get map :zoom)))
      distance-px))
 
@@ -1161,7 +1172,7 @@ CALLBACK is called with two args - venue itself and downloaded filename."
 
 (defun telega-map--need-update-map-p (map)
   "Return non-nil if MAP's photo need to be updated."
-  (cl-assert (plist-get map :location))
+  (cl-assert (telega-map-location map))
   ;; NOTE: map image is too complex, always update it
   t)
   ;; (or (and (not (plist-get map :map-photo))
@@ -1172,7 +1183,7 @@ CALLBACK is called with two args - venue itself and downloaded filename."
   ;;     (not (eq (plist-get map :sender) (plist-get map :map-sender)))
   ;;     ;; Location moved?
   ;;     (not (telega-map--loc-close-enough-p
-  ;;           map (plist-get map :location) (plist-get map :map-location)
+  ;;           map (telega-map-location map) (plist-get map :map-location)
   ;;           ;; If displaying user's location, then update map
   ;;           ;; thumbnail only if user moves significantly
   ;;           (when (plist-get map :sender)
@@ -1221,7 +1232,7 @@ CALLBACK is called with two args - venue itself and downloaded filename."
          (ruler-w
           (telega-map--distance-pixels
            ruler-meters (or (plist-get map :map-location)
-                            (plist-get map :location))
+                            (telega-map-location map))
            zoom))
          (h (telega-svg-height svg))
          (font-size 26))
@@ -1478,6 +1489,7 @@ Return non-nil if VENUE has been embeded."
   "Create map image for location MAP."
   (let* ((base-dir (telega-directory-base-uri telega-database-dir))
          (map (plist-get obj-spec :object))
+         (loc (telega-map-location map))
          (map-photo (telega-file--renew map :map-photo))
          (map-sender (when-let ((msg (plist-get map :msg)))
                        (telega-msg-sender msg)))
@@ -1492,16 +1504,16 @@ Return non-nil if VENUE has been embeded."
                    (not (plist-get map :map-zoom))
                    (not (eq (plist-get map :zoom) (plist-get map :map-zoom)))
                    (> (telega-map--distance-pixels
-                       (telega-location-distance (plist-get map :location)
-                                                 (plist-get map :map-location))
+                       (telega-location-distance
+                        loc (plist-get map :map-location))
                        (plist-get map :map-location) (plist-get map :map-zoom))
                       (/ width 6))))
       (plist-put map :map-zoom (plist-get map :zoom))
       (plist-put map :map-scale (plist-get map :scale))
-      (plist-put map :map-location (plist-get map :location))
+      (plist-put map :map-location loc)
       (plist-put map :get-map-extra t)
       (telega--getMapThumbnailFile
-          (plist-get map :location)
+          loc
           (or (plist-get map :zoom) telega-location-zoom)
           width height
           (or (plist-get map :scale) telega-location-scale)
@@ -1524,7 +1536,7 @@ Return non-nil if VENUE has been embeded."
             )))
       ;; Update weather info as well
       (when telega-location-show-weather
-        (telega--getCurrentWeather (plist-get map :location)
+        (telega--getCurrentWeather loc
           (lambda (weather)
             (plist-put map :map-weather weather)
             (telega-media--image-updateNEW obj-spec))))
@@ -1560,7 +1572,47 @@ Return non-nil if VENUE has been embeded."
 
     (let ((msg (plist-get map :msg)))
       (cond ((and msg (telega-msg-match-p msg '(type LiveLocation)))
-             (telega-map--svg-draw-sender-pin map svg map-sender))
+             (telega-map--svg-draw-sender-pin map svg map-sender)
+             ;; Draw Proximity alert radius and bell as well
+             (let* ((alert-radius (telega-tl-get0
+                                   (telega--tl-get msg :content :location)
+                                   :proximity_alert_radius))
+                    (radius-px (unless (zerop alert-radius)
+                                 (telega-map--distance-pixels
+                                  alert-radius loc (plist-get map :zoom)))))
+               (when radius-px
+                 (let* ((xy (telega-map--location-coords map width height loc))
+                        (bell-size (telega-chars-xheight 1))
+                        (bell-x (- (car xy) (/ bell-size 2.0)))
+                        (bell-y (+ (cdr xy) radius-px (- (/ bell-size 2.0))))
+                        (bell-mask (dom-node 'mask `((id . "bellhole")))))
+                   (svg--def svg bell-mask)
+                   (svg-rectangle bell-mask 0 0 width height :fill "white")
+                   (svg-rectangle bell-mask bell-x bell-y bell-size bell-size
+                                  :fill "black")
+
+                   (svg-circle svg (car xy) (cdr xy) radius-px
+                               :fill "none"
+                               :stroke-dasharray "16 12"
+                               :stroke-width 4
+                               :stroke-opacity "0.4"
+                               :stroke-color "black"
+                               :mask "url(#bellhole)")
+                   ;; Bell
+                   (telega-svg-path svg "M16 2 L16 4 C9 4 5 10 6 17 C6.5 20 7 21 5 22 C4 22.5 4 23 5 23 L27 23 C28 23 28 22.5 27 22 C25 21 25.5 20 26 17 C27 10 23 4 16 4 M13 25 C13 27.5 19 27.5 19 25"
+                                    :fill "none"
+                                    :stroke-width 4
+                                    :stroke "black"
+                                    :stroke-opacity "0.4"
+                                    :stroke-linecap "round"
+                                    :stroke-linejoin "round"
+                                    :transform
+                                    (format "translate(%f,%f) scale(%f,%f)"
+                                            bell-x bell-y
+                                            (/ bell-size 32.0)
+                                            (/ bell-size 32.0)))
+                   )))
+             )
 
             ((and msg (telega-msg-match-p msg '(type Venue)))
              ;; Display Venue label
@@ -1578,8 +1630,7 @@ Return non-nil if VENUE has been embeded."
 
             (t
              ;; Location and pageBlockMap
-             (telega-map--svg-draw-location-pin
-              map svg (plist-get map :location)))
+             (telega-map--svg-draw-location-pin map svg loc))
             ))
 
     ;; Display "Loading..." if updating map thumbnail

@@ -57,6 +57,7 @@
 (require 'seq)
 (require 'dired)                      ; dired-get-marked-files
 (require 'mailcap)                    ; mailcap-extension-to-mime
+(require 'yank-media)                 ; yank-media
 
 (require 'telega-core)
 (require 'telega-tdlib)
@@ -356,6 +357,9 @@ Combines chat permissions and admin/owner permissions."
     (when-let ((status (telega-chat-member-my-status chat)))
       (cl-case (telega--tl-type status)
         (chatMemberStatusCreator
+         ;; Owner has all chat permissions
+         (dolist (perm-spec telega-chat--chat-permissions)
+           (setq perms (plist-put perms (car perm-spec) t)))
          ;; NOTE: Owner of the chat has all the admins privs except
          ;; for `:is_anonymous' which is set separately
          (dolist (perm-spec telega-chat--admin-permissions)
@@ -3243,9 +3247,8 @@ Global chat bindings:
     (telega-chat--forum-topics-fetch telega-chatbuf--chat))
 
   ;; Yank clipboard with `M-x yank-media RET'
-  (when (fboundp 'yank-media-handler)
-    (funcall #'yank-media-handler '(image/png image/jpeg)
-             #'telega-chatbuf--yank-media))
+  (yank-media-handler telega-clipboard-media-mime-types
+                      #'telega-chatbuf--yank-media)
   )
 
 (defun telega-chatbuf--set-action (action)
@@ -5799,9 +5802,12 @@ ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
 (defun telega-chatbuf-attach-file (filename &optional preview-p
                                             content-type-detect-p)
   "Attach FILENAME as document to the chatbuf input.
+If PREVIEW-P is non-nil, then create a preview thumbnail.  FILENAME
+must be an image file.
 If CONTENT-TYPE-DETECT-P is specified, then FILENAME's content type is
 automatically detected."
-  (interactive (list (telega-read-file-name "Attach file: ")))
+  (interactive (list (telega-read-file-name
+                      (concat (telega-i18n "lng_in_dlg_file") ": "))))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Document preview-p)))
     (telega-chatbuf-input-insert
      `(:@type "inputMessageDocument"
@@ -5821,6 +5827,12 @@ automatically detected."
                      (telega-create-image filename nil nil
                        :scale 1.0)
                      t (telega-x-frame)))))
+    ;; TODO: TDLib docs
+    ;;   The photo must be at most 10 MB in size. The
+    ;;   photo's width and height must not exceed 10000 in total. Width
+    ;;   and height ratio must be at most 20
+    ;; If this criteria does not match, then send photo as file
+
     (telega-chatbuf-input-insert
      `(:@type "inputMessagePhoto"
               :photo (:@type "inputPhoto"
@@ -5845,26 +5857,31 @@ This attachment can be used only in private chats."
   (interactive (list (telega-read-file-name
                       (concat (telega-symbol 'flames)
                               (telega-i18n "lng_attach_photo") ": "))
-                     (telega-read-self-destruct-timer "Self destruct in")))
+                     (telega-read-self-destruct-timer
+                      (telega-i18n "lng_ttl_period_menu"))))
   (telega-chatbuf-attach-photo filename tl-ttl))
 
 (defun telega-chatbuf-attach-video (filename &optional tl-ttl spoiler-p)
   "Attach FILENAME as video to the chatbuf input."
-  (interactive (list (telega-read-file-name "Video: ")))
+  (interactive (list (telega-read-file-name
+                      (concat (telega-i18n "lng_in_dlg_video") ": "))))
   ;; NOTE: `telega-chatbuf--gen-input-file' might return another path
   ;; (accessible by docker) while FILENAME might not be accessible by
   ;; docker.  Docker might be used in `telega-ffplay-get-resolution'
   ;; and `telega-ffplay-get-duration'
   (let* ((ifile (telega-chatbuf--gen-input-file filename 'Video))
          (i-filename (plist-get ifile :path))
-         (resolution (telega-ffplay-get-resolution i-filename)))
+         (resolution (when i-filename
+                       (telega-ffplay-get-resolution i-filename))))
     (telega-chatbuf-input-insert
      `(:@type "inputMessageVideo"
               :video (:@type "inputVideo"
                              :video ,ifile
-                             :duration ,(round (telega-ffplay-get-duration
-                                                i-filename))
                              :supports_streaming t
+                             ,@(when i-filename
+                                 (list :duration
+                                       (round (telega-ffplay-get-duration
+                                               i-filename))))
                              ,@(when resolution
                                  (list :width (car resolution)
                                        :height (cdr resolution))))
@@ -5875,7 +5892,8 @@ This attachment can be used only in private chats."
 
 (defun telega-chatbuf-attach-spoiler-video (filename)
   "Attach video marked with spoiler."
-  (interactive (list (telega-read-file-name "Video: ")))
+  (interactive (list (telega-read-file-name
+                      (concat (telega-i18n "lng_in_dlg_video") ": "))))
   (telega-chatbuf-attach-video filename nil 'with-spoiler))
 
 (defun telega-chatbuf-attach-ttl-video (filename tl-ttl)
@@ -5883,13 +5901,16 @@ This attachment can be used only in private chats."
 This attachment can be used only in private chats."
   (interactive (list (telega-read-file-name
                       (concat (telega-symbol 'flames)
-                              "Video: "))
-                     (telega-read-self-destruct-timer "Self destruct in")))
+                              (telega-i18n "lng_in_dlg_video")
+                              ": "))
+                     (telega-read-self-destruct-timer
+                      (telega-i18n "lng_ttl_period_menu"))))
   (telega-chatbuf-attach-video filename tl-ttl))
 
 (defun telega-chatbuf-attach-audio (filename)
   "Attach FILENAME as audio to the chatbuf input."
-  (interactive (list (telega-read-file-name "Audio: ")))
+  (interactive (list (telega-read-file-name
+                      (concat (telega-i18n "lng_in_dlg_audio_file") ": "))))
   ;; NOTE: Comments about `i-filename' see in
   ;; `telega-chatbuf-attach-video'
   (let* ((ifile (telega-chatbuf--gen-input-file filename 'Audio))
@@ -5904,29 +5925,56 @@ This attachment can be used only in private chats."
                         :duration (round (telega-ffplay-get-duration i-filename)))
            ))))
 
-(defun telega-chatbuf-attach-media (filename &optional as-file-p)
+(defun telega-chatbuf-attach-media (filename &optional as-file-p mime-name)
   "Attach FILENAME as media, detecting media type by FILENAME extension.
+FILENAME can be a remote uri.
 If `\\[universal-argument] is given, then attach as file.
 If AS-FILE-P is `preview', then attach as file with preview.  FILENAME
-must be a photo in this case."
-  (interactive (list (telega-read-file-name "Attach Media File: ")
+must be a photo in this case.
+MIME-NAME is a mime type for the FILENAME.  Detected automatically by
+FILENAME's extension if ommited.  Ignored if AS-FILE-P is specified."
+  (interactive (list (telega-read-file-name
+                      (if current-prefix-arg
+                          (format "%s (%s): "
+                                  (telega-i18n "lng_attach")
+                                  (telega-i18n "lng_attach_file"))
+                        (format "%s: "
+                                (telega-i18n "lng_article_insert_media"))))
                      current-prefix-arg))
-  (let ((file-mime (or (unless as-file-p
-                         (mailcap-extension-to-mime
-                          (or (file-name-extension filename) "")))
-                       "telega/unknown")))
-    (cond ((string= "image/gif" file-mime)
+  (let ((mime-name (cond (as-file-p nil)
+                         (mime-name mime-name)
+                         (t (mailcap-extension-to-mime
+                             (or (file-name-extension filename) ""))))))
+    (cond (as-file-p
+           (telega-chatbuf-attach-file filename (eq as-file-p 'preview)))
+          ((and (stringp mime-name)
+                (string= "image/gif" mime-name)
+                (telega-chatbuf-match-p
+                 '(my-permission :can_send_other_messages)))
            (telega-chatbuf-attach-animation filename))
-          ((string-prefix-p "image/" file-mime)
+          ((and (string-prefix-p "image/" mime-name)
+                (telega-chatbuf-match-p
+                 '(my-permission :can_send_photos)))
            (telega-chatbuf-attach-photo filename))
-          ((string-prefix-p "audio/" file-mime)
+          ((and (string-prefix-p "audio/" mime-name)
+                (telega-chatbuf-match-p
+                 '(my-permission :can_send_audios)))
            (telega-chatbuf-attach-audio filename))
-          ((string-prefix-p "video/" file-mime)
+          ((and (string-prefix-p "video/" mime-name)
+                (telega-chatbuf-match-p
+                 '(my-permission :can_send_videos)))
            (telega-chatbuf-attach-video filename))
           ((string-match-p "^https?://" filename)
+           ;; NOTE: We cannot reliably determine whether a link refers
+           ;; to a media resource, so we insert it as plain text
            (telega-chatbuf-input-insert filename))
           (t
-           (telega-chatbuf-attach-file filename (eq as-file-p 'preview))))))
+           ;; Automatically detect content type in the TDLib
+           (unless (telega-chatbuf-match-p '(my-permission :can_send_documents))
+             (user-error "telega: can't send media to this chat"))
+           (telega-chatbuf-attach-file filename
+                                       (string-prefix-p "image/" mime-name)
+                                       'detect-content-type)))))
 
 (defun telega-chatbuf-attach-video-note (as-file-p)
   "Attach a (circled) video note to the chatbuf input.
@@ -5987,44 +6035,74 @@ voice-note.  Otherwise record voice note inplace.
                  :duration (round (telega-ffplay-get-duration i-filename))
                  :waveform (telega-vvnote--waveform-for-file i-filename))))))
 
-(defun telega-chatbuf--yank-media (mime-type data &optional doc-p)
+(defun telega-chatbuf--clipboard-mime-name (mime-type)
+  "Return MIME type name (a string) for MIME-TYPE.
+MIME-TYPE could be either a string or a symbol such as `image/png'."
+  (if (symbolp mime-type)
+      (symbol-name mime-type)
+    (cl-assert (stringp mime-type))
+    mime-type))
+
+(defun telega-chatbuf--yank-media (mime-type data &optional as-file-p)
   "Handler for the `yank-media' command."
   (let* ((temporary-file-directory telega-temp-dir)
-         (tmpfile (telega-temp-name "clipboard"
-                                    (cl-ecase mime-type
-                                      (image/png ".png")
-                                      (image/jpeg ".jpg"))))
+         (mime-name (cond ((symbolp mime-type)
+                           (symbol-name mime-type))
+                          ((stringp mime-type)
+                           mime-type)))
+         (tmpext (or (car (cl-rassoc mime-name
+                                     ;; NOTE: nice extensions goes at
+                                     ;; the end of
+                                     ;; `mailcap-mime-extensions', so
+                                     ;; we reverse it before searching
+                                     (seq-reverse mailcap-mime-extensions)
+                                     :test #'string-equal))
+                     (when-let* ((subtype (cadr (split-string mime-name "/"))))
+                       (when (string-match-p "\\`[[:alnum:]]+\\'" subtype)
+                         (concat "." subtype)))
+                     ".bin"))
+         (tmpfile (telega-temp-name "clipboard" tmpext))
          (coding-system-for-write 'binary))
     (write-region data nil tmpfile nil 'quiet)
-    (telega-chatbuf-attach-media tmpfile (when doc-p 'preview))))
+    (telega-chatbuf-attach-media tmpfile (or as-file-p (equal tmpext ".bin"))
+                                 mime-name)))
 
 (defun telega-chatbuf-attach-clipboard (as-file-p)
   "Attach clipboard files to the chatbuf as photos.
 If `\\[universal-argument]' is given, then attach clipboard as document."
   (interactive "P")
-  (if (eq system-type 'darwin)
-      (let* ((temporary-file-directory telega-temp-dir)
-             (tmpfile (telega-temp-name "clipboard" ".png")))
-        ;; NOTE: On MacOS, try extracting clipboard using pngpaste
-        (unless (executable-find "pngpaste")
-          (error "Please install pngpaste to paste images"))
-        (unless (= 0 (telega-screenshot-with-pngpaste tmpfile))
-          (error "No image in CLIPBOARD"))
-        (telega-chatbuf-attach-media tmpfile (when as-file-p 'preview)))
+  (let ((text-urls (and (seq-contains-p (gui-get-selection 'CLIPBOARD 'TARGETS)
+                                        "text/plain" #'string-equal)
+                        (gui-get-selection 'CLIPBOARD 'text/uri-list))))
+    (cond (text-urls
+           (dolist (uri (split-string text-urls "[\r\n\0]" t))
+             (telega-chatbuf-dnd-attach uri nil as-file-p)))
 
-    (if-let* ((urls (and (cl-position "text/plain"
-                                      (gui-get-selection 'CLIPBOARD 'TARGETS)
-                                      :test #'string-equal)
-                         (gui-get-selection 'CLIPBOARD 'text/uri-list))))
-        (dolist (uri (split-string urls "[\r\n\0]" t))
-          (telega-chatbuf-dnd-attach uri nil as-file-p))
-      (apply #'telega-chatbuf--yank-media
-             (or (catch 'found
-                   (dolist (mime-type '(image/png image/jpeg))
-                     (when-let* ((selection-coding-system 'no-conversion) ;raw data
-                                 (data (gui-get-selection 'CLIPBOARD mime-type)))
-                       (throw 'found (list mime-type data (when as-file-p 'preview))))))
-                 (error "No files in CLIPBOARD"))))))
+          ((eq system-type 'darwin)
+           (let* ((temporary-file-directory telega-temp-dir)
+                  (tmpfile (telega-temp-name "clipboard" ".png")))
+             ;; NOTE: On MacOS, try extracting clipboard using pngpaste
+             (unless (executable-find "pngpaste")
+               (error "Please install pngpaste to paste images"))
+             (unless (= 0 (telega-screenshot-with-pngpaste tmpfile))
+               (error "No image in CLIPBOARD"))
+             (telega-chatbuf-attach-media tmpfile (when as-file-p 'preview))))
+
+          (t
+           ;; NOTE: Do not call `yank-media' directly, because it
+           ;; might query user to choose mime type to yank.  Instead,
+           ;; we yank first matching mime type from
+           ;; `telega-clipboard-media-mime-types'
+           (if-let* ((raw-mime-type (seq-find #'yank-media--find-matching-media
+                                              telega-clipboard-media-mime-types))
+                     (mime-type (intern raw-mime-type)))
+               (telega-chatbuf--yank-media
+                mime-type (yank-media--get-selection mime-type)
+                (when as-file-p
+                  (or (and (string-prefix-p "image/" raw-mime-type) 'preview)
+                      as-file-p)))
+             (error "No supported media in the CLIPBOARD")))
+          )))
 
 (defun telega-chatbuf-attach-screenshot (&optional n chat)
   "Attach screenshot to the chatbuf input.
@@ -7878,7 +7956,7 @@ containing QUERY sent by specified sender."
             (t
              (error "File %S is inaccessible" filename)))
 
-    (cl-assert (string-match-p "https?://" uri))
+    (cl-assert (string-match-p "^https?://" uri))
     (telega-chatbuf-attach-media uri as-file-p))
   'private)
 

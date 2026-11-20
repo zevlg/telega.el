@@ -307,6 +307,9 @@ Return parsed command."
 
                    ;; For `joinChatByInviteLink'
                    (telega-tl-error-equal value 400 "INVITE_REQUEST_SENT")
+
+                   ;; `getCurrentWeather' might return this error
+                   (telega-tl-error-equal value 500 "Not supported")
                    )
                (funcall call-cb value)
 

@@ -1891,8 +1891,7 @@ HEADING - the new direction in which the location moves, in degrees;
 PROXIMITY-ALERT-RADIUS - the new maximum distance for proximity
 alerts, in meters (0-100000). Pass 0 if the notification is disabled."
   (declare (indent 2))
-  (let ((content (plist-get msg :content))
-        (new-live-loc (copy-sequence live-location)))
+  (let ((new-live-loc (copy-sequence live-location)))
     ;; Probably update heading and proximity alert radius
     (when (and new-live-loc heading)
       (plist-put new-live-loc :heading heading))
@@ -3844,6 +3843,11 @@ Use quickReplyMessage.can_be_edited to check whether a message can be edited."
    (list :@type "getTextEntities"
          :text text)
    callback))
+
+(defun telega--loadTonWalletState ()
+  "Load state of the TON wallet of the current user."
+  (telega-server--send
+   (list :@type "loadTonWalletState")))
 
 (provide 'telega-tdlib)
 

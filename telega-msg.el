@@ -1368,9 +1368,11 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
   (when v-status
     (concat
      (when (plist-get v-status :is_scam)
-       (propertize (telega-i18n "lng_scam_badge") 'face 'error))
+       (let ((badge (propertize (telega-i18n "lng_scam_badge") 'face 'error)))
+         (telega-symbol badge (telega-svg-create-badge badge))))
      (when (plist-get v-status :is_fake)
-       (propertize (telega-i18n "lng_fake_badge") 'face 'error))
+       (let ((badge (propertize (telega-i18n "lng_fake_badge") 'face 'error)))
+         (telega-symbol badge (telega-svg-create-badge badge))))
      (cond ((plist-get v-status :is_verified)
             (telega-symbol 'verified))
            ((not (telega-zerop

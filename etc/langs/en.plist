@@ -1491,8 +1491,12 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
  ;; media types
  ("lng_in_dlg_photo"
   :value "Photo")
+ ("lng_in_dlg_photo_ttl"
+  :value "Self-Destructing Photo")
  ("lng_in_dlg_video"
   :value "Video")
+ ("lng_in_dlg_video_ttl"
+  :value "Self-Destructing Video")
  ("lng_in_dlg_file"
   :value "File")
  ("lng_in_dlg_audio_file"
@@ -1618,8 +1622,16 @@ You can send them an invite link as message instead.")
  ("lng_years_tiny"
   :one_value "{count}y" :other_value "{count}y")
 
+ ("lng_attach"
+  :value "Add attachment")
  ("lng_attach_photo"
   :value "Photo")
+ ("lng_attach_file"
+  :value "File")
+ ("lng_attach_document"
+  :value "Document")
+ ("lng_attach_failed"
+  :value "Failed")
 
  ;; Sessions
  ("lng_settings_sessions_title"
@@ -2580,4 +2592,17 @@ this channel?")
 
  ("lng_auction_join_time_left"
   :value "{time} left")
+ ("lng_article_insert_media"
+  :value "Attach Media")
+
+ ("lng_ttl_period_menu"
+  :value "Self-Destruct Timer")
+
+ ("lng_action_gram_transfer_received"
+  :value "{user} sent you {amount}")
+ ("lng_action_gram_transfer_sent"
+  :value "You sent {amount} to {user}")
+ ("lng_action_gram_transfer_amount"
+  :one_value "{amount} Gram"
+  :other_value "{amount} Grams")
  )
