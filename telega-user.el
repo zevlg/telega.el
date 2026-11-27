@@ -25,6 +25,8 @@
 
 ;;; Code:
 (require 'telega-tdlib)
+(require 'telega-i18n)
+(require 'telega-media)
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-user "telega-chat" (chat))

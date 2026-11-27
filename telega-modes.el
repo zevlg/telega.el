@@ -31,6 +31,11 @@
 (require 'telega-server)
 (require 'telega-filter)
 (require 'telega-util)
+(require 'telega-i18n)
+(require 'telega-msg)
+(require 'telega-sticker)
+(require 'telega-user)
+(require 'telega-voip)
 
 (defvar tracking-buffers)
 (declare-function telega-account-current "telega")

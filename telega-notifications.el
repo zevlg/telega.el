@@ -35,6 +35,10 @@
 
 (require 'telega-core)
 (require 'telega-util)
+(require 'telega-i18n)
+(require 'telega-ins)
+(require 'telega-msg)
+(require 'telega-user)
 
 (declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))

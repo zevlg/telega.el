@@ -31,6 +31,7 @@
 
 (require 'telega-core)
 (require 'telega-tdlib)
+(require 'telega-i18n)
 
 (declare-function telega-chatbuf--name "telega-chat" (chat))
 (declare-function telega-chat--set-uaprops "telega-chat" (chat uaprops))

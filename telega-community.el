@@ -25,6 +25,9 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-i18n)
+(require 'telega-media)
+(require 'telega-util)
 
 (defconst telega-community--permissions
   '((:can_edit_chat_list . "lng_rights_community_linked")

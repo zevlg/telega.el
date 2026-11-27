@@ -28,6 +28,7 @@
 (require 'rx)
 
 (require 'telega-core)
+(require 'telega-util)
 
 (defvar telega-ffplay-media-timestamp nil
   "Bind this variable to start playing at the given media timestamp.")

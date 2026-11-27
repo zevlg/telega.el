@@ -25,6 +25,12 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-ins)
+(require 'telega-media)
+(require 'telega-modes)
+(require 'telega-sticker)
+(require 'telega-tdlib)
+(require 'telega-util)
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))

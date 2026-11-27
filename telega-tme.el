@@ -34,6 +34,8 @@
 (require 'telega-sticker)
 (require 'telega-util)
 (require 'telega-transient)
+(require 'telega-filter)
+(require 'telega-story)
 
 ;; telega-chat.el depends on telega-tme.el
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
