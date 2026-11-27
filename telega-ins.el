@@ -2952,7 +2952,7 @@ Special messages are determined with `telega-msg-special-p'."
          :name (telega-msg-sender-title--special
                    (telega-user-get (plist-get content :bot_user_id)))))
       (messageTonWalletTransfer
-       (let ((amount (telega-tl-get0 content :amount))
+       (let ((amount (string-to-number (telega-tl-get0 content :amount)))
              (sent-p (telega-msg-match-p msg 'is-outgoing)))
          (telega-ins-i18n (if sent-p
                               "lng_action_gram_transfer_sent"

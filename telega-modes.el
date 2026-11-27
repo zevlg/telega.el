@@ -1662,15 +1662,16 @@ Set to nil to disable active video chats in the modeline."
     (setq telega-active-video-chats--chats nil))
 
   (when telega-active-video-chats--chats
-    (telega-ins (telega-i18n "lng_call_box_groupcalls_subtitle") ": ")
+    (telega-ins-describe-item (telega-i18n "lng_call_box_groupcalls_subtitle")
+      'no-newline)
     (seq-doseq (chat telega-active-video-chats--chats)
       (telega-ins "\n")
-      (telega-ins "    ")
-      (telega-ins--raw-button (list 'action
-                                    ;; TODO: open video chat
-                                    'todo
-                                    )
-        (telega-ins--active-video-chat chat)))
+      (telega-ins--line-wrap-prefix "  "
+        (telega-ins--raw-button (list 'action
+                                      ;; TODO: open video chat
+                                      'todo
+                                      )
+          (telega-ins--active-video-chat chat))))
     t))
 
 (defun telega-active-video-chats--on-update-chat (event)
@@ -2111,7 +2112,8 @@ TDLib's autoDownloadSettings structure."
                               (memq (plist-get bd-user :user_id)
                                     telega-contact-birthdays--exclude-users))
                             telega--close-birthday-users)))
-    (telega-ins (telega-i18n "lng_info_birthday_label") ": ")
+    (telega-ins-describe-item (telega-i18n "lng_info_birthday_label")
+      'no-newline)
     (seq-doseq (bd-user bd-users-list)
       (telega-ins "\n")
       (telega-ins--line-wrap-prefix "  "
